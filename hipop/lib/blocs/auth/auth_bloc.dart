@@ -40,19 +40,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onAuthUserChanged(AuthUserChanged event, Emitter<AuthState> emit) async {
     final user = event.user as User?;
     
+    print('DEBUG: _onAuthUserChanged called with user: ${user?.uid}');
     
     if (user != null) {
       try {
         // Get user profile from Firestore with retry logic
         DocumentSnapshot userDoc;
         int retries = 0;
-        const maxRetries = 3;
+        const maxRetries = 5; // Increased retries for login scenarios
         
         do {
+          print('DEBUG: Attempting to fetch user doc (attempt ${retries + 1})');
           userDoc = await _firestore.collection('users').doc(user.uid).get();
+          
           if (!userDoc.exists && retries < maxRetries) {
-            // Wait a bit before retrying in case the document is still being written
-            await Future.delayed(Duration(milliseconds: 500 * (retries + 1)));
+            print('DEBUG: User doc not found, retrying in ${1000 * (retries + 1)}ms...');
+            // Exponential backoff for retries
+            await Future.delayed(Duration(milliseconds: 1000 * (retries + 1)));
             retries++;
           } else {
             break;
@@ -61,17 +65,53 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         
         if (userDoc.exists) {
           final userData = userDoc.data()! as Map<String, dynamic>;
-          final userType = userData['userType'] as String? ?? 'shopper';
-          emit(Authenticated(user: user, userType: userType));
+          final userType = userData['userType'] as String?;
+          
+          print('DEBUG: User doc found, userType: $userType');
+          
+          if (userType == null || userType.isEmpty) {
+            print('WARNING: userType is null or empty in Firestore doc');
+            // For existing users with missing userType, check if they have vendor-specific data
+            final hasVendorData = userData.containsKey('businessName') || 
+                                userData.containsKey('vendorProfile') ||
+                                userData.containsKey('popups');
+            final inferredType = hasVendorData ? 'vendor' : 'shopper';
+            print('DEBUG: Inferred userType: $inferredType based on document structure');
+            emit(Authenticated(user: user, userType: inferredType));
+          } else {
+            emit(Authenticated(user: user, userType: userType));
+          }
         } else {
-          // User exists in Auth but not in Firestore - fallback to shopper
-          emit(Authenticated(user: user, userType: 'shopper'));
+          print('ERROR: User doc still does not exist after ${retries + 1} attempts');
+          
+          // For returning users, try to check if they have any vendor collections
+          try {
+            final vendorPostsQuery = await _firestore
+                .collection('vendor_posts')
+                .where('vendorId', isEqualTo: user.uid)
+                .limit(1)
+                .get();
+            
+            if (vendorPostsQuery.docs.isNotEmpty) {
+              print('DEBUG: Found vendor posts for user, setting userType to vendor');
+              emit(Authenticated(user: user, userType: 'vendor'));
+            } else {
+              print('DEBUG: No vendor posts found, defaulting to shopper');
+              emit(Authenticated(user: user, userType: 'shopper'));
+            }
+          } catch (e) {
+            print('ERROR: Failed to check vendor posts: $e');
+            // Last resort - check the user's email for vendor patterns if needed
+            emit(Authenticated(user: user, userType: 'shopper'));
+          }
         }
       } catch (e) {
+        print('ERROR: Failed to get user profile: $e');
         // If we can't get user profile, still authenticate but with default type
         emit(Authenticated(user: user, userType: 'shopper'));
       }
     } else {
+      print('DEBUG: User is null, emitting Unauthenticated');
       emit(Unauthenticated());
     }
   }
@@ -93,12 +133,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
 
       print('DEBUG: Calling signInWithEmailAndPassword');
-      await _authRepository.signInWithEmailAndPassword(
+      final userCredential = await _authRepository.signInWithEmailAndPassword(
         event.email.trim(),
         event.password.trim(),
       );
       print('DEBUG: signInWithEmailAndPassword completed');
-      // State will be updated via AuthUserChanged event
+      
+      // Manually trigger auth state update immediately after login
+      if (userCredential.user != null) {
+        print('DEBUG: Manually triggering AuthUserChanged event');
+        add(AuthUserChanged(userCredential.user));
+      }
     } catch (e) {
       print('DEBUG: Login error caught: $e');
       emit(AuthError(message: e.toString()));

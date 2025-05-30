@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import '../repositories/vendor_posts_repository.dart';
 import '../models/vendor_post.dart';
 import '../widgets/common/hipop_text_field.dart';
@@ -256,7 +257,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         ),
         const SizedBox(height: 16),
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          onPressed: _isLoading ? null : () => context.pop(),
           child: const Text('Cancel'),
         ),
       ],
@@ -400,7 +401,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.of(context).pop();
+          context.pop();
         }
       } else {
         // Create new post
@@ -427,7 +428,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.of(context).pop();
+          context.pop();
         }
       }
     } catch (e) {
