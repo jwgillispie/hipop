@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
+import '../widgets/common/photo_upload_widget.dart';
 
 class VendorDashboard extends StatelessWidget {
   const VendorDashboard({super.key});
@@ -82,6 +84,7 @@ class VendorDashboard extends StatelessWidget {
                     crossAxisCount: 2,
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
+                    childAspectRatio: 1.1,
                     children: [
                       _buildActionCard(
                         context,
@@ -97,7 +100,7 @@ class VendorDashboard extends StatelessWidget {
                         'View your active pop-ups',
                         Icons.store,
                         Colors.blue,
-                        () => _showComingSoon(context),
+                        () => context.go('/vendor/my-popups'),
                       ),
                       _buildActionCard(
                         context,
@@ -106,6 +109,14 @@ class VendorDashboard extends StatelessWidget {
                         Icons.analytics,
                         Colors.green,
                         () => _showComingSoon(context),
+                      ),
+                      _buildActionCard(
+                        context,
+                        'Upload Photos',
+                        'Add photos to your gallery',
+                        Icons.add_a_photo,
+                        Colors.teal,
+                        () => _showPhotoUploadDialog(context),
                       ),
                       _buildActionCard(
                         context,
@@ -152,7 +163,7 @@ class VendorDashboard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -182,6 +193,35 @@ class VendorDashboard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showPhotoUploadDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Upload Photo'),
+        content: SizedBox(
+          width: 300,
+          child: PhotoUploadWidget(
+            onPhotoSelected: (File photo) {
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Photo saved to: ${photo.path}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }

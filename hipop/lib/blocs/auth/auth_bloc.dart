@@ -169,6 +169,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
 
       if (event.password.trim().length < 6) {
+        
         emit(const AuthError(message: 'Password must be at least 6 characters'));
         return;
       }

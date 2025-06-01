@@ -7,6 +7,7 @@ class VendorPost extends Equatable {
   final String vendorName;
   final String description;
   final String location;
+  final List<String> locationKeywords;
   final double? latitude;
   final double? longitude;
   final DateTime popUpDateTime;
@@ -21,6 +22,7 @@ class VendorPost extends Equatable {
     required this.vendorName,
     required this.description,
     required this.location,
+    this.locationKeywords = const [],
     this.latitude,
     this.longitude,
     required this.popUpDateTime,
@@ -33,20 +35,27 @@ class VendorPost extends Equatable {
   factory VendorPost.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     
-    return VendorPost(
-      id: doc.id,
-      vendorId: data['vendorId'] ?? '',
-      vendorName: data['vendorName'] ?? '',
-      description: data['description'] ?? '',
-      location: data['location'] ?? '',
-      latitude: data['latitude']?.toDouble(),
-      longitude: data['longitude']?.toDouble(),
-      popUpDateTime: (data['popUpDateTime'] as Timestamp).toDate(),
-      instagramHandle: data['instagramHandle'],
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      isActive: data['isActive'] ?? true,
-    );
+    try {
+      return VendorPost(
+        id: doc.id,
+        vendorId: data['vendorId'] ?? '',
+        vendorName: data['vendorName'] ?? '',
+        description: data['description'] ?? '',
+        location: data['location'] ?? '',
+        locationKeywords: List<String>.from(data['locationKeywords'] ?? []),
+        latitude: data['latitude']?.toDouble(),
+        longitude: data['longitude']?.toDouble(),
+        popUpDateTime: (data['popUpDateTime'] as Timestamp).toDate(),
+        instagramHandle: data['instagramHandle'],
+        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        isActive: data['isActive'] ?? true,
+      );
+    } catch (e) {
+      print('Error parsing VendorPost from Firestore: $e');
+      print('Document data: $data');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -55,6 +64,7 @@ class VendorPost extends Equatable {
       'vendorName': vendorName,
       'description': description,
       'location': location,
+      'locationKeywords': locationKeywords,
       'latitude': latitude,
       'longitude': longitude,
       'popUpDateTime': Timestamp.fromDate(popUpDateTime),
@@ -71,6 +81,7 @@ class VendorPost extends Equatable {
     String? vendorName,
     String? description,
     String? location,
+    List<String>? locationKeywords,
     double? latitude,
     double? longitude,
     DateTime? popUpDateTime,
@@ -85,6 +96,7 @@ class VendorPost extends Equatable {
       vendorName: vendorName ?? this.vendorName,
       description: description ?? this.description,
       location: location ?? this.location,
+      locationKeywords: locationKeywords ?? this.locationKeywords,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       popUpDateTime: popUpDateTime ?? this.popUpDateTime,
@@ -123,6 +135,42 @@ class VendorPost extends Equatable {
     }
   }
 
+  static List<String> generateLocationKeywords(String location) {
+    final keywords = <String>{};
+    final normalizedLocation = location.toLowerCase().trim();
+    
+    keywords.add(normalizedLocation);
+    
+    final words = normalizedLocation.split(RegExp(r'[,\s]+'));
+    for (final word in words) {
+      if (word.isNotEmpty) {
+        keywords.add(word);
+        for (int i = 1; i <= word.length; i++) {
+          keywords.add(word.substring(0, i));
+        }
+      }
+    }
+    
+    final commonSynonyms = {
+      'atlanta': ['atl', 'hotlanta'],
+      'midtown': ['mid', 'midtown atlanta'],
+      'buckhead': ['bhead'],
+      'decatur': ['decatur ga'],
+      'alpharetta': ['alpharetta ga', 'alph'],
+      'virginia-highland': ['vahi', 'virginia highland'],
+      'little five points': ['l5p', 'little 5 points'],
+      'old fourth ward': ['o4w', 'old 4th ward'],
+    };
+    
+    for (final entry in commonSynonyms.entries) {
+      if (normalizedLocation.contains(entry.key)) {
+        keywords.addAll(entry.value);
+      }
+    }
+    
+    return keywords.toList();
+  }
+
   @override
   List<Object?> get props => [
         id,
@@ -130,6 +178,7 @@ class VendorPost extends Equatable {
         vendorName,
         description,
         location,
+        locationKeywords,
         latitude,
         longitude,
         popUpDateTime,

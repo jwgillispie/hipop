@@ -5,6 +5,7 @@ import '../models/vendor_post.dart';
 abstract class IVendorPostsRepository {
   Stream<List<VendorPost>> getVendorPosts(String vendorId);
   Stream<List<VendorPost>> getAllActivePosts();
+  Stream<List<VendorPost>> searchPostsByLocation(String location);
   Future<String> createPost(VendorPost post);
   Future<void> updatePost(VendorPost post);
   Future<void> deletePost(String postId);
@@ -33,23 +34,89 @@ class VendorPostsRepository implements IVendorPostsRepository {
 
   @override
   Stream<List<VendorPost>> getAllActivePosts() {
-    final now = Timestamp.fromDate(DateTime.now());
+    print('=== getAllActivePosts DEBUG ===');
+    print('Current time: ${DateTime.now()}');
     
+    // For now, show ALL posts regardless of date to debug
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
-        .where('popUpDateTime', isGreaterThanOrEqualTo: now)
-        .orderBy('popUpDateTime', descending: false)
+        .orderBy('popUpDateTime', descending: true) // Latest first
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => VendorPost.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+          print('Found ${snapshot.docs.length} active posts');
+          
+          final posts = snapshot.docs
+              .map((doc) => VendorPost.fromFirestore(doc))
+              .toList();
+          
+          for (final post in posts) {
+            print('Post: ${post.vendorName} at ${post.location} on ${post.popUpDateTime}');
+            print('  Active: ${post.isActive}');
+            print('  Keywords: ${post.locationKeywords}');
+          }
+          
+          return posts;
+        });
+  }
+
+  @override
+  Stream<List<VendorPost>> searchPostsByLocation(String location) {
+    if (location.isEmpty) {
+      return getAllActivePosts();
+    }
+
+    final searchKeyword = location.toLowerCase().trim();
+    print('=== SEARCH DEBUG ===');
+    print('Searching for: "$searchKeyword"');
+    
+    // Use a simpler approach - get all posts and filter client-side
+    // This ensures we catch everything during debugging
+    return _firestore
+        .collection(_collection)
+        .where('isActive', isEqualTo: true)
+        .orderBy('popUpDateTime', descending: true) // Show latest first
+        .snapshots()
+        .map((snapshot) {
+          print('Total posts in query: ${snapshot.docs.length}');
+          
+          final allPosts = snapshot.docs
+              .map((doc) => VendorPost.fromFirestore(doc))
+              .toList();
+          
+          print('Converted posts: ${allPosts.length}');
+          
+          // Filter by location
+          final filteredPosts = allPosts.where((post) {
+            final locationMatch = post.location.toLowerCase().contains(searchKeyword);
+            final keywordMatch = post.locationKeywords.any((keyword) => 
+                keyword.toLowerCase().contains(searchKeyword));
+            
+            final matches = locationMatch || keywordMatch;
+            
+            if (matches) {
+              print('MATCH: ${post.vendorName} at ${post.location}');
+              print('  Location keywords: ${post.locationKeywords}');
+              print('  Date: ${post.popUpDateTime}');
+            }
+            
+            return matches;
+          }).toList();
+          
+          print('Filtered results: ${filteredPosts.length}');
+          print('=== END SEARCH DEBUG ===');
+          
+          return filteredPosts;
+        });
   }
 
   @override
   Future<String> createPost(VendorPost post) async {
     try {
-      final docRef = await _firestore.collection(_collection).add(post.toFirestore());
+      final postWithKeywords = post.copyWith(
+        locationKeywords: VendorPost.generateLocationKeywords(post.location),
+      );
+      final docRef = await _firestore.collection(_collection).add(postWithKeywords.toFirestore());
       return docRef.id;
     } catch (e) {
       throw VendorPostException('Failed to create post: ${e.toString()}');
@@ -59,10 +126,14 @@ class VendorPostsRepository implements IVendorPostsRepository {
   @override
   Future<void> updatePost(VendorPost post) async {
     try {
+      final postWithKeywords = post.copyWith(
+        locationKeywords: VendorPost.generateLocationKeywords(post.location),
+        updatedAt: DateTime.now(),
+      );
       await _firestore
           .collection(_collection)
           .doc(post.id)
-          .update(post.copyWith(updatedAt: DateTime.now()).toFirestore());
+          .update(postWithKeywords.toFirestore());
     } catch (e) {
       throw VendorPostException('Failed to update post: ${e.toString()}');
     }
@@ -190,6 +261,113 @@ class VendorPostsRepository implements IVendorPostsRepository {
 
   double _toRadians(double degrees) {
     return degrees * (math.pi / 180);
+  }
+
+  // Migration function to update existing posts with location keywords
+  Future<void> migratePostsWithLocationKeywords() async {
+    try {
+      print('Starting migration of posts with location keywords...');
+      
+      // Get all posts and check them individually since Firestore isNull queries can be tricky
+      final snapshot = await _firestore
+          .collection(_collection)
+          .get();
+
+      final batch = _firestore.batch();
+      int updateCount = 0;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        
+        // Check if locationKeywords field is missing or empty
+        if (!data.containsKey('locationKeywords') || 
+            data['locationKeywords'] == null || 
+            (data['locationKeywords'] is List && (data['locationKeywords'] as List).isEmpty)) {
+          
+          final location = data['location'] ?? '';
+          if (location.isNotEmpty) {
+            final keywords = VendorPost.generateLocationKeywords(location);
+            
+            batch.update(doc.reference, {'locationKeywords': keywords});
+            updateCount++;
+            
+            print('Updating post: ${data['vendorName'] ?? 'Unknown'} at $location');
+            print('Generated keywords: $keywords');
+          }
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        print('Migration completed: Updated $updateCount posts with location keywords');
+      } else {
+        print('Migration completed: No posts needed updating');
+      }
+    } catch (e) {
+      print('Migration failed: ${e.toString()}');
+      throw VendorPostException('Failed to migrate posts: ${e.toString()}');
+    }
+  }
+
+  // Helper method to check if migration is needed
+  Future<bool> needsMigration() async {
+    try {
+      // Get a few posts and check if they need migration
+      final snapshot = await _firestore
+          .collection(_collection)
+          .limit(5)
+          .get();
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (!data.containsKey('locationKeywords') || 
+            data['locationKeywords'] == null ||
+            (data['locationKeywords'] is List && (data['locationKeywords'] as List).isEmpty)) {
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (e) {
+      return true; // If we can't check, assume migration is needed
+    }
+  }
+
+  // Debug method to see all posts in Firestore
+  Future<void> debugAllPosts() async {
+    try {
+      print('=== DEBUG: All posts in Firestore ===');
+      final snapshot = await _firestore
+          .collection(_collection)
+          .get();
+      
+      print('Total posts found: ${snapshot.docs.length}');
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        print('---');
+        print('ID: ${doc.id}');
+        print('Vendor: ${data['vendorName'] ?? 'Unknown'}');
+        print('Location: ${data['location'] ?? 'No location'}');
+        print('Keywords: ${data['locationKeywords'] ?? 'No keywords'}');
+        print('Date: ${data['popUpDateTime']?.toDate() ?? 'No date'}');
+        print('Active: ${data['isActive'] ?? 'No active field'}');
+      }
+      print('=== END DEBUG ===');
+    } catch (e) {
+      print('Debug failed: $e');
+    }
+  }
+
+  // Get ALL posts (including past ones) for debugging
+  Stream<List<VendorPost>> getAllPostsForDebug() {
+    return _firestore
+        .collection(_collection)
+        .orderBy('popUpDateTime', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => VendorPost.fromFirestore(doc))
+            .toList());
   }
 }
 

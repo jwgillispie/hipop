@@ -9,6 +9,7 @@ import '../screens/auth_screen.dart';
 import '../screens/shopper_home.dart';
 import '../screens/vendor_dashboard.dart';
 import '../screens/create_popup_screen.dart';
+import '../screens/vendor_my_popups.dart';
 
 class AppRouter {
   static GoRouter createRouter(AuthBloc authBloc) {
@@ -52,6 +53,11 @@ class AppRouter {
               builder: (context, state) => CreatePopUpScreen(
                 postsRepository: context.read<IVendorPostsRepository>(),
               ),
+            ),
+            GoRoute(
+              path: 'my-popups',
+              name: 'myPopups',
+              builder: (context, state) => const VendorMyPopups(),
             ),
           ],
         ),
