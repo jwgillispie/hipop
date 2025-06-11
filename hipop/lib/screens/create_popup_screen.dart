@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../repositories/vendor_posts_repository.dart';
 import '../models/vendor_post.dart';
 import '../widgets/common/hipop_text_field.dart';
+import '../widgets/common/google_places_widget.dart';
 
 class CreatePopUpScreen extends StatefulWidget {
   final IVendorPostsRepository postsRepository;
@@ -26,8 +27,12 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   final _descriptionController = TextEditingController();
   final _instagramController = TextEditingController();
   
-  DateTime? _selectedDateTime;
+  DateTime? _selectedStartDateTime;
+  DateTime? _selectedEndDateTime;
   bool _isLoading = false;
+  PlaceDetails? _selectedPlace;
+  
+  static const String _apiKey = 'AIzaSyDp17RxIsSydQqKZGBRsYtJkmGdwqnHZ84';
 
   @override
   void initState() {
@@ -42,7 +47,19 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       _locationController.text = post.location;
       _descriptionController.text = post.description;
       _instagramController.text = post.instagramHandle ?? '';
-      _selectedDateTime = post.popUpDateTime;
+      _selectedStartDateTime = post.popUpStartDateTime;
+      _selectedEndDateTime = post.popUpEndDateTime;
+      
+      // Initialize selected place if we have location data
+      if (post.placeId != null && post.latitude != null && post.longitude != null) {
+        _selectedPlace = PlaceDetails(
+          placeId: post.placeId!,
+          name: post.locationName ?? post.location,
+          formattedAddress: post.location,
+          latitude: post.latitude!,
+          longitude: post.longitude!,
+        );
+      }
     } else {
       // Set default vendor name from user profile
       final user = FirebaseAuth.instance.currentUser;
@@ -140,18 +157,39 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           },
         ),
         const SizedBox(height: 16),
-        HiPopTextField(
-          controller: _locationController,
-          labelText: 'Exact Location',
-          hintText: 'e.g., 123 Main St, Atlanta, GA',
-          prefixIcon: const Icon(Icons.location_on),
-          textCapitalization: TextCapitalization.words,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter the location';
-            }
-            return null;
-          },
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Location',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            GooglePlacesWidget(
+              apiKey: _apiKey,
+              initialLocation: _locationController.text,
+              onPlaceSelected: (place) {
+                setState(() {
+                  _selectedPlace = place;
+                  _locationController.text = place.formattedAddress;
+                });
+              },
+            ),
+            if (_selectedPlace == null && _locationController.text.isEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Please select a location',
+                style: TextStyle(
+                  color: Colors.red[700],
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 16),
         _buildDateTimePicker(),
@@ -198,52 +236,106 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
 
   Widget _buildDateTimePicker() {
-    return InkWell(
-      onTap: _selectDateTime,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.schedule, color: Colors.grey[600]),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pop-Up Date & Time',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _selectedDateTime != null
-                        ? _formatDateTime(_selectedDateTime!)
-                        : 'Select when your pop-up will happen',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: _selectedDateTime != null 
-                          ? Colors.black87 
-                          : Colors.grey[500],
-                      fontWeight: _selectedDateTime != null 
-                          ? FontWeight.w500 
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
+    return Column(
+      children: [
+        // Start Time Picker
+        InkWell(
+          onTap: () => _selectStartDateTime(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-          ],
+            child: Row(
+              children: [
+                Icon(Icons.play_arrow, color: Colors.green[600]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Start Time',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedStartDateTime != null
+                            ? _formatDateTime(_selectedStartDateTime!)
+                            : 'Select when your pop-up starts',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _selectedStartDateTime != null 
+                              ? Colors.black87 
+                              : Colors.grey[500],
+                          fontWeight: _selectedStartDateTime != null 
+                              ? FontWeight.w500 
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        // End Time Picker
+        InkWell(
+          onTap: () => _selectEndDateTime(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.stop, color: Colors.red[600]),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'End Time',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedEndDateTime != null
+                            ? _formatDateTime(_selectedEndDateTime!)
+                            : 'Select when your pop-up ends',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: _selectedEndDateTime != null 
+                              ? Colors.black87 
+                              : Colors.grey[500],
+                          fontWeight: _selectedEndDateTime != null 
+                              ? FontWeight.w500 
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -264,9 +356,9 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
     );
   }
 
-  Future<void> _selectDateTime() async {
+  Future<void> _selectStartDateTime() async {
     final now = DateTime.now();
-    final initialDate = _selectedDateTime ?? now.add(const Duration(hours: 1));
+    final initialDate = _selectedStartDateTime ?? now.add(const Duration(hours: 1));
     
     final date = await showDatePicker(
       context: context,
@@ -302,15 +394,93 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       );
 
       if (time != null) {
+        final selectedStart = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+        
         setState(() {
-          _selectedDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
+          _selectedStartDateTime = selectedStart;
+          // Auto-set end time to 4 hours later if not already set
+          if (_selectedEndDateTime == null || _selectedEndDateTime!.isBefore(selectedStart)) {
+            _selectedEndDateTime = selectedStart.add(const Duration(hours: 4));
+          }
         });
+      }
+    }
+  }
+
+  Future<void> _selectEndDateTime() async {
+    if (_selectedStartDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a start time first'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final minDate = _selectedStartDateTime!;
+    final initialDate = _selectedEndDateTime ?? minDate.add(const Duration(hours: 4));
+    
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: minDate,
+      lastDate: minDate.add(const Duration(days: 7)), // Max 1 week duration
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).primaryColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (date != null && mounted) {
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                primary: Theme.of(context).primaryColor,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (time != null) {
+        final selectedEnd = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+        
+        if (selectedEnd.isAfter(_selectedStartDateTime!)) {
+          setState(() {
+            _selectedEndDateTime = selectedEnd;
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('End time must be after start time'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -349,20 +519,50 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       return;
     }
 
-    if (_selectedDateTime == null) {
+    if (_selectedPlace == null && _locationController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a date and time for your pop-up'),
+          content: Text('Please select a location'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    if (_selectedDateTime!.isBefore(DateTime.now())) {
+    if (_selectedStartDateTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pop-up date and time must be in the future'),
+          content: Text('Please select a start time for your pop-up'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedEndDateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an end time for your pop-up'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedStartDateTime!.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pop-up start time must be in the future'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedEndDateTime!.isBefore(_selectedStartDateTime!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pop-up end time must be after start time'),
           backgroundColor: Colors.red,
         ),
       );
@@ -384,7 +584,15 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         final updatedPost = widget.editingPost!.copyWith(
           vendorName: _vendorNameController.text.trim(),
           location: _locationController.text.trim(),
-          popUpDateTime: _selectedDateTime!,
+          latitude: _selectedPlace?.latitude,
+          longitude: _selectedPlace?.longitude,
+          placeId: _selectedPlace?.placeId,
+          locationName: _selectedPlace?.name,
+          locationKeywords: _selectedPlace != null 
+              ? VendorPost.generateLocationKeywords(_selectedPlace!.formattedAddress)
+              : VendorPost.generateLocationKeywords(_locationController.text.trim()),
+          popUpStartDateTime: _selectedStartDateTime!,
+          popUpEndDateTime: _selectedEndDateTime!,
           description: _descriptionController.text.trim(),
           instagramHandle: _instagramController.text.trim().isEmpty 
               ? null 
@@ -410,7 +618,15 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           vendorId: user.uid,
           vendorName: _vendorNameController.text.trim(),
           location: _locationController.text.trim(),
-          popUpDateTime: _selectedDateTime!,
+          latitude: _selectedPlace?.latitude,
+          longitude: _selectedPlace?.longitude,
+          placeId: _selectedPlace?.placeId,
+          locationName: _selectedPlace?.name,
+          locationKeywords: _selectedPlace != null 
+              ? VendorPost.generateLocationKeywords(_selectedPlace!.formattedAddress)
+              : VendorPost.generateLocationKeywords(_locationController.text.trim()),
+          popUpStartDateTime: _selectedStartDateTime!,
+          popUpEndDateTime: _selectedEndDateTime!,
           description: _descriptionController.text.trim(),
           instagramHandle: _instagramController.text.trim().isEmpty 
               ? null 

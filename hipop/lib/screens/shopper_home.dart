@@ -3,9 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
-import '../widgets/common/location_search_widget.dart';
+import '../widgets/common/google_places_widget.dart';
+import '../widgets/common/loading_widget.dart';
+import '../widgets/common/error_widget.dart';
+import '../widgets/common/favorite_button.dart';
 import '../models/vendor_post.dart';
 import '../repositories/vendor_posts_repository.dart';
+import '../blocs/favorites/favorites_bloc.dart';
+import 'dart:math' as math;
 
 class ShopperHome extends StatefulWidget {
   const ShopperHome({super.key});
@@ -16,84 +21,90 @@ class ShopperHome extends StatefulWidget {
 
 class _ShopperHomeState extends State<ShopperHome> {
   String _searchLocation = '';
+  PlaceDetails? _selectedSearchPlace;
+  double _searchRadius = 10.0; // Default 10km radius
   final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
   Stream<List<VendorPost>>? _currentStream;
+  
+  static const String _apiKey = 'AIzaSyDp17RxIsSydQqKZGBRsYtJkmGdwqnHZ84';
+  
+  static const List<double> _radiusOptions = [5.0, 10.0, 25.0, 50.0];
 
   @override
   void initState() {
     super.initState();
+    // Initialize the stream immediately to show posts
+    _currentStream = _vendorPostsRepository.getAllActivePosts();
     _initializeAndMigrate();
   }
 
   Future<void> _initializeAndMigrate() async {
     print('=== INITIALIZING SHOPPER HOME ===');
     
-    // Debug: Show all posts in Firestore
-    try {
-      await _vendorPostsRepository.debugAllPosts();
-    } catch (e) {
-      print('Debug failed: $e');
-    }
-    
-    // Check if migration is needed and run it
-    try {
-      final needsMigration = await _vendorPostsRepository.needsMigration();
-      print('Needs migration: $needsMigration');
-      
-      if (needsMigration) {
-        print('Running migration for existing posts...');
-        await _vendorPostsRepository.migratePostsWithLocationKeywords();
-        print('Migration completed successfully');
-        
-        // Debug again after migration
-        await _vendorPostsRepository.debugAllPosts();
-      }
-    } catch (e) {
-      print('Migration failed, but continuing: $e');
-    }
-    
-    // Create a test post if none exist (for debugging)
-    try {
-      await _createTestPostIfNeeded();
-    } catch (e) {
-      print('Failed to create test post: $e');
-    }
+    // Skip migration and deletion in production - just start showing posts
+    // These operations require admin permissions and are only needed for development
     
     // Start with empty search to show all posts
     print('Starting with empty search...');
     _performSearch('');
   }
 
-  Future<void> _createTestPostIfNeeded() async {
-    // Create a simple test post to ensure we have data
-    print('Creating test post for debugging...');
-    
-    final testPost = VendorPost(
-      id: '',
-      vendorId: 'test-vendor-123',
-      vendorName: 'Test Vendor',
-      description: 'This is a test pop-up to verify the app is working',
-      location: 'your moms',
-      locationKeywords: VendorPost.generateLocationKeywords('your moms'),
-      popUpDateTime: DateTime.now().add(const Duration(hours: 1)), // 1 hour from now
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      isActive: true,
-    );
-    
-    try {
-      await _vendorPostsRepository.createPost(testPost);
-      print('Test post created successfully');
-    } catch (e) {
-      print('Test post may already exist: $e');
-    }
-  }
 
   void _performSearch(String location) {
     setState(() {
       _searchLocation = location;
+      _selectedSearchPlace = null; // Clear place when doing text search
       _currentStream = _vendorPostsRepository.searchPostsByLocation(location);
     });
+  }
+  
+  void _clearSearch() {
+    setState(() {
+      _searchLocation = '';
+      _selectedSearchPlace = null;
+      _searchRadius = 10.0; // Reset to default
+    });
+    _performSearch('');
+  }
+  
+  void _performPlaceSearch(PlaceDetails place) {
+    setState(() {
+      _searchLocation = place.formattedAddress;
+      _selectedSearchPlace = place;
+      _currentStream = _vendorPostsRepository.searchPostsByLocationAndProximity(
+        location: place.formattedAddress,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        radiusKm: _searchRadius,
+      );
+    });
+  }
+
+  // Helper method to calculate distance for display
+  double? _calculateDistance(VendorPost post) {
+    if (_selectedSearchPlace?.latitude == null || 
+        _selectedSearchPlace?.longitude == null ||
+        post.latitude == null || 
+        post.longitude == null) {
+      return null;
+    }
+    
+    const double earthRadius = 6371; // Earth's radius in kilometers
+    
+    final double dLat = _toRadians(post.latitude! - _selectedSearchPlace!.latitude);
+    final double dLon = _toRadians(post.longitude! - _selectedSearchPlace!.longitude);
+    
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(_selectedSearchPlace!.latitude)) * math.cos(_toRadians(post.latitude!)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
+  }
+  
+  double _toRadians(double degrees) {
+    return degrees * (math.pi / 180);
   }
 
   @override
@@ -102,7 +113,7 @@ class _ShopperHomeState extends State<ShopperHome> {
       builder: (context, state) {
         if (state is! Authenticated) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: LoadingWidget(message: 'Signing you in...'),
           );
         }
 
@@ -165,9 +176,97 @@ class _ShopperHomeState extends State<ShopperHome> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                LocationSearchWidget(
-                  onLocationChanged: _performSearch,
-                  initialLocation: _searchLocation,
+                Column(
+                  children: [
+                    GooglePlacesWidget(
+                      apiKey: _apiKey,
+                      initialLocation: _searchLocation,
+                      onPlaceSelected: _performPlaceSearch,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[300])),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'or browse all',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[300])),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (_selectedSearchPlace != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.tune, size: 16, color: Colors.orange),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Search Radius',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.orange[700],
+                                  ),
+                                ),
+                                const Spacer(),
+                                DropdownButton<double>(
+                                  value: _searchRadius,
+                                  underline: const SizedBox(),
+                                  items: _radiusOptions.map((radius) {
+                                    return DropdownMenuItem<double>(
+                                      value: radius,
+                                      child: Text('${radius.toInt()} km'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null && _selectedSearchPlace != null) {
+                                      setState(() {
+                                        _searchRadius = value;
+                                      });
+                                      _performPlaceSearch(_selectedSearchPlace!);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (_searchLocation.isNotEmpty || _selectedSearchPlace != null) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.clear, size: 16),
+                              label: const Text('Show All Pop-ups'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: const BorderSide(color: Colors.orange),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -203,27 +302,19 @@ class _ShopperHomeState extends State<ShopperHome> {
                     stream: _currentStream,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const LoadingWidget(message: 'Finding pop-ups near you...');
                       }
                       
                       if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error, size: 64, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading pop-ups',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Please try again later',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
+                        print('=== STREAM ERROR ===');
+                        print('Error: ${snapshot.error}');
+                        print('Stack trace: ${snapshot.stackTrace}');
+                        return ErrorDisplayWidget.network(
+                          onRetry: () {
+                            setState(() {
+                              _currentStream = _vendorPostsRepository.getAllActivePosts();
+                            });
+                          },
                         );
                       }
                       
@@ -291,12 +382,35 @@ class _ShopperHomeState extends State<ShopperHome> {
                           const Icon(Icons.location_on, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
                           Expanded(
-                            child: Text(
-                              post.location,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post.location,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                if (_selectedSearchPlace != null) ...[
+                                  Builder(
+                                    builder: (context) {
+                                      final distance = _calculateDistance(post);
+                                      if (distance != null) {
+                                        return Text(
+                                          '${distance.toStringAsFixed(1)} km away',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.orange[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ],
@@ -304,28 +418,38 @@ class _ShopperHomeState extends State<ShopperHome> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: post.isHappening 
-                        ? Colors.green 
-                        : post.isUpcoming 
-                            ? Colors.orange 
-                            : Colors.grey,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    post.isHappening 
-                        ? 'Live' 
-                        : post.isUpcoming 
-                            ? 'Upcoming' 
-                            : 'Past',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    FavoriteButton(
+                      postId: post.id!,
+                      vendorId: post.vendorId,
+                      size: 20,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: post.isHappening 
+                            ? Colors.green 
+                            : post.isUpcoming 
+                                ? Colors.orange 
+                                : Colors.grey,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        post.isHappening 
+                            ? 'Live' 
+                            : post.isUpcoming 
+                                ? 'Upcoming' 
+                                : 'Past',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -339,12 +463,26 @@ class _ShopperHomeState extends State<ShopperHome> {
               children: [
                 const Icon(Icons.schedule, size: 16, color: Colors.grey),
                 const SizedBox(width: 8),
-                Text(
-                  post.formattedDateTime,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.formattedDateTime,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        post.formattedTimeRange,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),

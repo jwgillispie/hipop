@@ -33,5 +33,10 @@
         }
       }
     }
+  },
+  "firestore": {
+    "database": "(default)",
+    "rules": "Firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }

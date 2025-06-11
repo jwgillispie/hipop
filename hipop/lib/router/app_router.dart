@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../repositories/vendor_posts_repository.dart';
+import '../screens/onboarding_screen.dart';
 import '../screens/auth_landing_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/shopper_home.dart';
@@ -14,8 +15,13 @@ import '../screens/vendor_my_popups.dart';
 class AppRouter {
   static GoRouter createRouter(AuthBloc authBloc) {
     return GoRouter(
-      initialLocation: '/auth',
+      initialLocation: '/onboarding',
       routes: [
+        GoRoute(
+          path: '/onboarding',
+          name: 'onboarding',
+          builder: (context, state) => const OnboardingScreen(),
+        ),
         GoRoute(
           path: '/auth',
           name: 'auth',

@@ -277,11 +277,25 @@ class _VendorMyPopupsState extends State<VendorMyPopups> {
                         children: [
                           const Icon(Icons.schedule, size: 14, color: Colors.grey),
                           const SizedBox(width: 4),
-                          Text(
-                            post.formattedDateTime,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  post.formattedDateTime,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Text(
+                                  post.formattedTimeRange,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

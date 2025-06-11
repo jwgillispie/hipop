@@ -4,8 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/vendor_posts_repository.dart';
+import 'repositories/favorites_repository.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
+import 'blocs/favorites/favorites_bloc.dart';
 import 'router/app_router.dart';
 
 void main() async {
@@ -34,11 +36,23 @@ class HiPopApp extends StatelessWidget {
         RepositoryProvider<IVendorPostsRepository>(
           create: (context) => VendorPostsRepository(),
         ),
+        RepositoryProvider<FavoritesRepository>(
+          create: (context) => FavoritesRepository(),
+        ),
       ],
-      child: BlocProvider<AuthBloc>(
-        create: (context) => AuthBloc(
-          authRepository: context.read<IAuthRepository>(),
-        )..add(AuthStarted()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (context) => AuthBloc(
+              authRepository: context.read<IAuthRepository>(),
+            )..add(AuthStarted()),
+          ),
+          BlocProvider<FavoritesBloc>(
+            create: (context) => FavoritesBloc(
+              favoritesRepository: context.read<FavoritesRepository>(),
+            )..add(const LoadFavorites()),
+          ),
+        ],
         child: Builder(
           builder: (context) {
             final authBloc = context.read<AuthBloc>();

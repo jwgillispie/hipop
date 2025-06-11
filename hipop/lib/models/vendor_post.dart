@@ -10,7 +10,10 @@ class VendorPost extends Equatable {
   final List<String> locationKeywords;
   final double? latitude;
   final double? longitude;
-  final DateTime popUpDateTime;
+  final String? placeId;
+  final String? locationName;
+  final DateTime popUpStartDateTime;
+  final DateTime popUpEndDateTime;
   final String? instagramHandle;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -25,7 +28,10 @@ class VendorPost extends Equatable {
     this.locationKeywords = const [],
     this.latitude,
     this.longitude,
-    required this.popUpDateTime,
+    this.placeId,
+    this.locationName,
+    required this.popUpStartDateTime,
+    required this.popUpEndDateTime,
     this.instagramHandle,
     required this.createdAt,
     required this.updatedAt,
@@ -42,10 +48,19 @@ class VendorPost extends Equatable {
         vendorName: data['vendorName'] ?? '',
         description: data['description'] ?? '',
         location: data['location'] ?? '',
-        locationKeywords: List<String>.from(data['locationKeywords'] ?? []),
+        locationKeywords: data['locationKeywords'] != null 
+            ? List<String>.from(data['locationKeywords']) 
+            : VendorPost.generateLocationKeywords(data['location'] ?? ''),
         latitude: data['latitude']?.toDouble(),
         longitude: data['longitude']?.toDouble(),
-        popUpDateTime: (data['popUpDateTime'] as Timestamp).toDate(),
+        placeId: data['placeId'],
+        locationName: data['locationName'],
+        popUpStartDateTime: data['popUpStartDateTime'] != null 
+            ? (data['popUpStartDateTime'] as Timestamp).toDate()
+            : (data['popUpDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        popUpEndDateTime: data['popUpEndDateTime'] != null 
+            ? (data['popUpEndDateTime'] as Timestamp).toDate()
+            : (data['popUpDateTime'] as Timestamp?)?.toDate().add(const Duration(hours: 4)) ?? DateTime.now().add(const Duration(hours: 4)),
         instagramHandle: data['instagramHandle'],
         createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -67,7 +82,10 @@ class VendorPost extends Equatable {
       'locationKeywords': locationKeywords,
       'latitude': latitude,
       'longitude': longitude,
-      'popUpDateTime': Timestamp.fromDate(popUpDateTime),
+      'placeId': placeId,
+      'locationName': locationName,
+      'popUpStartDateTime': Timestamp.fromDate(popUpStartDateTime),
+      'popUpEndDateTime': Timestamp.fromDate(popUpEndDateTime),
       'instagramHandle': instagramHandle,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -84,7 +102,10 @@ class VendorPost extends Equatable {
     List<String>? locationKeywords,
     double? latitude,
     double? longitude,
-    DateTime? popUpDateTime,
+    String? placeId,
+    String? locationName,
+    DateTime? popUpStartDateTime,
+    DateTime? popUpEndDateTime,
     String? instagramHandle,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -99,7 +120,10 @@ class VendorPost extends Equatable {
       locationKeywords: locationKeywords ?? this.locationKeywords,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
-      popUpDateTime: popUpDateTime ?? this.popUpDateTime,
+      placeId: placeId ?? this.placeId,
+      locationName: locationName ?? this.locationName,
+      popUpStartDateTime: popUpStartDateTime ?? this.popUpStartDateTime,
+      popUpEndDateTime: popUpEndDateTime ?? this.popUpEndDateTime,
       instagramHandle: instagramHandle ?? this.instagramHandle,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -107,32 +131,57 @@ class VendorPost extends Equatable {
     );
   }
 
-  bool get isUpcoming => popUpDateTime.isAfter(DateTime.now());
+  bool get isUpcoming => popUpStartDateTime.isAfter(DateTime.now());
   bool get isHappening {
     final now = DateTime.now();
-    final endTime = popUpDateTime.add(const Duration(hours: 4)); // Assume 4-hour pop-ups
-    return now.isAfter(popUpDateTime) && now.isBefore(endTime);
+    return now.isAfter(popUpStartDateTime) && now.isBefore(popUpEndDateTime);
   }
-  bool get isPast {
-    final endTime = popUpDateTime.add(const Duration(hours: 4));
-    return DateTime.now().isAfter(endTime);
-  }
+  bool get isPast => DateTime.now().isAfter(popUpEndDateTime);
 
   String get formattedDateTime {
     final now = DateTime.now();
-    final difference = popUpDateTime.difference(now);
     
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} from now';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} from now';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} from now';
-    } else if (difference.inMinutes > -60) {
+    if (isHappening) {
       return 'Happening now!';
-    } else {
+    } else if (isPast) {
       return 'Past event';
+    } else {
+      final difference = popUpStartDateTime.difference(now);
+      if (difference.inDays > 0) {
+        return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} from now';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} from now';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} from now';
+      } else {
+        return 'Starting soon';
+      }
     }
+  }
+  
+  String get formattedTimeRange {
+    final startTime = _formatTime(popUpStartDateTime);
+    final endTime = _formatTime(popUpEndDateTime);
+    final isSameDay = popUpStartDateTime.day == popUpEndDateTime.day &&
+                      popUpStartDateTime.month == popUpEndDateTime.month &&
+                      popUpStartDateTime.year == popUpEndDateTime.year;
+    
+    if (isSameDay) {
+      return '$startTime - $endTime';
+    } else {
+      return '${_formatDate(popUpStartDateTime)} $startTime - ${_formatDate(popUpEndDateTime)} $endTime';
+    }
+  }
+  
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour == 0 ? 12 : dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour;
+    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute $period';
+  }
+  
+  String _formatDate(DateTime dateTime) {
+    return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
   }
 
   static List<String> generateLocationKeywords(String location) {
@@ -181,7 +230,10 @@ class VendorPost extends Equatable {
         locationKeywords,
         latitude,
         longitude,
-        popUpDateTime,
+        placeId,
+        locationName,
+        popUpStartDateTime,
+        popUpEndDateTime,
         instagramHandle,
         createdAt,
         updatedAt,

@@ -2,10 +2,24 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/vendor_post.dart';
 
+// Helper class for proximity search
+class _PostWithDistance {
+  final VendorPost post;
+  final double distance;
+  
+  _PostWithDistance({required this.post, required this.distance});
+}
+
 abstract class IVendorPostsRepository {
   Stream<List<VendorPost>> getVendorPosts(String vendorId);
   Stream<List<VendorPost>> getAllActivePosts();
   Stream<List<VendorPost>> searchPostsByLocation(String location);
+  Stream<List<VendorPost>> searchPostsByLocationAndProximity({
+    required String location,
+    required double latitude,
+    required double longitude,
+    required double radiusKm,
+  });
   Future<String> createPost(VendorPost post);
   Future<void> updatePost(VendorPost post);
   Future<void> deletePost(String postId);
@@ -25,7 +39,7 @@ class VendorPostsRepository implements IVendorPostsRepository {
     return _firestore
         .collection(_collection)
         .where('vendorId', isEqualTo: vendorId)
-        .orderBy('popUpDateTime', descending: false)
+        .orderBy('popUpStartDateTime', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => VendorPost.fromFirestore(doc))
@@ -37,25 +51,32 @@ class VendorPostsRepository implements IVendorPostsRepository {
     print('=== getAllActivePosts DEBUG ===');
     print('Current time: ${DateTime.now()}');
     
-    // For now, show ALL posts regardless of date to debug
+    // Use a simpler query that doesn't require composite indexes for now
+    // This will work even without the orderBy index
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
-        .orderBy('popUpDateTime', descending: true) // Latest first
         .snapshots()
         .map((snapshot) {
           print('Found ${snapshot.docs.length} active posts');
           
-          final posts = snapshot.docs
-              .map((doc) => VendorPost.fromFirestore(doc))
-              .toList();
+          final posts = <VendorPost>[];
           
-          for (final post in posts) {
-            print('Post: ${post.vendorName} at ${post.location} on ${post.popUpDateTime}');
-            print('  Active: ${post.isActive}');
-            print('  Keywords: ${post.locationKeywords}');
+          for (final doc in snapshot.docs) {
+            try {
+              final post = VendorPost.fromFirestore(doc);
+              posts.add(post);
+              print('✓ Parsed post: ${post.vendorName} at ${post.location}');
+            } catch (e) {
+              print('✗ Failed to parse post ${doc.id}: $e');
+              print('  Document data: ${doc.data()}');
+            }
           }
           
+          // Sort in memory by start time (latest first)
+          posts.sort((a, b) => b.popUpStartDateTime.compareTo(a.popUpStartDateTime));
+          
+          print('Successfully parsed ${posts.length} posts');
           return posts;
         });
   }
@@ -75,7 +96,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
-        .orderBy('popUpDateTime', descending: true) // Show latest first
         .snapshots()
         .map((snapshot) {
           print('Total posts in query: ${snapshot.docs.length}');
@@ -97,17 +117,93 @@ class VendorPostsRepository implements IVendorPostsRepository {
             if (matches) {
               print('MATCH: ${post.vendorName} at ${post.location}');
               print('  Location keywords: ${post.locationKeywords}');
-              print('  Date: ${post.popUpDateTime}');
+              print('  Start: ${post.popUpStartDateTime}');
+              print('  End: ${post.popUpEndDateTime}');
             }
             
             return matches;
           }).toList();
+          
+          // Sort filtered posts by start time (latest first)
+          filteredPosts.sort((a, b) => b.popUpStartDateTime.compareTo(a.popUpStartDateTime));
           
           print('Filtered results: ${filteredPosts.length}');
           print('=== END SEARCH DEBUG ===');
           
           return filteredPosts;
         });
+  }
+
+  @override
+  Stream<List<VendorPost>> searchPostsByLocationAndProximity({
+    required String location,
+    required double latitude,
+    required double longitude,
+    required double radiusKm,
+  }) {
+    print('=== PROXIMITY SEARCH DEBUG ===');
+    print('Searching near: "$location"');
+    print('Coordinates: $latitude, $longitude');
+    print('Radius: ${radiusKm}km');
+    
+    // Use simple query without orderBy to avoid composite index requirements
+    return _firestore
+        .collection(_collection)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+          print('Total posts for proximity search: ${snapshot.docs.length}');
+          
+          final allPosts = snapshot.docs
+              .map((doc) => VendorPost.fromFirestore(doc))
+              .toList();
+          
+          // Filter by proximity and add distance information
+          final postsWithDistance = allPosts
+              .where((post) => post.latitude != null && post.longitude != null)
+              .map((post) {
+                final distance = _calculateDistance(
+                  latitude, longitude,
+                  post.latitude!, post.longitude!,
+                );
+                return _PostWithDistance(post: post, distance: distance);
+              })
+              .where((postWithDistance) => postWithDistance.distance <= radiusKm)
+              .toList();
+          
+          // Sort by distance (closest first)
+          postsWithDistance.sort((a, b) => a.distance.compareTo(b.distance));
+          
+          final filteredPosts = postsWithDistance.map((pwd) => pwd.post).toList();
+          
+          print('Posts within ${radiusKm}km: ${filteredPosts.length}');
+          for (final pwd in postsWithDistance.take(5)) {
+            print('- ${pwd.post.vendorName} (${pwd.distance.toStringAsFixed(1)}km away)');
+          }
+          print('=== END PROXIMITY SEARCH DEBUG ===');
+          
+          return filteredPosts;
+        });
+  }
+
+  // Helper method to calculate distance between two points using Haversine formula
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
+    
+    final double dLat = _toRadians(lat2 - lat1);
+    final double dLon = _toRadians(lon2 - lon1);
+    
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
+  }
+  
+  double _toRadians(double degrees) {
+    return degrees * (math.pi / 180);
   }
 
   @override
@@ -174,16 +270,16 @@ class VendorPostsRepository implements IVendorPostsRepository {
           .where('isActive', isEqualTo: true);
 
       if (startDate != null) {
-        query = query.where('popUpDateTime', 
+        query = query.where('popUpStartDateTime', 
             isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
       }
 
       if (endDate != null) {
-        query = query.where('popUpDateTime', 
+        query = query.where('popUpEndDateTime', 
             isLessThanOrEqualTo: Timestamp.fromDate(endDate));
       }
 
-      query = query.orderBy('popUpDateTime').limit(limit);
+      query = query.orderBy('popUpStartDateTime').limit(limit);
 
       final snapshot = await query.get();
       List<VendorPost> posts = snapshot.docs
@@ -242,26 +338,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
     }
   }
 
-  // Haversine formula for distance calculation
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const double earthRadius = 6371; // Earth's radius in kilometers
-    
-    final double dLat = _toRadians(lat2 - lat1);
-    final double dLon = _toRadians(lon2 - lon1);
-    
-    final double a = 
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
-    
-    final double c = 2 * math.asin(math.sqrt(a));
-    
-    return earthRadius * c;
-  }
-
-  double _toRadians(double degrees) {
-    return degrees * (math.pi / 180);
-  }
 
   // Migration function to update existing posts with location keywords
   Future<void> migratePostsWithLocationKeywords() async {
@@ -350,7 +426,8 @@ class VendorPostsRepository implements IVendorPostsRepository {
         print('Vendor: ${data['vendorName'] ?? 'Unknown'}');
         print('Location: ${data['location'] ?? 'No location'}');
         print('Keywords: ${data['locationKeywords'] ?? 'No keywords'}');
-        print('Date: ${data['popUpDateTime']?.toDate() ?? 'No date'}');
+        print('Start: ${data['popUpStartDateTime']?.toDate() ?? data['popUpDateTime']?.toDate() ?? 'No date'}');
+        print('End: ${data['popUpEndDateTime']?.toDate() ?? 'No end date'}');
         print('Active: ${data['isActive'] ?? 'No active field'}');
       }
       print('=== END DEBUG ===');
@@ -363,11 +440,89 @@ class VendorPostsRepository implements IVendorPostsRepository {
   Stream<List<VendorPost>> getAllPostsForDebug() {
     return _firestore
         .collection(_collection)
-        .orderBy('popUpDateTime', descending: true)
+        .orderBy('popUpStartDateTime', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => VendorPost.fromFirestore(doc))
             .toList());
+  }
+
+  // Delete test posts
+  Future<void> deleteTestPosts() async {
+    try {
+      print('=== DELETING TEST POSTS ===');
+      
+      // Delete posts with 'Test Vendor' name
+      final testVendorSnapshot = await _firestore
+          .collection(_collection)
+          .where('vendorName', isEqualTo: 'Test Vendor')
+          .get();
+      
+      // Also delete posts with test vendor ID
+      final testVendorIdSnapshot = await _firestore
+          .collection(_collection)
+          .where('vendorId', isEqualTo: 'test-vendor-123')
+          .get();
+      
+      final batch = _firestore.batch();
+      int deleteCount = 0;
+      
+      // Delete by vendor name
+      for (final doc in testVendorSnapshot.docs) {
+        print('Deleting test post by name: ${doc.id}');
+        batch.delete(doc.reference);
+        deleteCount++;
+      }
+      
+      // Delete by vendor ID (avoid duplicates)
+      for (final doc in testVendorIdSnapshot.docs) {
+        if (!testVendorSnapshot.docs.any((d) => d.id == doc.id)) {
+          print('Deleting test post by ID: ${doc.id}');
+          batch.delete(doc.reference);
+          deleteCount++;
+        }
+      }
+      
+      if (deleteCount > 0) {
+        await batch.commit();
+        print('Successfully deleted $deleteCount test posts');
+      } else {
+        print('No test posts found to delete');
+      }
+      
+    } catch (e) {
+      print('Failed to delete test posts: $e');
+      throw VendorPostException('Failed to delete test posts: ${e.toString()}');
+    }
+  }
+
+  // Manual cleanup - delete all posts (use with caution!)
+  Future<void> deleteAllPosts() async {
+    try {
+      print('=== DELETING ALL POSTS ===');
+      
+      final snapshot = await _firestore
+          .collection(_collection)
+          .get();
+      
+      final batch = _firestore.batch();
+      
+      for (final doc in snapshot.docs) {
+        print('Deleting post: ${doc.id}');
+        batch.delete(doc.reference);
+      }
+      
+      if (snapshot.docs.isNotEmpty) {
+        await batch.commit();
+        print('Successfully deleted ${snapshot.docs.length} posts');
+      } else {
+        print('No posts found to delete');
+      }
+      
+    } catch (e) {
+      print('Failed to delete all posts: $e');
+      throw VendorPostException('Failed to delete all posts: ${e.toString()}');
+    }
   }
 }
 
