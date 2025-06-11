@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Privacy Usage Descriptions -->
+	<key>NSCameraUsageDescription</key>
+	<string>HiPop needs access to your camera to take photos of your pop-up events and products to share with shoppers.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HiPop needs access to your photo library to select images for your pop-up events and products.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>HiPop uses your location to help shoppers find pop-ups near them and to set accurate locations for your events.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>HiPop uses your location to help shoppers find pop-ups near them and to set accurate locations for your events.</string>
 </dict>
 </plist>
