@@ -5,6 +5,7 @@ import '../repositories/vendor_posts_repository.dart';
 import '../models/vendor_post.dart';
 import '../widgets/common/hipop_text_field.dart';
 import '../widgets/common/google_places_widget.dart';
+import '../services/places_service.dart';
 
 class CreatePopUpScreen extends StatefulWidget {
   final IVendorPostsRepository postsRepository;
@@ -31,8 +32,6 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   DateTime? _selectedEndDateTime;
   bool _isLoading = false;
   PlaceDetails? _selectedPlace;
-  
-  static const String _apiKey = 'AIzaSyDp17RxIsSydQqKZGBRsYtJkmGdwqnHZ84';
 
   @override
   void initState() {
@@ -170,7 +169,6 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
             ),
             const SizedBox(height: 8),
             GooglePlacesWidget(
-              apiKey: _apiKey,
               initialLocation: _locationController.text,
               onPlaceSelected: (place) {
                 setState(() {
@@ -473,7 +471,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           setState(() {
             _selectedEndDateTime = selectedEnd;
           });
-        } else {
+        } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('End time must be after start time'),

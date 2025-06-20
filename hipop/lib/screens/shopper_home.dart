@@ -4,6 +4,7 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import '../widgets/common/google_places_widget.dart';
+import '../services/places_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
@@ -25,8 +26,6 @@ class _ShopperHomeState extends State<ShopperHome> {
   double _searchRadius = 10.0; // Default 10km radius
   final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
   Stream<List<VendorPost>>? _currentStream;
-  
-  static const String _apiKey = 'AIzaSyDp17RxIsSydQqKZGBRsYtJkmGdwqnHZ84';
   
   static const List<double> _radiusOptions = [5.0, 10.0, 25.0, 50.0];
 
@@ -179,9 +178,9 @@ class _ShopperHomeState extends State<ShopperHome> {
                 Column(
                   children: [
                     GooglePlacesWidget(
-                      apiKey: _apiKey,
                       initialLocation: _searchLocation,
                       onPlaceSelected: _performPlaceSearch,
+                      onTextSearch: _performSearch,
                     ),
                     const SizedBox(height: 8),
                     Row(

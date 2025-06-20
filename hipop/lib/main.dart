@@ -9,6 +9,7 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/favorites/favorites_bloc.dart';
 import 'router/app_router.dart';
+import 'services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,8 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Initialize Remote Config in background - don't block app startup
+    RemoteConfigService.instance.catchError((e) => null);
     runApp(const HiPopApp());
   } catch (e) {
     runApp(ErrorApp(error: e.toString()));
