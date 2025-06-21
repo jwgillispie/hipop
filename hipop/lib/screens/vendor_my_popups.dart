@@ -380,6 +380,14 @@ class _VendorMyPopupsState extends State<VendorMyPopups> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.copy, color: Colors.orange),
+              title: const Text('Duplicate'),
+              onTap: () {
+                Navigator.pop(context);
+                _duplicatePost(post);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
               title: const Text('Delete', style: TextStyle(color: Colors.red)),
               onTap: () {
@@ -401,6 +409,16 @@ class _VendorMyPopupsState extends State<VendorMyPopups> {
           ],
         ),
       ),
+    );
+  }
+
+  void _duplicatePost(VendorPost post) {
+    Navigator.pushNamed(
+      context,
+      '/create_popup',
+      arguments: {
+        'duplicateFrom': post,
+      },
     );
   }
 

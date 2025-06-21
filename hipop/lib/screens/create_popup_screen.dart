@@ -40,7 +40,30 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
 
   void _initializeForm() {
-    if (widget.editingPost != null) {
+    // Check for duplicate arguments first
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final duplicateFrom = args?['duplicateFrom'] as VendorPost?;
+    
+    if (duplicateFrom != null) {
+      // Duplicate mode - copy all details except date/time
+      _vendorNameController.text = duplicateFrom.vendorName;
+      _locationController.text = duplicateFrom.location;
+      _descriptionController.text = duplicateFrom.description;
+      _instagramController.text = duplicateFrom.instagramHandle ?? '';
+      // Don't copy date/time for duplicates - let user set new ones
+      
+      // Initialize selected place if we have location data
+      if (duplicateFrom.placeId != null && duplicateFrom.latitude != null && duplicateFrom.longitude != null) {
+        _selectedPlace = PlaceDetails(
+          placeId: duplicateFrom.placeId!,
+          name: duplicateFrom.locationName ?? duplicateFrom.location,
+          formattedAddress: duplicateFrom.location,
+          latitude: duplicateFrom.latitude!,
+          longitude: duplicateFrom.longitude!,
+        );
+      }
+    } else if (widget.editingPost != null) {
+      // Edit mode - copy everything including date/time
       final post = widget.editingPost!;
       _vendorNameController.text = post.vendorName;
       _locationController.text = post.location;
@@ -60,7 +83,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         );
       }
     } else {
-      // Set default vendor name from user profile
+      // New post mode - set default vendor name from user profile
       final user = FirebaseAuth.instance.currentUser;
       _vendorNameController.text = user?.displayName ?? '';
     }

@@ -31,6 +31,17 @@
 
   <title>hipop</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Places API -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDp17RxIsSydQqKZGBRsYtJkmGdwqnHZ84&libraries=places&loading=async&callback=initGooglePlaces"></script>
+  <script>
+    function initGooglePlaces() {
+      window.googlePlacesReady = true;
+      if (window.flutterWebRenderer) {
+        window.dispatchEvent(new Event('google-places-ready'));
+      }
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

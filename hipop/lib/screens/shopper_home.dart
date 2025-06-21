@@ -271,12 +271,15 @@ class _ShopperHomeState extends State<ShopperHome> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      _searchLocation.isEmpty 
-                        ? 'All Pop-ups' 
-                        : 'Pop-ups in $_searchLocation',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        _searchLocation.isEmpty 
+                          ? 'All Pop-ups' 
+                          : 'Pop-ups in $_searchLocation',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     StreamBuilder<List<VendorPost>>(
