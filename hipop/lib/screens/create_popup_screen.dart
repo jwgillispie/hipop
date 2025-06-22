@@ -3,9 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../repositories/vendor_posts_repository.dart';
 import '../models/vendor_post.dart';
+import '../models/market.dart';
 import '../widgets/common/hipop_text_field.dart';
 import '../widgets/common/google_places_widget.dart';
 import '../services/places_service.dart';
+import '../services/market_service.dart';
 
 class CreatePopUpScreen extends StatefulWidget {
   final IVendorPostsRepository postsRepository;
@@ -32,11 +34,19 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   DateTime? _selectedEndDateTime;
   bool _isLoading = false;
   PlaceDetails? _selectedPlace;
+  
+  List<Market> _availableMarkets = [];
+  Market? _selectedMarket;
+  bool _loadingMarkets = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeForm();
+    _loadMarkets();
+    // Defer form initialization until after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeForm();
+    });
   }
 
   void _initializeForm() {
@@ -62,6 +72,11 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           longitude: duplicateFrom.longitude!,
         );
       }
+      
+      // Set selected market if available
+      if (duplicateFrom.marketId != null) {
+        _setSelectedMarketById(duplicateFrom.marketId!);
+      }
     } else if (widget.editingPost != null) {
       // Edit mode - copy everything including date/time
       final post = widget.editingPost!;
@@ -82,11 +97,52 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           longitude: post.longitude!,
         );
       }
+      
+      // Set selected market if available
+      if (post.marketId != null) {
+        _setSelectedMarketById(post.marketId!);
+      }
     } else {
       // New post mode - set default vendor name from user profile
       final user = FirebaseAuth.instance.currentUser;
       _vendorNameController.text = user?.displayName ?? '';
     }
+  }
+  
+  Future<void> _loadMarkets() async {
+    setState(() => _loadingMarkets = true);
+    
+    try {
+      // For now, load Atlanta markets. In the future, we could load markets
+      // based on the vendor's location or allow them to search
+      final markets = await MarketService.getMarketsByCity('Atlanta');
+      setState(() {
+        _availableMarkets = markets;
+        _loadingMarkets = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading markets: $e');
+      setState(() => _loadingMarkets = false);
+    }
+  }
+  
+  void _setSelectedMarketById(String marketId) {
+    final market = _availableMarkets.firstWhere(
+      (m) => m.id == marketId,
+      orElse: () => Market(
+        id: marketId,
+        name: 'Unknown Market',
+        address: '',
+        city: '',
+        state: '',
+        latitude: 0,
+        longitude: 0,
+        operatingDays: {},
+        isActive: true,
+        createdAt: DateTime.now(),
+      ),
+    );
+    setState(() => _selectedMarket = market);
   }
 
   @override
@@ -212,6 +268,8 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
             ],
           ],
         ),
+        const SizedBox(height: 16),
+        _buildMarketPicker(),
         const SizedBox(height: 16),
         _buildDateTimePicker(),
         const SizedBox(height: 16),
@@ -534,6 +592,130 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
     ];
     return months[month - 1];
   }
+  
+  Widget _buildMarketPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Market (Optional)',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+          ),
+          child: _loadingMarkets
+              ? const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Loading markets...'),
+                    ],
+                  ),
+                )
+              : DropdownButtonHideUnderline(
+                  child: DropdownButton<Market?>(
+                    value: _selectedMarket,
+                    isExpanded: true,
+                    hint: const Text('Select a market (optional)'),
+                    items: [
+                      const DropdownMenuItem<Market?>(
+                        value: null,
+                        child: Text('No market - standalone location'),
+                      ),
+                      ..._availableMarkets.map((market) {
+                        return DropdownMenuItem<Market?>(
+                          value: market,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                market.name,
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Text(
+                                market.address.split(',').first,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                    onChanged: (Market? market) {
+                      setState(() {
+                        _selectedMarket = market;
+                        // If a market is selected, clear the location field
+                        // so vendors don't double-specify location
+                        if (market != null) {
+                          _locationController.text = market.address;
+                          _selectedPlace = PlaceDetails(
+                            placeId: 'market_${market.id}',
+                            name: market.name,
+                            formattedAddress: market.address,
+                            latitude: market.latitude,
+                            longitude: market.longitude,
+                          );
+                        } else {
+                          // Clear location when no market is selected
+                          _locationController.clear();
+                          _selectedPlace = null;
+                        }
+                      });
+                    },
+                  ),
+                ),
+        ),
+        if (_selectedMarket != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, 
+                     size: 16, 
+                     color: Colors.orange.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Your pop-up will be associated with ${_selectedMarket!.name}. Customers browsing this market will see your post.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 
   Future<void> _savePost() async {
     if (!_formKey.currentState!.validate()) {
@@ -618,6 +800,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           instagramHandle: _instagramController.text.trim().isEmpty 
               ? null 
               : _instagramController.text.trim(),
+          marketId: _selectedMarket?.id,
           updatedAt: now,
         );
         
@@ -652,6 +835,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           instagramHandle: _instagramController.text.trim().isEmpty 
               ? null 
               : _instagramController.text.trim(),
+          marketId: _selectedMarket?.id,
           createdAt: now,
           updatedAt: now,
         );

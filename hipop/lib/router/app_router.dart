@@ -7,10 +7,13 @@ import '../repositories/vendor_posts_repository.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/auth_landing_screen.dart';
 import '../screens/auth_screen.dart';
+import '../screens/market_discovery_screen.dart';
+import '../screens/market_detail_screen.dart';
 import '../screens/shopper_home.dart';
 import '../screens/vendor_dashboard.dart';
 import '../screens/create_popup_screen.dart';
 import '../screens/vendor_my_popups.dart';
+import '../models/market.dart';
 
 class AppRouter {
   static GoRouter createRouter(AuthBloc authBloc) {
@@ -46,7 +49,17 @@ class AppRouter {
         GoRoute(
           path: '/shopper',
           name: 'shopper',
-          builder: (context, state) => const ShopperHome(),
+          builder: (context, state) => const MarketDiscoveryScreen(),
+          routes: [
+            GoRoute(
+              path: 'market-detail',
+              name: 'marketDetail',
+              builder: (context, state) {
+                final market = state.extra as Market;
+                return MarketDetailScreen(market: market);
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/vendor',
@@ -78,6 +91,11 @@ class AppRouter {
             return authState.userType == 'vendor' ? '/vendor' : '/shopper';
           }
           
+          // Skip onboarding for vendors - they go straight to dashboard
+          if (authState.userType == 'vendor' && state.matchedLocation == '/onboarding') {
+            return '/vendor';
+          }
+          
           // Prevent wrong user type from accessing wrong routes
           if (authState.userType == 'vendor' && state.matchedLocation.startsWith('/shopper')) {
             return '/vendor';
@@ -89,7 +107,7 @@ class AppRouter {
         
         // If unauthenticated and not on auth routes, go to auth landing
         if (authState is Unauthenticated) {
-          final authRoutes = ['/auth', '/login', '/signup'];
+          final authRoutes = ['/auth', '/login', '/signup', '/onboarding'];
           if (!authRoutes.contains(state.matchedLocation)) {
             return '/auth';
           }

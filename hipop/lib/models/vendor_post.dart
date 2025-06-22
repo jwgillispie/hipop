@@ -12,6 +12,7 @@ class VendorPost extends Equatable {
   final double? longitude;
   final String? placeId;
   final String? locationName;
+  final String? marketId; // New field for market relationship
   final DateTime popUpStartDateTime;
   final DateTime popUpEndDateTime;
   final String? instagramHandle;
@@ -30,6 +31,7 @@ class VendorPost extends Equatable {
     this.longitude,
     this.placeId,
     this.locationName,
+    this.marketId,
     required this.popUpStartDateTime,
     required this.popUpEndDateTime,
     this.instagramHandle,
@@ -55,6 +57,7 @@ class VendorPost extends Equatable {
         longitude: data['longitude']?.toDouble(),
         placeId: data['placeId'],
         locationName: data['locationName'],
+        marketId: data['marketId'],
         popUpStartDateTime: data['popUpStartDateTime'] != null 
             ? (data['popUpStartDateTime'] as Timestamp).toDate()
             : (data['popUpDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -84,6 +87,7 @@ class VendorPost extends Equatable {
       'longitude': longitude,
       'placeId': placeId,
       'locationName': locationName,
+      'marketId': marketId,
       'popUpStartDateTime': Timestamp.fromDate(popUpStartDateTime),
       'popUpEndDateTime': Timestamp.fromDate(popUpEndDateTime),
       'instagramHandle': instagramHandle,
@@ -104,6 +108,7 @@ class VendorPost extends Equatable {
     double? longitude,
     String? placeId,
     String? locationName,
+    String? marketId,
     DateTime? popUpStartDateTime,
     DateTime? popUpEndDateTime,
     String? instagramHandle,
@@ -122,6 +127,7 @@ class VendorPost extends Equatable {
       longitude: longitude ?? this.longitude,
       placeId: placeId ?? this.placeId,
       locationName: locationName ?? this.locationName,
+      marketId: marketId ?? this.marketId,
       popUpStartDateTime: popUpStartDateTime ?? this.popUpStartDateTime,
       popUpEndDateTime: popUpEndDateTime ?? this.popUpEndDateTime,
       instagramHandle: instagramHandle ?? this.instagramHandle,
@@ -232,6 +238,7 @@ class VendorPost extends Equatable {
         longitude,
         placeId,
         locationName,
+        marketId,
         popUpStartDateTime,
         popUpEndDateTime,
         instagramHandle,
