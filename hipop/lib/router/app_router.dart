@@ -13,6 +13,8 @@ import '../screens/shopper_home.dart';
 import '../screens/vendor_dashboard.dart';
 import '../screens/create_popup_screen.dart';
 import '../screens/vendor_my_popups.dart';
+import '../screens/vendor_profile_screen.dart';
+import '../screens/change_password_screen.dart';
 import '../models/market.dart';
 
 class AppRouter {
@@ -77,6 +79,16 @@ class AppRouter {
               path: 'my-popups',
               name: 'myPopups',
               builder: (context, state) => const VendorMyPopups(),
+            ),
+            GoRoute(
+              path: 'profile',
+              name: 'vendorProfile',
+              builder: (context, state) => const VendorProfileScreen(),
+            ),
+            GoRoute(
+              path: 'change-password',
+              name: 'changePassword',
+              builder: (context, state) => const ChangePasswordScreen(),
             ),
           ],
         ),

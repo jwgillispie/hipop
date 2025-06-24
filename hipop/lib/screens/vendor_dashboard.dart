@@ -5,10 +5,36 @@ import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
+import '../models/vendor_post.dart';
+import '../repositories/vendor_posts_repository.dart';
 import '../widgets/common/photo_upload_widget.dart';
+import '../widgets/vendor/vendor_calendar_widget.dart';
+import '../widgets/common/loading_widget.dart';
+import '../widgets/common/error_widget.dart';
 
-class VendorDashboard extends StatelessWidget {
+class VendorDashboard extends StatefulWidget {
   const VendorDashboard({super.key});
+
+  @override
+  State<VendorDashboard> createState() => _VendorDashboardState();
+}
+
+class _VendorDashboardState extends State<VendorDashboard>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,111 +57,202 @@ class VendorDashboard extends StatelessWidget {
                 onPressed: () => _showLogoutDialog(context),
               ),
             ],
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const CircleAvatar(
-                              backgroundColor: Colors.orange,
-                              child: Icon(Icons.store, color: Colors.white),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome back!',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                Text(
-                                  state.user.displayName ?? state.user.email ?? 'Vendor',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Quick Actions',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.1,
-                    children: [
-                      _buildActionCard(
-                        context,
-                        'Create Pop-up',
-                        'Add a new pop-up event',
-                        Icons.add_business,
-                        Colors.orange,
-                        () => context.go('/vendor/create-popup'),
-                      ),
-                      _buildActionCard(
-                        context,
-                        'My Pop-ups',
-                        'View your active pop-ups',
-                        Icons.store,
-                        Colors.blue,
-                        () => context.go('/vendor/my-popups'),
-                      ),
-                      _buildActionCard(
-                        context,
-                        'Analytics',
-                        'View your performance',
-                        Icons.analytics,
-                        Colors.green,
-                        () => _showComingSoon(context),
-                      ),
-                      _buildActionCard(
-                        context,
-                        'Upload Photos',
-                        'Add photos to your gallery',
-                        Icons.add_a_photo,
-                        Colors.teal,
-                        () => _showPhotoUploadDialog(context),
-                      ),
-                      _buildActionCard(
-                        context,
-                        'Profile',
-                        'Edit your vendor profile',
-                        Icons.person,
-                        Colors.purple,
-                        () => _showComingSoon(context),
-                      ),
-                    ],
-                  ),
-                ),
+            bottom: TabBar(
+              controller: _tabController,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              tabs: const [
+                Tab(text: 'Dashboard', icon: Icon(Icons.dashboard)),
+                Tab(text: 'Calendar', icon: Icon(Icons.calendar_today)),
               ],
             ),
+          ),
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildDashboardTab(context, state),
+              _buildCalendarTab(context, state),
+            ],
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => context.go('/vendor/create-popup'),
             backgroundColor: Colors.orange,
             child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDashboardTab(BuildContext context, Authenticated state) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        backgroundColor: Colors.orange,
+                        child: Icon(Icons.store, color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Welcome back!',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            state.user.displayName ?? state.user.email ?? 'Vendor',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Quick Actions',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.1,
+              children: [
+                _buildActionCard(
+                  context,
+                  'Create Pop-up',
+                  'Add a new pop-up event',
+                  Icons.add_business,
+                  Colors.orange,
+                  () => context.go('/vendor/create-popup'),
+                ),
+                _buildActionCard(
+                  context,
+                  'My Pop-ups',
+                  'View your active pop-ups',
+                  Icons.store,
+                  Colors.blue,
+                  () => context.go('/vendor/my-popups'),
+                ),
+                _buildActionCard(
+                  context,
+                  'Analytics',
+                  'View your performance',
+                  Icons.analytics,
+                  Colors.green,
+                  () => _showComingSoon(context),
+                ),
+                _buildActionCard(
+                  context,
+                  'Upload Photos',
+                  'Add photos to your gallery',
+                  Icons.add_a_photo,
+                  Colors.teal,
+                  () => _showPhotoUploadDialog(context),
+                ),
+                _buildActionCard(
+                  context,
+                  'Profile',
+                  'Edit your vendor profile',
+                  Icons.person,
+                  Colors.purple,
+                  () => context.go('/vendor/profile'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarTab(BuildContext context, Authenticated state) {
+    return StreamBuilder<List<VendorPost>>(
+      stream: _vendorPostsRepository.getVendorPosts(state.user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return ErrorDisplayWidget(
+            title: 'Error Loading Events',
+            message: 'Failed to load your events: ${snapshot.error}',
+            onRetry: () => setState(() {}),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const LoadingWidget(message: 'Loading your events...');
+        }
+
+        final posts = snapshot.data!;
+
+        if (posts.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No events yet',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first pop-up event to see it in the calendar.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => context.go('/vendor/create-popup'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Create Pop-up'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          child: VendorCalendarWidget(
+            posts: posts,
+            onDateSelected: (date, postsForDay) {
+              // Optional: Add functionality for date selection
+            },
           ),
         );
       },

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import '../widgets/common/google_places_widget.dart';
 import '../services/places_service.dart';
@@ -10,7 +9,7 @@ import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
 import '../models/vendor_post.dart';
 import '../repositories/vendor_posts_repository.dart';
-import '../blocs/favorites/favorites_bloc.dart';
+import '../widgets/common/settings_dropdown.dart';
 import 'dart:math' as math;
 
 class ShopperHome extends StatefulWidget {
@@ -38,13 +37,10 @@ class _ShopperHomeState extends State<ShopperHome> {
   }
 
   Future<void> _initializeAndMigrate() async {
-    print('=== INITIALIZING SHOPPER HOME ===');
-    
     // Skip migration and deletion in production - just start showing posts
     // These operations require admin permissions and are only needed for development
     
     // Start with empty search to show all posts
-    print('Starting with empty search...');
     _performSearch('');
   }
 
@@ -122,10 +118,7 @@ class _ShopperHomeState extends State<ShopperHome> {
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () => _showLogoutDialog(context),
-              ),
+              const SettingsDropdown(),
             ],
           ),
           body: Padding(
@@ -308,9 +301,6 @@ class _ShopperHomeState extends State<ShopperHome> {
                       }
                       
                       if (snapshot.hasError) {
-                        print('=== STREAM ERROR ===');
-                        print('Error: ${snapshot.error}');
-                        print('Stack trace: ${snapshot.stackTrace}');
                         return ErrorDisplayWidget.network(
                           onRetry: () {
                             setState(() {
@@ -423,7 +413,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                 Row(
                   children: [
                     FavoriteButton(
-                      postId: post.id!,
+                      postId: post.id,
                       vendorId: post.vendorId,
                       size: 20,
                     ),
@@ -556,26 +546,4 @@ class _ShopperHomeState extends State<ShopperHome> {
   }
 
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              context.read<AuthBloc>().add(LogoutEvent());
-            },
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-  }
 }

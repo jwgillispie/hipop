@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/vendor_post.dart';
 
 // Helper class for proximity search
@@ -13,6 +14,7 @@ class _PostWithDistance {
 abstract class IVendorPostsRepository {
   Stream<List<VendorPost>> getVendorPosts(String vendorId);
   Stream<List<VendorPost>> getAllActivePosts();
+  Stream<List<VendorPost>> getMarketPosts(String marketId);
   Stream<List<VendorPost>> searchPostsByLocation(String location);
   Stream<List<VendorPost>> searchPostsByLocationAndProximity({
     required String location,
@@ -48,35 +50,50 @@ class VendorPostsRepository implements IVendorPostsRepository {
 
   @override
   Stream<List<VendorPost>> getAllActivePosts() {
-    print('=== getAllActivePosts DEBUG ===');
-    print('Current time: ${DateTime.now()}');
-    
-    // Use a simpler query that doesn't require composite indexes for now
-    // This will work even without the orderBy index
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-          print('Found ${snapshot.docs.length} active posts');
-          
           final posts = <VendorPost>[];
           
           for (final doc in snapshot.docs) {
             try {
               final post = VendorPost.fromFirestore(doc);
               posts.add(post);
-              print('✓ Parsed post: ${post.vendorName} at ${post.location}');
             } catch (e) {
-              print('✗ Failed to parse post ${doc.id}: $e');
-              print('  Document data: ${doc.data()}');
+              debugPrint('Failed to parse vendor post ${doc.id}: $e');
             }
           }
           
           // Sort in memory by start time (latest first)
           posts.sort((a, b) => b.popUpStartDateTime.compareTo(a.popUpStartDateTime));
           
-          print('Successfully parsed ${posts.length} posts');
+          return posts;
+        });
+  }
+
+  @override
+  Stream<List<VendorPost>> getMarketPosts(String marketId) {
+    return _firestore
+        .collection(_collection)
+        .where('marketId', isEqualTo: marketId)
+        .snapshots()
+        .map((snapshot) {
+          final posts = <VendorPost>[];
+          
+          for (final doc in snapshot.docs) {
+            try {
+              final post = VendorPost.fromFirestore(doc);
+              posts.add(post);
+            } catch (e) {
+              debugPrint('Failed to parse post ${doc.id}: $e');
+            }
+          }
+          
+          // Sort in memory by start time (earliest first)
+          posts.sort((a, b) => a.popUpStartDateTime.compareTo(b.popUpStartDateTime));
+          
           return posts;
         });
   }
@@ -88,23 +105,15 @@ class VendorPostsRepository implements IVendorPostsRepository {
     }
 
     final searchKeyword = location.toLowerCase().trim();
-    print('=== SEARCH DEBUG ===');
-    print('Searching for: "$searchKeyword"');
     
-    // Use a simpler approach - get all posts and filter client-side
-    // This ensures we catch everything during debugging
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-          print('Total posts in query: ${snapshot.docs.length}');
-          
           final allPosts = snapshot.docs
               .map((doc) => VendorPost.fromFirestore(doc))
               .toList();
-          
-          print('Converted posts: ${allPosts.length}');
           
           // Filter by location
           final filteredPosts = allPosts.where((post) {
@@ -112,23 +121,11 @@ class VendorPostsRepository implements IVendorPostsRepository {
             final keywordMatch = post.locationKeywords.any((keyword) => 
                 keyword.toLowerCase().contains(searchKeyword));
             
-            final matches = locationMatch || keywordMatch;
-            
-            if (matches) {
-              print('MATCH: ${post.vendorName} at ${post.location}');
-              print('  Location keywords: ${post.locationKeywords}');
-              print('  Start: ${post.popUpStartDateTime}');
-              print('  End: ${post.popUpEndDateTime}');
-            }
-            
-            return matches;
+            return locationMatch || keywordMatch;
           }).toList();
           
           // Sort filtered posts by start time (latest first)
           filteredPosts.sort((a, b) => b.popUpStartDateTime.compareTo(a.popUpStartDateTime));
-          
-          print('Filtered results: ${filteredPosts.length}');
-          print('=== END SEARCH DEBUG ===');
           
           return filteredPosts;
         });
@@ -141,19 +138,11 @@ class VendorPostsRepository implements IVendorPostsRepository {
     required double longitude,
     required double radiusKm,
   }) {
-    print('=== PROXIMITY SEARCH DEBUG ===');
-    print('Searching near: "$location"');
-    print('Coordinates: $latitude, $longitude');
-    print('Radius: ${radiusKm}km');
-    
-    // Use simple query without orderBy to avoid composite index requirements
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
-          print('Total posts for proximity search: ${snapshot.docs.length}');
-          
           final allPosts = snapshot.docs
               .map((doc) => VendorPost.fromFirestore(doc))
               .toList();
@@ -174,15 +163,7 @@ class VendorPostsRepository implements IVendorPostsRepository {
           // Sort by distance (closest first)
           postsWithDistance.sort((a, b) => a.distance.compareTo(b.distance));
           
-          final filteredPosts = postsWithDistance.map((pwd) => pwd.post).toList();
-          
-          print('Posts within ${radiusKm}km: ${filteredPosts.length}');
-          for (final pwd in postsWithDistance.take(5)) {
-            print('- ${pwd.post.vendorName} (${pwd.distance.toStringAsFixed(1)}km away)');
-          }
-          print('=== END PROXIMITY SEARCH DEBUG ===');
-          
-          return filteredPosts;
+          return postsWithDistance.map((pwd) => pwd.post).toList();
         });
   }
 
@@ -342,9 +323,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
   // Migration function to update existing posts with location keywords
   Future<void> migratePostsWithLocationKeywords() async {
     try {
-      print('Starting migration of posts with location keywords...');
-      
-      // Get all posts and check them individually since Firestore isNull queries can be tricky
       final snapshot = await _firestore
           .collection(_collection)
           .get();
@@ -363,24 +341,18 @@ class VendorPostsRepository implements IVendorPostsRepository {
           final location = data['location'] ?? '';
           if (location.isNotEmpty) {
             final keywords = VendorPost.generateLocationKeywords(location);
-            
             batch.update(doc.reference, {'locationKeywords': keywords});
             updateCount++;
-            
-            print('Updating post: ${data['vendorName'] ?? 'Unknown'} at $location');
-            print('Generated keywords: $keywords');
           }
         }
       }
 
       if (updateCount > 0) {
         await batch.commit();
-        print('Migration completed: Updated $updateCount posts with location keywords');
-      } else {
-        print('Migration completed: No posts needed updating');
+        debugPrint('Migration completed: Updated $updateCount posts with location keywords');
       }
     } catch (e) {
-      print('Migration failed: ${e.toString()}');
+      debugPrint('Migration failed: ${e.toString()}');
       throw VendorPostException('Failed to migrate posts: ${e.toString()}');
     }
   }
@@ -412,27 +384,18 @@ class VendorPostsRepository implements IVendorPostsRepository {
   // Debug method to see all posts in Firestore
   Future<void> debugAllPosts() async {
     try {
-      print('=== DEBUG: All posts in Firestore ===');
       final snapshot = await _firestore
           .collection(_collection)
           .get();
       
-      print('Total posts found: ${snapshot.docs.length}');
+      debugPrint('Total posts found: ${snapshot.docs.length}');
       
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        print('---');
-        print('ID: ${doc.id}');
-        print('Vendor: ${data['vendorName'] ?? 'Unknown'}');
-        print('Location: ${data['location'] ?? 'No location'}');
-        print('Keywords: ${data['locationKeywords'] ?? 'No keywords'}');
-        print('Start: ${data['popUpStartDateTime']?.toDate() ?? data['popUpDateTime']?.toDate() ?? 'No date'}');
-        print('End: ${data['popUpEndDateTime']?.toDate() ?? 'No end date'}');
-        print('Active: ${data['isActive'] ?? 'No active field'}');
+        debugPrint('Post ${doc.id}: ${data['vendorName'] ?? 'Unknown'} at ${data['location'] ?? 'No location'}');
       }
-      print('=== END DEBUG ===');
     } catch (e) {
-      print('Debug failed: $e');
+      debugPrint('Debug failed: $e');
     }
   }
 
@@ -450,8 +413,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
   // Delete test posts
   Future<void> deleteTestPosts() async {
     try {
-      print('=== DELETING TEST POSTS ===');
-      
       // Delete posts with 'Test Vendor' name
       final testVendorSnapshot = await _firestore
           .collection(_collection)
@@ -469,7 +430,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
       
       // Delete by vendor name
       for (final doc in testVendorSnapshot.docs) {
-        print('Deleting test post by name: ${doc.id}');
         batch.delete(doc.reference);
         deleteCount++;
       }
@@ -477,7 +437,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
       // Delete by vendor ID (avoid duplicates)
       for (final doc in testVendorIdSnapshot.docs) {
         if (!testVendorSnapshot.docs.any((d) => d.id == doc.id)) {
-          print('Deleting test post by ID: ${doc.id}');
           batch.delete(doc.reference);
           deleteCount++;
         }
@@ -485,13 +444,11 @@ class VendorPostsRepository implements IVendorPostsRepository {
       
       if (deleteCount > 0) {
         await batch.commit();
-        print('Successfully deleted $deleteCount test posts');
-      } else {
-        print('No test posts found to delete');
+        debugPrint('Successfully deleted $deleteCount test posts');
       }
       
     } catch (e) {
-      print('Failed to delete test posts: $e');
+      debugPrint('Failed to delete test posts: $e');
       throw VendorPostException('Failed to delete test posts: ${e.toString()}');
     }
   }
@@ -499,8 +456,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
   // Manual cleanup - delete all posts (use with caution!)
   Future<void> deleteAllPosts() async {
     try {
-      print('=== DELETING ALL POSTS ===');
-      
       final snapshot = await _firestore
           .collection(_collection)
           .get();
@@ -508,19 +463,16 @@ class VendorPostsRepository implements IVendorPostsRepository {
       final batch = _firestore.batch();
       
       for (final doc in snapshot.docs) {
-        print('Deleting post: ${doc.id}');
         batch.delete(doc.reference);
       }
       
       if (snapshot.docs.isNotEmpty) {
         await batch.commit();
-        print('Successfully deleted ${snapshot.docs.length} posts');
-      } else {
-        print('No posts found to delete');
+        debugPrint('Successfully deleted ${snapshot.docs.length} posts');
       }
       
     } catch (e) {
-      print('Failed to delete all posts: $e');
+      debugPrint('Failed to delete all posts: $e');
       throw VendorPostException('Failed to delete all posts: ${e.toString()}');
     }
   }

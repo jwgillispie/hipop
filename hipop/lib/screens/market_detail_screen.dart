@@ -7,6 +7,7 @@ import '../repositories/vendor_posts_repository.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
+import '../widgets/market/market_calendar_widget.dart';
 
 class MarketDetailScreen extends StatefulWidget {
   final Market market;
@@ -26,6 +27,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
   List<VendorMarket> _allVendors = [];
   List<VendorMarket> _activeVendorsToday = [];
   List<VendorPost> _activePosts = [];
+  List<VendorPost> _allMarketPosts = [];
   bool _isLoading = true;
   String? _error;
   
@@ -34,7 +36,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadMarketData();
   }
 
@@ -57,16 +59,15 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
       // Load vendors active today
       final activeToday = await MarketService.getActiveVendorsForMarketToday(widget.market.id);
       
-      // Load active posts for this market
-      // For now, we'll get all active posts and filter by market
-      // TODO: Add market-specific query to VendorPostsRepository
-      final allActivePosts = await _vendorPostsRepository.getAllActivePosts().first;
-      final marketPosts = allActivePosts.where((post) => post.marketId == widget.market.id).toList();
+      // Load all posts for this market (active, past, and future)
+      final allMarketPosts = await _vendorPostsRepository.getMarketPosts(widget.market.id).first;
+      final activePosts = allMarketPosts.where((post) => post.isActive).toList();
 
       setState(() {
         _allVendors = allVendors;
         _activeVendorsToday = activeToday;
-        _activePosts = marketPosts;
+        _activePosts = activePosts;
+        _allMarketPosts = allMarketPosts;
         _isLoading = false;
       });
     } catch (e) {
@@ -85,8 +86,10 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         backgroundColor: Colors.orange,
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Overview'),
+            Tab(text: 'Calendar'),
             Tab(text: 'Active Today'),
             Tab(text: 'All Vendors'),
           ],
@@ -104,6 +107,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                   controller: _tabController,
                   children: [
                     _buildOverviewTab(),
+                    _buildCalendarTab(),
                     _buildActiveTodayTab(),
                     _buildAllVendorsTab(),
                   ],
@@ -238,7 +242,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                                     ],
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                           ),
                         ),
@@ -284,7 +288,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
               Expanded(
                 child: _buildStatCard(
                   'Total Vendors',
-                  '${_allVendors.length}',
+                  '${_getUniqueVendorCount()}',
                   Icons.people,
                   Colors.blue,
                 ),
@@ -352,6 +356,50 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
     );
   }
 
+  Widget _buildCalendarTab() {
+    if (_allMarketPosts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 80,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No events scheduled',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Check back later for upcoming vendor events at this market.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: MarketCalendarWidget(
+        posts: _allMarketPosts,
+        onDateSelected: (date, postsForDay) {
+          // Optional: Add functionality for date selection
+        },
+      ),
+    );
+  }
+
   Widget _buildActiveTodayTab() {
     if (_activeVendorsToday.isEmpty) {
       return Center(
@@ -399,7 +447,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
           ),
           const SizedBox(height: 12),
           
-          ..._activePosts.map((post) => _buildPostCard(post)).toList(),
+          ..._activePosts.map((post) => _buildPostCard(post)),
           
           const SizedBox(height: 24),
         ],
@@ -413,7 +461,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         ),
         const SizedBox(height: 12),
         
-        ..._activeVendorsToday.map((vendorMarket) => _buildVendorCard(vendorMarket, true)).toList(),
+        ..._activeVendorsToday.map((vendorMarket) => _buildVendorCard(vendorMarket, true)),
       ],
     );
   }
@@ -463,7 +511,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         ),
         const SizedBox(height: 12),
         
-        ..._allVendors.map((vendorMarket) => _buildVendorCard(vendorMarket, false)).toList(),
+        ..._allVendors.map((vendorMarket) => _buildVendorCard(vendorMarket, false)),
       ],
     );
   }
@@ -625,5 +673,11 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         ),
       ),
     );
+  }
+
+  int _getUniqueVendorCount() {
+    // Count unique vendors based on vendor posts rather than vendor-market relationships
+    final uniqueVendorIds = _allMarketPosts.map((post) => post.vendorId).toSet();
+    return uniqueVendorIds.length;
   }
 }

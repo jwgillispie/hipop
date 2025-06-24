@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_event.dart';
-import '../blocs/auth/auth_state.dart';
 import '../models/market.dart';
 import '../models/vendor_market.dart';
+import '../models/vendor_post.dart';
 import '../services/market_service.dart';
+import '../repositories/vendor_posts_repository.dart';
 import '../widgets/common/google_places_widget.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../services/places_service.dart';
+import '../widgets/common/settings_dropdown.dart';
 import 'market_detail_screen.dart';
 
 class MarketDiscoveryScreen extends StatefulWidget {
@@ -24,8 +23,11 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   List<Market> _markets = [];
   Map<String, List<VendorMarket>> _marketVendors = {};
   Map<String, int> _marketActiveVendorsToday = {};
+  Map<String, int> _marketVendorCounts = {};
   bool _isLoading = true;
   String? _error;
+  
+  final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
 
   @override
   void initState() {
@@ -46,20 +48,27 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
       // Load vendor counts for each market
       final Map<String, List<VendorMarket>> marketVendors = {};
       final Map<String, int> activeVendorsToday = {};
+      final Map<String, int> marketVendorCounts = {};
       
       for (final market in markets) {
         try {
-          // Get all vendors for this market
+          // Get all vendors for this market (legacy vendor-market relationships)
           final vendors = await MarketService.getMarketVendors(market.id);
           marketVendors[market.id] = vendors;
           
-          // Get vendors active today
+          // Get vendors active today (legacy)
           final activeToday = await MarketService.getActiveVendorsForMarketToday(market.id);
           activeVendorsToday[market.id] = activeToday.length;
+          
+          // Get unique vendor count from posts (new system)
+          final marketPosts = await _vendorPostsRepository.getMarketPosts(market.id).first;
+          final uniqueVendorIds = marketPosts.map((post) => post.vendorId).toSet();
+          marketVendorCounts[market.id] = uniqueVendorIds.length;
         } catch (e) {
           debugPrint('Error loading vendors for market ${market.name}: $e');
           marketVendors[market.id] = [];
           activeVendorsToday[market.id] = 0;
+          marketVendorCounts[market.id] = 0;
         }
       }
 
@@ -67,6 +76,7 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
         _markets = markets;
         _marketVendors = marketVendors;
         _marketActiveVendorsToday = activeVendorsToday;
+        _marketVendorCounts = marketVendorCounts;
         _isLoading = false;
       });
     } catch (e) {
@@ -101,16 +111,7 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
         title: const Text('Markets'),
         backgroundColor: Colors.orange,
         actions: [
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              return IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () {
-                  context.read<AuthBloc>().add(LogoutEvent());
-                },
-              );
-            },
-          ),
+          const SettingsDropdown(),
         ],
       ),
       body: Column(
@@ -217,7 +218,7 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   }
 
   Widget _buildMarketCard(Market market) {
-    final vendorCount = _marketVendors[market.id]?.length ?? 0;
+    final vendorCount = _marketVendorCounts[market.id] ?? 0;
     final activeToday = _marketActiveVendorsToday[market.id] ?? 0;
     final isOpenToday = market.isOpenToday;
 

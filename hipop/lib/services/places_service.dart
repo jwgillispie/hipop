@@ -3,14 +3,18 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class PlacesService {
+  // Production server URL - replace with your deployed server
+  static const String _productionApiUrl = 'https://hipop-places-server-356168021674.us-central1.run.app/api/places';
+  static const String _localApiUrl = 'http://localhost:8080/api/places';
+
   static String get _baseUrl {
-    // For web, we need to use the full localhost URL
-    // For mobile, localhost works fine
     if (kIsWeb) {
-      // Try different common Flutter web dev server ports
-      return 'http://127.0.0.1:3000/api/places';
+      // For web builds, check if we have a production server URL configured
+      const productionUrl = String.fromEnvironment('PLACES_API_URL', defaultValue: _productionApiUrl);
+      return productionUrl != _productionApiUrl ? productionUrl : _localApiUrl;
     }
-    return 'http://localhost:3000/api/places';
+    // For mobile development
+    return _localApiUrl;
   }
 
   static Future<List<PlacePrediction>> getPlacePredictions(String input) async {
@@ -18,46 +22,33 @@ class PlacesService {
       return [];
     }
 
-    // TODO: Implement proper dart:js_interop for web
-    // For now, both web and mobile use server proxy
-    final urlsToTry = kIsWeb ? [
-      'http://127.0.0.1:3000/api/places',
-      'http://localhost:3000/api/places',
-    ] : ['http://localhost:3000/api/places'];
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/autocomplete?input=${Uri.encodeComponent(input)}'),
+      ).timeout(const Duration(seconds: 10));
 
-    for (final baseUrl in urlsToTry) {
-      try {
-        final response = await http.get(
-          Uri.parse('$baseUrl/autocomplete?input=${Uri.encodeComponent(input)}'),
-        );
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final predictions = data['predictions'] as List? ?? [];
-          
-          return predictions
-              .map((prediction) => PlacePrediction.fromServerJson(prediction))
-              .toList();
-        }
-      } catch (e) {
-        debugPrint('Error with $baseUrl: $e');
-        if (baseUrl == urlsToTry.last) {
-          debugPrint('All URLs failed. Server might not be running or CORS issue.');
-        }
-        continue;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final predictions = data['predictions'] as List? ?? [];
+        
+        return predictions
+            .map((prediction) => PlacePrediction.fromServerJson(prediction))
+            .toList();
+      } else {
+        debugPrint('Places API returned status: ${response.statusCode}');
       }
+    } catch (e) {
+      debugPrint('Error getting place predictions: $e');
     }
     
     return [];
   }
 
   static Future<PlaceDetails?> getPlaceDetails(String placeId) async {
-    // TODO: Implement proper dart:js_interop for web
-    // For now, both web and mobile use server proxy
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/details?place_id=$placeId'),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -67,7 +58,7 @@ class PlacesService {
           return PlaceDetails.fromServerJson(result);
         }
       } else {
-        throw Exception('Failed to load place details');
+        debugPrint('Place details API returned status: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error getting place details: $e');
@@ -76,8 +67,6 @@ class PlacesService {
     return null;
   }
 
-  // TODO: Web-specific Google Places API implementation
-  // Will be implemented later with proper dart:js_interop
 }
 
 class PlacePrediction {
