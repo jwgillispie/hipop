@@ -123,9 +123,8 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
     setState(() => _loadingMarkets = true);
     
     try {
-      // For now, load Atlanta markets. In the future, we could load markets
-      // based on the vendor's location or allow them to search
-      final markets = await MarketService.getMarketsByCity('Atlanta');
+      // Load all active markets in the Atlanta metro area
+      final markets = await MarketService.getAllActiveMarkets();
       setState(() {
         _availableMarkets = markets;
         _loadingMarkets = false;
