@@ -290,9 +290,9 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
               initialLocation: _locationController.text,
               onLocationSelected: (location) {
                 setState(() {
-                  _locationController.text = location;
-                  // For simple implementation, we don't need PlaceDetails
-                  _selectedPlace = null;
+                  _locationController.text = location?.formattedAddress ?? '';
+                  // Store the selected place for location data
+                  _selectedPlace = location;
                 });
               },
             ),

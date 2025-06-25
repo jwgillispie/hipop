@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/market.dart';
 import '../models/vendor_market.dart';
 
@@ -33,17 +34,93 @@ class MarketService {
 
   static Future<List<Market>> getMarketsByCity(String city) async {
     try {
+      debugPrint('MarketService: Searching for markets with city = "$city"');
+      
       final querySnapshot = await _marketsCollection
           .where('city', isEqualTo: city)
           .where('isActive', isEqualTo: true)
           .orderBy('name')
           .get();
       
-      return querySnapshot.docs
+      final markets = querySnapshot.docs
           .map((doc) => Market.fromFirestore(doc))
           .toList();
+          
+      debugPrint('MarketService: Query returned ${markets.length} markets');
+      
+      // If no exact match found, try more flexible searching
+      if (markets.isEmpty) {
+        debugPrint('MarketService: No exact match found, trying flexible search...');
+        return await _getMarketsByCityFlexible(city);
+      }
+      
+      return markets;
     } catch (e) {
       throw Exception('Failed to get markets by city: $e');
+    }
+  }
+  
+  static Future<List<Market>> _getMarketsByCityFlexible(String searchCity) async {
+    try {
+      // Get all active markets and filter in memory for flexible matching
+      final querySnapshot = await _marketsCollection
+          .where('isActive', isEqualTo: true)
+          .get();
+      
+      final allMarkets = querySnapshot.docs
+          .map((doc) => Market.fromFirestore(doc))
+          .toList();
+          
+      debugPrint('MarketService: Total active markets: ${allMarkets.length}');
+      
+      // Normalize search city for comparison
+      final normalizedSearchCity = searchCity.toLowerCase().trim();
+      
+      // Filter markets with flexible matching
+      final matchingMarkets = allMarkets.where((market) {
+        final marketCity = market.city.toLowerCase().trim();
+        
+        // Exact match (case insensitive)
+        if (marketCity == normalizedSearchCity) {
+          return true;
+        }
+        
+        // Check if search city contains market city (e.g., "Atlanta, GA" contains "Atlanta")
+        if (normalizedSearchCity.contains(marketCity)) {
+          return true;
+        }
+        
+        // Check if market city contains search city (e.g., "Atlanta" contains "Atlan")
+        if (marketCity.contains(normalizedSearchCity)) {
+          return true;
+        }
+        
+        // Check common variations (e.g., "Decatur" matches "Decatur City")
+        final searchWords = normalizedSearchCity.split(' ');
+        final marketWords = marketCity.split(' ');
+        
+        for (final searchWord in searchWords) {
+          for (final marketWord in marketWords) {
+            if (searchWord.length >= 3 && marketWord.length >= 3) {
+              if (searchWord.startsWith(marketWord) || marketWord.startsWith(searchWord)) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        return false;
+      }).toList();
+      
+      debugPrint('MarketService: Flexible search found ${matchingMarkets.length} markets');
+      for (final market in matchingMarkets) {
+        debugPrint('  - ${market.name} in ${market.city}, ${market.state}');
+      }
+      
+      return matchingMarkets;
+    } catch (e) {
+      debugPrint('MarketService: Error in flexible search: $e');
+      return [];
     }
   }
 

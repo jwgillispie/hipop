@@ -36,6 +36,7 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   }
 
   Future<void> _loadMarketsForCity(String city) async {
+    debugPrint('Loading markets for city: "$city"');
     setState(() {
       _isLoading = true;
       _error = null;
@@ -44,6 +45,17 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
     try {
       // Load markets for the selected city
       final markets = await MarketService.getMarketsByCity(city);
+      debugPrint('Found ${markets.length} markets for city "$city"');
+      
+      // Debug: Log all markets to see what cities we have in the database
+      if (markets.isEmpty) {
+        debugPrint('No markets found. Checking what cities exist in the database...');
+        final allMarkets = await MarketService.getAllActiveMarkets();
+        debugPrint('All active markets in database (${allMarkets.length} total):');
+        for (final market in allMarkets) {
+          debugPrint('  - ${market.name} in ${market.city}, ${market.state}');
+        }
+      }
       
       // Load vendor counts for each market
       final Map<String, List<VendorMarket>> marketVendors = {};
@@ -88,11 +100,47 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   }
 
   void _onCitySelected(PlaceDetails placeDetails) {
-    final cityName = placeDetails.name;
+    debugPrint('Place selected - Name: ${placeDetails.name}, FormattedAddress: ${placeDetails.formattedAddress}');
+    
+    // Extract city name from the formatted address or name
+    String cityName = _extractCityFromPlace(placeDetails);
+    debugPrint('Extracted city name: $cityName');
+    
     setState(() {
       _selectedCity = cityName;
     });
     _loadMarketsForCity(cityName);
+  }
+  
+  String _extractCityFromPlace(PlaceDetails placeDetails) {
+    // First try to extract city from the formatted address
+    final addressParts = placeDetails.formattedAddress.split(', ');
+    
+    // For US addresses, the format is usually:
+    // "Street Address, City, State ZIP" or "City, State"
+    if (addressParts.length >= 2) {
+      // Look for the part that contains the city (before state)
+      for (int i = 0; i < addressParts.length - 1; i++) {
+        final part = addressParts[i].trim();
+        // Skip if it looks like a street address (contains numbers at start)
+        if (!RegExp(r'^\d').hasMatch(part)) {
+          // Check if next part looks like a state (2 letters) or state + ZIP
+          final nextPart = addressParts[i + 1].trim();
+          if (RegExp(r'^[A-Z]{2}(\s+\d{5})?$').hasMatch(nextPart)) {
+            return part;
+          }
+        }
+      }
+    }
+    
+    // Fallback to using the name field, but clean it up
+    String name = placeDetails.name;
+    
+    // Remove common suffixes that aren't city names
+    name = name.replaceAll(RegExp(r',\s*(GA|Georgia|AL|Alabama)\s*$'), '');
+    name = name.replaceAll(RegExp(r',\s*USA\s*$'), '');
+    
+    return name.trim();
   }
 
   void _onMarketTapped(Market market) {

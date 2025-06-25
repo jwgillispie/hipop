@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/places_service.dart';
 
 class SimplePlacesWidget extends StatefulWidget {
-  final Function(String) onLocationSelected;
+  final Function(PlaceDetails?) onLocationSelected;
   final String? initialLocation;
 
   const SimplePlacesWidget({
@@ -63,15 +63,47 @@ class _SimplePlacesWidgetState extends State<SimplePlacesWidget> {
     }
   }
 
-  void _selectPlace(PlacePrediction prediction) {
+  Future<void> _selectPlace(PlacePrediction prediction) async {
     setState(() {
       _controller.text = prediction.description;
       _predictions = [];
       _showPredictions = false;
+      _isLoading = true;
     });
     
-    // Notify parent
-    widget.onLocationSelected(prediction.description);
+    try {
+      // Get place details including coordinates
+      final placeDetails = await PlacesService.getPlaceDetails(prediction.placeId);
+      
+      setState(() => _isLoading = false);
+      
+      if (placeDetails != null) {
+        // Notify parent with full place details
+        widget.onLocationSelected(placeDetails);
+      } else {
+        // Fallback: create basic PlaceDetails from prediction
+        final fallbackDetails = PlaceDetails(
+          placeId: prediction.placeId,
+          name: prediction.mainText,
+          formattedAddress: prediction.description,
+          latitude: 0, // Will trigger text-only search
+          longitude: 0,
+        );
+        widget.onLocationSelected(fallbackDetails);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      
+      // Fallback: create basic PlaceDetails from prediction
+      final fallbackDetails = PlaceDetails(
+        placeId: prediction.placeId,
+        name: prediction.mainText,
+        formattedAddress: prediction.description,
+        latitude: 0, // Will trigger text-only search
+        longitude: 0,
+      );
+      widget.onLocationSelected(fallbackDetails);
+    }
   }
 
   @override
@@ -102,7 +134,7 @@ class _SimplePlacesWidgetState extends State<SimplePlacesWidget> {
                             _predictions = [];
                             _showPredictions = false;
                           });
-                          widget.onLocationSelected('');
+                          widget.onLocationSelected(null);
                         },
                       )
                     : null,

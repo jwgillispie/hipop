@@ -72,16 +72,33 @@ class _ShopperHomeState extends State<ShopperHome> {
     _performSearch('');
   }
   
-  void _performPlaceSearch(String location) {
+  void _performPlaceSearch(PlaceDetails? placeDetails) {
+    if (placeDetails == null) {
+      // Clear search when place is cleared
+      _clearSearch();
+      return;
+    }
+    
     setState(() {
-      _searchLocation = location;
-      _selectedSearchPlace = null;
+      _searchLocation = placeDetails.formattedAddress;
+      _selectedSearchPlace = placeDetails;
       _isLoading = true;
       
-      _searchResults = _unifiedSearchService.searchByLocationWithFilter(
-        location: location,
-        filterType: _filterType,
-      );
+      // Use coordinates if available, otherwise fall back to text search
+      if (placeDetails.latitude != 0 && placeDetails.longitude != 0) {
+        _searchResults = _unifiedSearchService.searchByLocationWithFilter(
+          location: placeDetails.formattedAddress,
+          latitude: placeDetails.latitude,
+          longitude: placeDetails.longitude,
+          radiusKm: _searchRadius,
+          filterType: _filterType,
+        );
+      } else {
+        _searchResults = _unifiedSearchService.searchByLocationWithFilter(
+          location: placeDetails.formattedAddress,
+          filterType: _filterType,
+        );
+      }
     });
     
     _searchResults?.then((_) {
@@ -102,7 +119,7 @@ class _ShopperHomeState extends State<ShopperHome> {
     
     // Re-run search with new filter
     if (_selectedSearchPlace != null) {
-      _performPlaceSearch(_searchLocation);
+      _performPlaceSearch(_selectedSearchPlace);
     } else {
       _performSearch(_searchLocation);
     }
@@ -128,7 +145,7 @@ class _ShopperHomeState extends State<ShopperHome> {
               const SettingsDropdown(),
             ],
           ),
-          body: Padding(
+          body: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +253,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                                       setState(() {
                                         _searchRadius = value;
                                       });
-                                      _performPlaceSearch(_searchLocation);
+                                      _performPlaceSearch(_selectedSearchPlace);
                                     }
                                   },
                                 ),
@@ -300,9 +317,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                 const SizedBox(height: 16),
                 _buildFilterBar(),
                 const SizedBox(height: 8),
-                Expanded(
-                  child: _buildUnifiedResults(),
-                ),
+                _buildUnifiedResultsWithoutExpanded(),
               ],
             ),
           ),
@@ -400,6 +415,67 @@ class _ShopperHomeState extends State<ShopperHome> {
                   );
                 },
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildUnifiedResultsWithoutExpanded() {
+    if (_isLoading) {
+      return const LoadingWidget(message: 'Searching for markets and vendors...');
+    }
+
+    if (_searchResults == null) {
+      return const LoadingWidget(message: 'Loading...');
+    }
+
+    return FutureBuilder<UnifiedSearchResults>(
+      future: _searchResults,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Searching for markets and vendors...');
+        }
+
+        if (snapshot.hasError) {
+          return ErrorDisplayWidget.network(
+            onRetry: () => _performSearch(_searchLocation),
+          );
+        }
+
+        final results = snapshot.data;
+        if (results == null || results.isEmpty) {
+          return _buildNoResultsMessage();
+        }
+
+        final allResults = results.allResults;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '${allResults.length} result${allResults.length == 1 ? '' : 's'} found',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Use ListView with shrinkWrap instead of Expanded to allow parent scrolling
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: allResults.length,
+              itemBuilder: (context, index) {
+                final result = allResults[index];
+                return UnifiedResultCard(
+                  result: result,
+                  onTap: () => _handleResultTap(result),
+                );
+              },
             ),
           ],
         );
