@@ -201,7 +201,7 @@ class _SeedDataScreenState extends State<SeedDataScreen> {
                       'What this will seed:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text('• 5 Atlanta markets'),
+                    Text('• 6 Atlanta markets (includes Druid Hills)'),
                     Text('• 1 Tucker market'),
                     Text('• 1 Dunwoody market'),
                     Text('• Operating schedules for each market'),

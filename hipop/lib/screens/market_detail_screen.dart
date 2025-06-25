@@ -539,7 +539,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Vendor ${vendorMarket.vendorId}', // TODO: Get actual vendor name
+                        vendorMarket.vendorName,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),

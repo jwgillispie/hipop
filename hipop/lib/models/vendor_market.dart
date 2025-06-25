@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 class VendorMarket extends Equatable {
   final String id;
   final String vendorId;
+  final String vendorName; // Vendor display name
   final String marketId;
   final List<String> schedule; // ["saturday", "sunday"]
   final String? boothNumber;
@@ -14,6 +15,7 @@ class VendorMarket extends Equatable {
   const VendorMarket({
     required this.id,
     required this.vendorId,
+    required this.vendorName,
     required this.marketId,
     this.schedule = const [],
     this.boothNumber,
@@ -29,6 +31,7 @@ class VendorMarket extends Equatable {
       return VendorMarket(
         id: doc.id,
         vendorId: data['vendorId'] ?? '',
+        vendorName: data['vendorName'] ?? 'Unknown Vendor',
         marketId: data['marketId'] ?? '',
         schedule: data['schedule'] != null 
             ? List<String>.from(data['schedule']) 
@@ -48,6 +51,7 @@ class VendorMarket extends Equatable {
   Map<String, dynamic> toFirestore() {
     return {
       'vendorId': vendorId,
+      'vendorName': vendorName,
       'marketId': marketId,
       'schedule': schedule,
       'boothNumber': boothNumber,
@@ -60,6 +64,7 @@ class VendorMarket extends Equatable {
   VendorMarket copyWith({
     String? id,
     String? vendorId,
+    String? vendorName,
     String? marketId,
     List<String>? schedule,
     String? boothNumber,
@@ -70,6 +75,7 @@ class VendorMarket extends Equatable {
     return VendorMarket(
       id: id ?? this.id,
       vendorId: vendorId ?? this.vendorId,
+      vendorName: vendorName ?? this.vendorName,
       marketId: marketId ?? this.marketId,
       schedule: schedule ?? this.schedule,
       boothNumber: boothNumber ?? this.boothNumber,
@@ -119,6 +125,7 @@ class VendorMarket extends Equatable {
   List<Object?> get props => [
         id,
         vendorId,
+        vendorName,
         marketId,
         schedule,
         boothNumber,

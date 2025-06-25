@@ -124,6 +124,22 @@ class AtlantaMarketsSeed {
         isActive: true,
         createdAt: now,
       ),
+      
+      Market(
+        id: '',
+        name: 'Druid Hills Farmers Market',
+        address: '2166 Briarcliff Rd NE',
+        city: 'Atlanta',
+        state: 'GA',
+        latitude: 33.7981,
+        longitude: -84.3212,
+        operatingDays: {
+          'saturday': '9AM-1PM',
+        },
+        description: 'Community farmers market in the historic Druid Hills neighborhood featuring local vendors, fresh produce, and artisanal goods.',
+        isActive: true,
+        createdAt: now,
+      ),
     ];
   }
 }
