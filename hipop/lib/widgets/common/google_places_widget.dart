@@ -4,12 +4,14 @@ import '../../services/places_service.dart';
 class GooglePlacesWidget extends StatefulWidget {
   final Function(PlaceDetails) onPlaceSelected;
   final Function(String)? onTextSearch;
+  final Function()? onCleared;
   final String? initialLocation;
 
   const GooglePlacesWidget({
     super.key,
     required this.onPlaceSelected,
     this.onTextSearch,
+    this.onCleared,
     this.initialLocation,
   });
 
@@ -31,7 +33,7 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialLocation != null) {
+    if (widget.initialLocation != null && widget.initialLocation!.isNotEmpty) {
       _controller.text = widget.initialLocation!;
     }
     
@@ -41,6 +43,13 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
       });
     });
   }
+
+  // Commented out didUpdateWidget to test if it's causing issues
+  // @override
+  // void didUpdateWidget(GooglePlacesWidget oldWidget) {
+  //   super.didUpdateWidget(oldWidget);
+  //   // This might be interfering with place selection
+  // }
 
   @override
   void dispose() {
@@ -107,13 +116,16 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
   }
 
   Future<void> _getPlaceDetails(String placeId) async {
+    print('BROWSER LOG: _getPlaceDetails called with $placeId');
     setState(() {
       _isLoading = true;
       _selectedPlaceId = placeId;
     });
 
     try {
+      print('BROWSER LOG: Calling PlacesService.getPlaceDetails');
       final placeDetails = await PlacesService.getPlaceDetails(placeId);
+      print('BROWSER LOG: Received place details: ${placeDetails?.formattedAddress}');
       
       if (placeDetails != null) {
         setState(() {
@@ -123,14 +135,21 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
           _selectedPlaceId = null;
         });
         
+        print('BROWSER LOG: Updated controller text to: ${_controller.text}');
         _focusNode.unfocus();
+        
+        print('BROWSER LOG: Calling widget.onPlaceSelected callback');
         widget.onPlaceSelected(placeDetails);
+      } else {
+        print('BROWSER LOG: Place details was null!');
       }
     } catch (e) {
+      print('BROWSER LOG: Error getting place details: $e');
       debugPrint('Error getting place details: $e');
       setState(() => _selectedPlaceId = null);
     } finally {
       setState(() => _isLoading = false);
+      print('BROWSER LOG: _getPlaceDetails finished');
     }
   }
 
@@ -197,6 +216,10 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                 _selectedPlaceId = null;
                 _lastQuery = '';
               });
+              // Notify parent that field was cleared
+              if (widget.onCleared != null) {
+                widget.onCleared!();
+              }
             },
           ),
         ],
@@ -425,7 +448,11 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                 final isSelected = _selectedPlaceId == prediction.placeId;
                 
                 return InkWell(
-                  onTap: isSelected ? null : () => _getPlaceDetails(prediction.placeId),
+                  onTap: isSelected ? null : () {
+                    debugPrint('GooglePlacesWidget: InkWell tapped for ${prediction.placeId}');
+                    print('BROWSER LOG: Place clicked - ${prediction.mainText}');
+                    _getPlaceDetails(prediction.placeId);
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,

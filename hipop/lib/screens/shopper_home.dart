@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
-import '../widgets/common/google_places_widget.dart';
+import '../widgets/common/simple_places_widget.dart';
 import '../services/places_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
-import '../widgets/common/favorite_button.dart';
-import '../models/vendor_post.dart';
-import '../repositories/vendor_posts_repository.dart';
+import '../models/unified_search_result.dart';
+import '../services/unified_search_service.dart';
 import '../widgets/common/settings_dropdown.dart';
-import 'dart:math' as math;
+import '../widgets/search/unified_result_card.dart';
 
 class ShopperHome extends StatefulWidget {
   const ShopperHome({super.key});
@@ -23,33 +23,42 @@ class _ShopperHomeState extends State<ShopperHome> {
   String _searchLocation = '';
   PlaceDetails? _selectedSearchPlace;
   double _searchRadius = 10.0; // Default 10km radius
-  final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
-  Stream<List<VendorPost>>? _currentStream;
+  final UnifiedSearchService _unifiedSearchService = UnifiedSearchService();
+  
+  // Use unified search results instead of just vendor posts
+  Future<UnifiedSearchResults>? _searchResults;
+  SearchResultType? _filterType; // For filtering results
+  bool _isLoading = false;
   
   static const List<double> _radiusOptions = [5.0, 10.0, 25.0, 50.0];
 
   @override
   void initState() {
     super.initState();
-    // Initialize the stream immediately to show posts
-    _currentStream = _vendorPostsRepository.getAllActivePosts();
-    _initializeAndMigrate();
-  }
-
-  Future<void> _initializeAndMigrate() async {
-    // Skip migration and deletion in production - just start showing posts
-    // These operations require admin permissions and are only needed for development
-    
-    // Start with empty search to show all posts
+    // Initialize with empty search to show all results
     _performSearch('');
   }
-
 
   void _performSearch(String location) {
     setState(() {
       _searchLocation = location;
       _selectedSearchPlace = null; // Clear place when doing text search
-      _currentStream = _vendorPostsRepository.searchPostsByLocation(location);
+      _isLoading = true;
+      
+      _searchResults = _unifiedSearchService.searchByLocationWithFilter(
+        location: location,
+        filterType: _filterType,
+      );
+    });
+    
+    _searchResults?.then((_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }).catchError((e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     });
   }
   
@@ -58,49 +67,47 @@ class _ShopperHomeState extends State<ShopperHome> {
       _searchLocation = '';
       _selectedSearchPlace = null;
       _searchRadius = 10.0; // Reset to default
+      _filterType = null; // Clear filter
     });
     _performSearch('');
   }
   
-  void _performPlaceSearch(PlaceDetails place) {
+  void _performPlaceSearch(String location) {
     setState(() {
-      _searchLocation = place.formattedAddress;
-      _selectedSearchPlace = place;
-      _currentStream = _vendorPostsRepository.searchPostsByLocationAndProximity(
-        location: place.formattedAddress,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        radiusKm: _searchRadius,
+      _searchLocation = location;
+      _selectedSearchPlace = null;
+      _isLoading = true;
+      
+      _searchResults = _unifiedSearchService.searchByLocationWithFilter(
+        location: location,
+        filterType: _filterType,
       );
     });
-  }
-
-  // Helper method to calculate distance for display
-  double? _calculateDistance(VendorPost post) {
-    if (_selectedSearchPlace?.latitude == null || 
-        _selectedSearchPlace?.longitude == null ||
-        post.latitude == null || 
-        post.longitude == null) {
-      return null;
-    }
     
-    const double earthRadius = 6371; // Earth's radius in kilometers
-    
-    final double dLat = _toRadians(post.latitude! - _selectedSearchPlace!.latitude);
-    final double dLon = _toRadians(post.longitude! - _selectedSearchPlace!.longitude);
-    
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_toRadians(_selectedSearchPlace!.latitude)) * math.cos(_toRadians(post.latitude!)) *
-        math.sin(dLon / 2) * math.sin(dLon / 2);
-    
-    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    
-    return earthRadius * c;
+    _searchResults?.then((_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }).catchError((e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    });
   }
   
-  double _toRadians(double degrees) {
-    return degrees * (math.pi / 180);
+  void _setResultFilter(SearchResultType? filterType) {
+    setState(() {
+      _filterType = filterType;
+    });
+    
+    // Re-run search with new filter
+    if (_selectedSearchPlace != null) {
+      _performPlaceSearch(_searchLocation);
+    } else {
+      _performSearch(_searchLocation);
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -170,10 +177,9 @@ class _ShopperHomeState extends State<ShopperHome> {
                 const SizedBox(height: 16),
                 Column(
                   children: [
-                    GooglePlacesWidget(
+                    SimplePlacesWidget(
                       initialLocation: _searchLocation,
-                      onPlaceSelected: _performPlaceSearch,
-                      onTextSearch: _performSearch,
+                      onLocationSelected: _performPlaceSearch,
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -226,11 +232,11 @@ class _ShopperHomeState extends State<ShopperHome> {
                                     );
                                   }).toList(),
                                   onChanged: (value) {
-                                    if (value != null && _selectedSearchPlace != null) {
+                                    if (value != null) {
                                       setState(() {
                                         _searchRadius = value;
                                       });
-                                      _performPlaceSearch(_selectedSearchPlace!);
+                                      _performPlaceSearch(_searchLocation);
                                     }
                                   },
                                 ),
@@ -275,12 +281,12 @@ class _ShopperHomeState extends State<ShopperHome> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    StreamBuilder<List<VendorPost>>(
-                      stream: _currentStream,
+                    FutureBuilder<UnifiedSearchResults>(
+                      future: _searchResults,
                       builder: (context, snapshot) {
                         if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                           return Text(
-                            '${snapshot.data!.length} found',
+                            '${snapshot.data!.totalCount} found',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Colors.grey[600],
                             ),
@@ -292,39 +298,10 @@ class _ShopperHomeState extends State<ShopperHome> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                _buildFilterBar(),
+                const SizedBox(height: 8),
                 Expanded(
-                  child: StreamBuilder<List<VendorPost>>(
-                    stream: _currentStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const LoadingWidget(message: 'Finding pop-ups near you...');
-                      }
-                      
-                      if (snapshot.hasError) {
-                        return ErrorDisplayWidget.network(
-                          onRetry: () {
-                            setState(() {
-                              _currentStream = _vendorPostsRepository.getAllActivePosts();
-                            });
-                          },
-                        );
-                      }
-                      
-                      final posts = snapshot.data ?? [];
-                      
-                      if (posts.isEmpty) {
-                        return _buildNoPostsMessage();
-                      }
-                      
-                      return ListView.builder(
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          final post = posts[index];
-                          return _buildVendorPostCard(post);
-                        },
-                      );
-                    },
-                  ),
+                  child: _buildUnifiedResults(),
                 ),
               ],
             ),
@@ -334,198 +311,126 @@ class _ShopperHomeState extends State<ShopperHome> {
     );
   }
 
-  Widget _buildVendorPostCard(VendorPost post) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.orange,
-                  child: Text(
-                    post.vendorName.isNotEmpty 
-                        ? post.vendorName[0].toUpperCase() 
-                        : 'V',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.vendorName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  post.location,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                if (_selectedSearchPlace != null) ...[
-                                  Builder(
-                                    builder: (context) {
-                                      final distance = _calculateDistance(post);
-                                      if (distance != null) {
-                                        return Text(
-                                          '${distance.toStringAsFixed(1)} km away',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.orange[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    FavoriteButton(
-                      postId: post.id,
-                      vendorId: post.vendorId,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: post.isHappening 
-                            ? Colors.green 
-                            : post.isUpcoming 
-                                ? Colors.orange 
-                                : Colors.grey,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        post.isHappening 
-                            ? 'Live' 
-                            : post.isUpcoming 
-                                ? 'Upcoming' 
-                                : 'Past',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              post.description,
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.formattedDateTime,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        post.formattedTimeRange,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (post.instagramHandle != null) ...[
-                  const Icon(Icons.alternate_email, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    post.instagramHandle!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
+
+
+  Widget _buildFilterBar() {
+    return Row(
+      children: [
+        Text(
+          'Show: ',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        _buildFilterChip('All', null),
+        const SizedBox(width: 8),
+        _buildFilterChip('Markets', SearchResultType.market),
+        const SizedBox(width: 8),
+        _buildFilterChip('Vendors', SearchResultType.independentVendor),
+      ],
     );
   }
 
-  Widget _buildNoPostsMessage() {
+  Widget _buildFilterChip(String label, SearchResultType? type) {
+    final isSelected = _filterType == type;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        _setResultFilter(selected ? type : null);
+      },
+      selectedColor: Colors.orange.withValues(alpha: 0.2),
+      checkmarkColor: Colors.orange,
+    );
+  }
+
+  Widget _buildUnifiedResults() {
+    if (_isLoading) {
+      return const LoadingWidget(message: 'Searching for markets and vendors...');
+    }
+
+    if (_searchResults == null) {
+      return const LoadingWidget(message: 'Loading...');
+    }
+
+    return FutureBuilder<UnifiedSearchResults>(
+      future: _searchResults,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Searching for markets and vendors...');
+        }
+
+        if (snapshot.hasError) {
+          return ErrorDisplayWidget.network(
+            onRetry: () => _performSearch(_searchLocation),
+          );
+        }
+
+        final results = snapshot.data;
+        if (results == null || results.isEmpty) {
+          return _buildNoResultsMessage();
+        }
+
+        final allResults = results.allResults;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '${allResults.length} result${allResults.length == 1 ? '' : 's'} found',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: allResults.length,
+                itemBuilder: (context, index) {
+                  final result = allResults[index];
+                  return UnifiedResultCard(
+                    result: result,
+                    onTap: () => _handleResultTap(result),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNoResultsMessage() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _searchLocation.isEmpty ? Icons.event_busy : Icons.location_off,
+            Icons.search_off,
             size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            _searchLocation.isEmpty 
-                ? 'No Pop-ups Available'
-                : 'No Pop-ups Found in $_searchLocation',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
+            'No results found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.grey[600],
             ),
           ),
           const SizedBox(height: 8),
           Text(
             _searchLocation.isEmpty
-                ? 'Check back later for new pop-up events!'
-                : 'Try searching for a different location.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+                ? 'Try searching for a location'
+                : 'Try a different search term or location',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[500],
             ),
             textAlign: TextAlign.center,
           ),
@@ -537,7 +442,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Show All Pop-ups'),
+              child: const Text('Show All Results'),
             ),
           ],
         ],
@@ -545,5 +450,19 @@ class _ShopperHomeState extends State<ShopperHome> {
     );
   }
 
+  void _handleResultTap(SearchResultItem result) {
+    switch (result.type) {
+      case SearchResultType.market:
+        if (result.market != null) {
+          context.pushNamed('marketDetail', extra: result.market);
+        }
+        break;
+      case SearchResultType.independentVendor:
+        if (result.vendorPost != null) {
+          context.pushNamed('vendorPostDetail', extra: result.vendorPost);
+        }
+        break;
+    }
+  }
 
 }

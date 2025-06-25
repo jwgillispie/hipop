@@ -7,7 +7,6 @@ import '../repositories/vendor_posts_repository.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/auth_landing_screen.dart';
 import '../screens/auth_screen.dart';
-import '../screens/market_discovery_screen.dart';
 import '../screens/market_detail_screen.dart';
 import '../screens/shopper_home.dart';
 import '../screens/vendor_dashboard.dart';
@@ -15,7 +14,9 @@ import '../screens/create_popup_screen.dart';
 import '../screens/vendor_my_popups.dart';
 import '../screens/vendor_profile_screen.dart';
 import '../screens/change_password_screen.dart';
+import '../screens/vendor_post_detail_screen.dart';
 import '../models/market.dart';
+import '../models/vendor_post.dart';
 
 class AppRouter {
   static GoRouter createRouter(AuthBloc authBloc) {
@@ -51,7 +52,7 @@ class AppRouter {
         GoRoute(
           path: '/shopper',
           name: 'shopper',
-          builder: (context, state) => const MarketDiscoveryScreen(),
+          builder: (context, state) => const ShopperHome(),
           routes: [
             GoRoute(
               path: 'market-detail',
@@ -59,6 +60,14 @@ class AppRouter {
               builder: (context, state) {
                 final market = state.extra as Market;
                 return MarketDetailScreen(market: market);
+              },
+            ),
+            GoRoute(
+              path: 'vendor-post-detail',
+              name: 'vendorPostDetail',
+              builder: (context, state) {
+                final vendorPost = state.extra as VendorPost;
+                return VendorPostDetailScreen(vendorPost: vendorPost);
               },
             ),
           ],

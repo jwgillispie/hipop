@@ -3,18 +3,17 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class PlacesService {
-  // Production server URL - replace with your deployed server
+  // Production server URL
   static const String _productionApiUrl = 'https://hipop-places-server-356168021674.us-central1.run.app/api/places';
-  static const String _localApiUrl = 'http://localhost:8080/api/places';
 
   static String get _baseUrl {
     if (kIsWeb) {
-      // For web builds, check if we have a production server URL configured
+      // For web builds, always use production server
       const productionUrl = String.fromEnvironment('PLACES_API_URL', defaultValue: _productionApiUrl);
-      return productionUrl != _productionApiUrl ? productionUrl : _localApiUrl;
+      return productionUrl;
     }
-    // For mobile development
-    return _localApiUrl;
+    // For mobile development, use production server
+    return _productionApiUrl;
   }
 
   static Future<List<PlacePrediction>> getPlacePredictions(String input) async {

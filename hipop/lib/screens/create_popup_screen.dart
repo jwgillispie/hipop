@@ -5,7 +5,7 @@ import '../repositories/vendor_posts_repository.dart';
 import '../models/vendor_post.dart';
 import '../models/market.dart';
 import '../widgets/common/hipop_text_field.dart';
-import '../widgets/common/google_places_widget.dart';
+import '../widgets/common/simple_places_widget.dart';
 import '../services/places_service.dart';
 import '../services/market_service.dart';
 
@@ -38,6 +38,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   List<Market> _availableMarkets = [];
   Market? _selectedMarket;
   bool _loadingMarkets = false;
+  String? _popupType;
 
   @override
   void initState() {
@@ -50,6 +51,10 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
 
   void _initializeForm() {
+    // Check for type parameter from query string
+    final uri = GoRouterState.of(context).uri;
+    _popupType = uri.queryParameters['type'];
+    
     // Check for duplicate arguments first
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final duplicateFrom = args?['duplicateFrom'] as VendorPost?;
@@ -106,6 +111,11 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       // New post mode - set default vendor name from user profile
       final user = FirebaseAuth.instance.currentUser;
       _vendorNameController.text = user?.displayName ?? '';
+      
+      // If type is 'independent', pre-select no market
+      if (_popupType == 'independent') {
+        setState(() => _selectedMarket = null);
+      }
     }
   }
   
@@ -191,18 +201,48 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
 
   Widget _buildHeaderSection() {
+    IconData iconData;
+    String title;
+    String subtitle;
+    
+    if (widget.editingPost != null) {
+      iconData = Icons.edit;
+      title = 'Update Your Pop-Up';
+      subtitle = 'Make changes to your existing event';
+    } else if (_popupType == 'market') {
+      iconData = Icons.store_mall_directory;
+      title = 'Join a Market';
+      subtitle = 'Set up your booth at an existing market';
+    } else if (_popupType == 'independent') {
+      iconData = Icons.location_on;
+      title = 'Create Independent Pop-Up';
+      subtitle = 'Host your own event at any location';
+    } else {
+      iconData = Icons.store;
+      title = 'Create Your Pop-Up Event';
+      subtitle = 'Choose market or independent location';
+    }
+
     return Column(
       children: [
         Icon(
-          Icons.store,
+          iconData,
           size: 64,
           color: Theme.of(context).primaryColor,
         ),
         const SizedBox(height: 16),
         Text(
-          widget.editingPost != null ? 'Update Your Pop-Up' : 'Create Your Pop-Up Event',
+          title,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.grey[600],
           ),
           textAlign: TextAlign.center,
         ),
@@ -247,19 +287,20 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            GooglePlacesWidget(
+            SimplePlacesWidget(
               initialLocation: _locationController.text,
-              onPlaceSelected: (place) {
+              onLocationSelected: (location) {
                 setState(() {
-                  _selectedPlace = place;
-                  _locationController.text = place.formattedAddress;
+                  _locationController.text = location;
+                  // For simple implementation, we don't need PlaceDetails
+                  _selectedPlace = null;
                 });
               },
             ),
-            if (_selectedPlace == null && _locationController.text.isEmpty) ...[
+            if (_locationController.text.isEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                'Please select a location',
+                'Please enter or select a location',
                 style: TextStyle(
                   color: Colors.red[700],
                   fontSize: 12,
@@ -594,11 +635,47 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
   
   Widget _buildMarketPicker() {
+    // Don't show market picker for independent pop-ups
+    if (_popupType == 'independent') {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.green.shade300),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.green.shade50,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.location_on, color: Colors.green.shade700),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Independent Pop-Up',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
+                    ),
+                  ),
+                  const Text(
+                    'You\'re creating a standalone event at your chosen location',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Market (Optional)',
+          _popupType == 'market' ? 'Select Market' : 'Market (Optional)',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -632,12 +709,15 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
                   child: DropdownButton<Market?>(
                     value: _selectedMarket,
                     isExpanded: true,
-                    hint: const Text('Select a market (optional)'),
+                    hint: Text(_popupType == 'market' 
+                        ? 'Choose a market to join' 
+                        : 'Select a market (optional)'),
                     items: [
-                      const DropdownMenuItem<Market?>(
-                        value: null,
-                        child: Text('No market - standalone location'),
-                      ),
+                      if (_popupType != 'market') // Only show "No market" option if not specifically creating market pop-up
+                        const DropdownMenuItem<Market?>(
+                          value: null,
+                          child: Text('No market - standalone location'),
+                        ),
                       ..._availableMarkets.map((market) {
                         return DropdownMenuItem<Market?>(
                           value: market,
@@ -722,10 +802,10 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       return;
     }
 
-    if (_selectedPlace == null && _locationController.text.isEmpty) {
+    if (_locationController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a location'),
+          content: Text('Please enter or select a location'),
           backgroundColor: Colors.red,
         ),
       );

@@ -75,7 +75,7 @@ class _VendorDashboardState extends State<VendorDashboard>
             ],
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () => context.go('/vendor/create-popup'),
+            onPressed: () => _showCreatePopupMenu(context),
             backgroundColor: Colors.orange,
             child: const Icon(Icons.add, color: Colors.white),
           ),
@@ -141,11 +141,19 @@ class _VendorDashboardState extends State<VendorDashboard>
               children: [
                 _buildActionCard(
                   context,
-                  'Create Pop-up',
-                  'Add a new pop-up event',
-                  Icons.add_business,
+                  'Market Pop-up',
+                  'Join an existing market',
+                  Icons.store_mall_directory,
                   Colors.orange,
-                  () => context.go('/vendor/create-popup'),
+                  () => context.go('/vendor/create-popup?type=market'),
+                ),
+                _buildActionCard(
+                  context,
+                  'Independent Pop-up',
+                  'Create your own location',
+                  Icons.location_on,
+                  Colors.deepOrange,
+                  () => context.go('/vendor/create-popup?type=independent'),
                 ),
                 _buildActionCard(
                   context,
@@ -355,6 +363,113 @@ class _VendorDashboardState extends State<VendorDashboard>
             child: const Text('OK'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showCreatePopupMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Create New Pop-up',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildPopupTypeCard(
+                    context,
+                    'Market Pop-up',
+                    'Join an existing market',
+                    Icons.store_mall_directory,
+                    Colors.orange,
+                    () {
+                      Navigator.pop(context);
+                      context.go('/vendor/create-popup?type=market');
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildPopupTypeCard(
+                    context,
+                    'Independent Pop-up',
+                    'Create your own location',
+                    Icons.location_on,
+                    Colors.deepOrange,
+                    () {
+                      Navigator.pop(context);
+                      context.go('/vendor/create-popup?type=independent');
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopupTypeCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Card(
+      elevation: 4,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
