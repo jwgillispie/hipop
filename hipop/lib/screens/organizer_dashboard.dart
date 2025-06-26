@@ -16,9 +16,9 @@ class OrganizerDashboard extends StatefulWidget {
 }
 
 class _OrganizerDashboardState extends State<OrganizerDashboard> {
-  final String marketId = 'temp_market_id'; // TODO: Get from context/auth
   Map<String, dynamic>? _realTimeMetrics;
   bool _isLoading = true;
+  List<String> _lastManagedMarketIds = [];
 
   @override
   void initState() {
@@ -55,27 +55,118 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
 
   Future<void> _loadMetrics() async {
     try {
-      final metrics = await AnalyticsService.getRealTimeMetrics(marketId);
+      final authState = context.read<AuthBloc>().state;
+      
+      if (authState is! Authenticated || authState.userProfile?.isMarketOrganizer != true) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      final managedMarketIds = authState.userProfile!.managedMarketIds;
+      _lastManagedMarketIds = List.from(managedMarketIds);
+      
+      if (managedMarketIds.isEmpty) {
+        setState(() {
+          _realTimeMetrics = _getEmptyMetrics();
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      // Aggregate metrics from all managed markets
+      Map<String, dynamic> aggregatedMetrics = {
+        'vendors': {'total': 0, 'active': 0, 'pending': 0, 'approved': 0, 'rejected': 0, 'markets': managedMarketIds.length},
+        'recipes': {'total': 0, 'public': 0, 'featured': 0, 'likes': 0, 'saves': 0, 'shares': 0},
+        'events': {'total': 0, 'upcoming': 0, 'published': 0, 'averageOccupancy': 0.0},
+        'lastUpdated': DateTime.now(),
+      };
+      
+      // Fetch and aggregate metrics from each market
+      for (final marketId in managedMarketIds) {
+        final marketMetrics = await AnalyticsService.getRealTimeMetrics(marketId);
+        _aggregateMetrics(aggregatedMetrics, marketMetrics);
+      }
+      
       setState(() {
-        _realTimeMetrics = metrics;
+        _realTimeMetrics = aggregatedMetrics;
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Error loading metrics: $e');
       setState(() {
         _isLoading = false;
       });
     }
   }
+  
+  Map<String, dynamic> _getEmptyMetrics() {
+    return {
+      'vendors': {'total': 0, 'active': 0, 'pending': 0, 'approved': 0, 'rejected': 0, 'markets': 0},
+      'recipes': {'total': 0, 'public': 0, 'featured': 0, 'likes': 0, 'saves': 0, 'shares': 0},
+      'events': {'total': 0, 'upcoming': 0, 'published': 0, 'averageOccupancy': 0.0},
+      'lastUpdated': DateTime.now(),
+    };
+  }
+  
+  bool _listsEqual(List<String> list1, List<String> list2) {
+    if (list1.length != list2.length) return false;
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i] != list2[i]) return false;
+    }
+    return true;
+  }
+
+  void _aggregateMetrics(Map<String, dynamic> aggregated, Map<String, dynamic> marketMetrics) {
+    final vendorMetrics = (marketMetrics['vendors'] as Map<String, dynamic>?) ?? {};
+    final recipeMetrics = (marketMetrics['recipes'] as Map<String, dynamic>?) ?? {};
+    final eventMetrics = (marketMetrics['events'] as Map<String, dynamic>?) ?? {};
+    
+    // Aggregate vendor metrics
+    final aggVendors = aggregated['vendors'] as Map<String, dynamic>;
+    aggVendors['total'] = (aggVendors['total'] ?? 0) + (vendorMetrics['total'] ?? 0);
+    aggVendors['active'] = (aggVendors['active'] ?? 0) + (vendorMetrics['active'] ?? 0);
+    aggVendors['pending'] = (aggVendors['pending'] ?? 0) + (vendorMetrics['pending'] ?? 0);
+    aggVendors['approved'] = (aggVendors['approved'] ?? 0) + (vendorMetrics['approved'] ?? 0);
+    aggVendors['rejected'] = (aggVendors['rejected'] ?? 0) + (vendorMetrics['rejected'] ?? 0);
+    
+    // Aggregate recipe metrics
+    final aggRecipes = aggregated['recipes'] as Map<String, dynamic>;
+    aggRecipes['total'] = (aggRecipes['total'] ?? 0) + (recipeMetrics['total'] ?? 0);
+    aggRecipes['public'] = (aggRecipes['public'] ?? 0) + (recipeMetrics['public'] ?? 0);
+    aggRecipes['featured'] = (aggRecipes['featured'] ?? 0) + (recipeMetrics['featured'] ?? 0);
+    aggRecipes['likes'] = (aggRecipes['likes'] ?? 0) + (recipeMetrics['likes'] ?? 0);
+    aggRecipes['saves'] = (aggRecipes['saves'] ?? 0) + (recipeMetrics['saves'] ?? 0);
+    aggRecipes['shares'] = (aggRecipes['shares'] ?? 0) + (recipeMetrics['shares'] ?? 0);
+    
+    // Aggregate event metrics (currently unused but prepared for future)
+    final aggEvents = aggregated['events'] as Map<String, dynamic>;
+    aggEvents['total'] = (aggEvents['total'] ?? 0) + (eventMetrics['total'] ?? 0);
+    aggEvents['upcoming'] = (aggEvents['upcoming'] ?? 0) + (eventMetrics['upcoming'] ?? 0);
+    aggEvents['published'] = (aggEvents['published'] ?? 0) + (eventMetrics['published'] ?? 0);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        if (state is! Authenticated) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Reload metrics when managed markets change (e.g., after market creation)
+        if (state is Authenticated && state.userProfile?.isMarketOrganizer == true) {
+          final currentMarketIds = state.userProfile!.managedMarketIds;
+          if (!_listsEqual(_lastManagedMarketIds, currentMarketIds)) {
+            _lastManagedMarketIds = List.from(currentMarketIds);
+            _loadMetrics();
+          }
         }
+      },
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          if (state is! Authenticated) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
 
         return Scaffold(
           appBar: AppBar(
@@ -310,6 +401,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
           ),
         );
       },
+      ),
     );
   }
 
