@@ -208,18 +208,10 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       iconData = Icons.edit;
       title = 'Update Your Pop-Up';
       subtitle = 'Make changes to your existing event';
-    } else if (_popupType == 'market') {
-      iconData = Icons.store_mall_directory;
-      title = 'Join a Market';
-      subtitle = 'Set up your booth at an existing market';
-    } else if (_popupType == 'independent') {
-      iconData = Icons.location_on;
-      title = 'Create Independent Pop-Up';
-      subtitle = 'Host your own event at any location';
     } else {
       iconData = Icons.store;
-      title = 'Create Your Pop-Up Event';
-      subtitle = 'Choose market or independent location';
+      title = 'Create Your Pop-Up';
+      subtitle = 'Set up your vendor event anywhere you want';
     }
 
     return Column(
@@ -247,7 +239,7 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Let customers know where and when to find you!',
+          'You can optionally associate with a market or go completely independent!',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Colors.grey[600],
           ),
@@ -634,47 +626,11 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   }
   
   Widget _buildMarketPicker() {
-    // Don't show market picker for independent pop-ups
-    if (_popupType == 'independent') {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.green.shade300),
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.green.shade50,
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.location_on, color: Colors.green.shade700),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Independent Pop-Up',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                  const Text(
-                    'You\'re creating a standalone event at your chosen location',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _popupType == 'market' ? 'Select Market' : 'Market (Optional)',
+          'Market Association (Optional)',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -708,15 +664,12 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
                   child: DropdownButton<Market?>(
                     value: _selectedMarket,
                     isExpanded: true,
-                    hint: Text(_popupType == 'market' 
-                        ? 'Choose a market to join' 
-                        : 'Select a market (optional)'),
+                    hint: const Text('Independent pop-up (no market)'),
                     items: [
-                      if (_popupType != 'market') // Only show "No market" option if not specifically creating market pop-up
-                        const DropdownMenuItem<Market?>(
-                          value: null,
-                          child: Text('No market - standalone location'),
-                        ),
+                      const DropdownMenuItem<Market?>(
+                        value: null,
+                        child: Text('Independent - no market association'),
+                      ),
                       ..._availableMarkets.map((market) {
                         return DropdownMenuItem<Market?>(
                           value: market,
@@ -743,55 +696,41 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
                     onChanged: (Market? market) {
                       setState(() {
                         _selectedMarket = market;
-                        // If a market is selected, clear the location field
-                        // so vendors don't double-specify location
-                        if (market != null) {
-                          _locationController.text = market.address;
-                          _selectedPlace = PlaceDetails(
-                            placeId: 'market_${market.id}',
-                            name: market.name,
-                            formattedAddress: market.address,
-                            latitude: market.latitude,
-                            longitude: market.longitude,
-                          );
-                        } else {
-                          // Clear location when no market is selected
-                          _locationController.clear();
-                          _selectedPlace = null;
-                        }
+                        // Don't auto-fill location when market is selected
+                        // Let vendors choose their own location
                       });
                     },
                   ),
                 ),
         ),
-        if (_selectedMarket != null) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, 
-                     size: 16, 
-                     color: Colors.orange.shade700),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Your pop-up will be associated with ${_selectedMarket!.name}. Customers browsing this market will see your post.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange.shade700,
-                    ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, 
+                   size: 16, 
+                   color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _selectedMarket != null
+                      ? 'Your pop-up will be associated with ${_selectedMarket!.name} but you can still choose any location.'
+                      : 'You\'re creating an independent pop-up at your chosen location.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue.shade700,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }

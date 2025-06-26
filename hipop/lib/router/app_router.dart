@@ -24,6 +24,7 @@ import '../screens/vendor_management_screen.dart';
 import '../screens/admin_fix_screen.dart';
 import '../screens/market_organizer_signup_screen.dart';
 import '../screens/market_management_screen.dart';
+import '../screens/vendor_application_form.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -160,6 +161,17 @@ class AppRouter {
             ),
           ],
         ),
+        // Public vendor application form - accessible without authentication
+        GoRoute(
+          path: '/apply/:marketId',
+          name: 'vendorApplication',
+          builder: (context, state) {
+            final marketId = state.pathParameters['marketId']!;
+            return VendorApplicationForm(
+              marketId: marketId,
+            );
+          },
+        ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
         final authState = authBloc.state;
@@ -199,10 +211,12 @@ class AppRouter {
           }
         }
         
-        // If unauthenticated and not on auth routes, go to auth landing
+        // If unauthenticated and not on auth routes or public routes, go to auth landing
         if (authState is Unauthenticated) {
-          final authRoutes = ['/auth', '/login', '/signup', '/onboarding'];
-          if (!authRoutes.contains(state.matchedLocation)) {
+          final publicRoutes = ['/auth', '/login', '/signup', '/onboarding'];
+          final isVendorApplication = state.matchedLocation.startsWith('/apply/');
+          
+          if (!publicRoutes.contains(state.matchedLocation) && !isVendorApplication) {
             return '/auth';
           }
         }

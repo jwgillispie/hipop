@@ -5,14 +5,23 @@ import '../blocs/auth/auth_state.dart';
 import '../models/vendor_application.dart';
 import '../models/market.dart';
 import '../services/vendor_application_service.dart';
+import '../services/market_service.dart';
 
 class VendorApplicationForm extends StatefulWidget {
-  final Market market;
+  final String marketId;
+  final Market? market; // For backward compatibility
 
   const VendorApplicationForm({
     super.key,
-    required this.market,
+    required this.marketId,
+    this.market,
   });
+
+  // Backward compatibility constructor
+  VendorApplicationForm.withMarket({
+    super.key,
+    required Market market,
+  }) : marketId = market.id, market = market;
 
   @override
   State<VendorApplicationForm> createState() => _VendorApplicationFormState();
@@ -24,6 +33,8 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
   
   bool _isLoading = false;
   bool _hasApplied = false;
+  Market? _market;
+  bool _loadingMarket = true;
   
   // Form controllers
   final _vendorNameController = TextEditingController();
@@ -64,7 +75,39 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
   @override
   void initState() {
     super.initState();
-    _checkIfAlreadyApplied();
+    _loadMarketData();
+  }
+
+  Future<void> _loadMarketData() async {
+    setState(() => _loadingMarket = true);
+    
+    try {
+      Market? market = widget.market;
+      
+      // If market not provided, load it from the service
+      if (market == null) {
+        market = await MarketService.getMarket(widget.marketId);
+      }
+      
+      setState(() {
+        _market = market;
+        _loadingMarket = false;
+      });
+      
+      if (market != null) {
+        _checkIfAlreadyApplied();
+      }
+    } catch (e) {
+      setState(() => _loadingMarket = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading market data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -83,10 +126,10 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
 
   Future<void> _checkIfAlreadyApplied() async {
     final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
+    if (authState is Authenticated && _market != null) {
       final hasApplied = await VendorApplicationService.hasVendorApplied(
         authState.user.uid,
-        widget.market.id,
+        _market!.id,
       );
       setState(() {
         _hasApplied = hasApplied;
@@ -124,7 +167,7 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
 
       final application = VendorApplication(
         id: '', // Will be set by Firestore
-        marketId: widget.market.id,
+        marketId: _market!.id,
         vendorId: authState.user.uid,
         vendorName: _vendorNameController.text.trim(),
         vendorEmail: _vendorEmailController.text.trim(),
@@ -178,9 +221,35 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadingMarket) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Loading...'),
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_market == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('Market not found'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Apply to ${widget.market.name}'),
+        title: Text('Apply to ${_market!.name}'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -210,7 +279,7 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
             ),
             const SizedBox(height: 16),
             Text(
-              'You have already submitted an application to ${widget.market.name}. '
+              'You have already submitted an application to ${_market!.name}. '
               'The market organizer will review your application and contact you via email.',
               style: Theme.of(context).textTheme.bodyLarge,
               textAlign: TextAlign.center,
@@ -249,7 +318,7 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            widget.market.name,
+                            _market!.name,
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.green.shade700,
@@ -260,15 +329,15 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.market.address,
+                      _market!.address,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.green.shade600,
                       ),
                     ),
-                    if (widget.market.description != null) ...[
+                    if (_market!.description != null) ...[
                       const SizedBox(height: 8),
                       Text(
-                        widget.market.description!,
+                        _market!.description!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.green.shade600,
                         ),
