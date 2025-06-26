@@ -28,6 +28,9 @@ import '../screens/market_management_screen.dart';
 import '../screens/vendor_application_form.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/organizer_calendar_screen.dart';
+import '../screens/shopper_recipes_screen.dart';
+import '../screens/recipe_detail_screen.dart';
+import '../screens/vendor_detail_screen.dart';
 import '../screens/shopper_calendar_screen.dart';
 import '../screens/organizer_onboarding_screen.dart';
 import '../models/market.dart';
@@ -97,6 +100,27 @@ class AppRouter {
               path: 'calendar',
               name: 'shopperCalendar',
               builder: (context, state) => const ShopperCalendarScreen(),
+            ),
+            GoRoute(
+              path: 'recipes',
+              name: 'shopperRecipes',
+              builder: (context, state) => const ShopperRecipesScreen(),
+            ),
+            GoRoute(
+              path: 'recipe-detail/:recipeId',
+              name: 'recipeDetail',
+              builder: (context, state) {
+                final recipeId = state.pathParameters['recipeId']!;
+                return RecipeDetailScreen(recipeId: recipeId);
+              },
+            ),
+            GoRoute(
+              path: 'vendor-detail/:vendorId',
+              name: 'vendorDetail',
+              builder: (context, state) {
+                final vendorId = state.pathParameters['vendorId']!;
+                return VendorDetailScreen(vendorId: vendorId);
+              },
             ),
           ],
         ),
