@@ -22,78 +22,14 @@ class ShopperHome extends StatefulWidget {
 class _ShopperHomeState extends State<ShopperHome> {
   String _searchLocation = '';
   PlaceDetails? _selectedSearchPlace;
-  List<Market> _markets = [];
-  bool _isLoading = false;
+  String _selectedCity = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAllMarkets();
-  }
-
-
-  void _loadAllMarkets() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      // Load from common cities
-      final cities = ['Atlanta', 'Decatur', 'Marietta', 'Sandy Springs', 'Buckhead', 'Tucker'];
-      final Set<Market> allMarkets = {};
-      
-      for (final city in cities) {
-        try {
-          final cityMarkets = await MarketService.getMarketsByCity(city);
-          allMarkets.addAll(cityMarkets);
-        } catch (e) {
-          debugPrint('Error loading markets for $city: $e');
-        }
-      }
-      
-      if (mounted) {
-        setState(() {
-          _markets = allMarkets.toList();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-  
-  void _searchMarketsByLocation(String location) async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      final markets = await MarketService.getMarketsByCity(location);
-      if (mounted) {
-        setState(() {
-          _markets = markets;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-  
   void _clearSearch() {
     setState(() {
       _searchLocation = '';
       _selectedSearchPlace = null;
+      _selectedCity = '';
     });
-    _loadAllMarkets();
   }
   
   void _performPlaceSearch(PlaceDetails? placeDetails) {
@@ -105,13 +41,11 @@ class _ShopperHomeState extends State<ShopperHome> {
     setState(() {
       _searchLocation = placeDetails.formattedAddress;
       _selectedSearchPlace = placeDetails;
+      
+      // Extract city from place details for market search
+      final locationParts = placeDetails.formattedAddress.split(',');
+      _selectedCity = locationParts.length > 1 ? locationParts[1].trim() : locationParts[0];
     });
-    
-    // Extract city from place details for market search
-    final locationParts = placeDetails.formattedAddress.split(',');
-    final city = locationParts.length > 1 ? locationParts[1].trim() : locationParts[0];
-    
-    _searchMarketsByLocation(city);
   }
 
   @override
@@ -168,6 +102,11 @@ class _ShopperHomeState extends State<ShopperHome> {
                     ],
                   );
                 },
+              ),
+              IconButton(
+                onPressed: () => context.pushNamed('shopperRecipes'),
+                icon: const Icon(Icons.restaurant_menu),
+                tooltip: 'Recipes',
               ),
               IconButton(
                 onPressed: () => context.pushNamed('shopperCalendar'),
@@ -268,31 +207,17 @@ class _ShopperHomeState extends State<ShopperHome> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _searchLocation.isEmpty 
-                          ? 'All Markets' 
-                          : 'Markets in $_searchLocation',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (_markets.isNotEmpty)
-                      Text(
-                        '${_markets.length} found',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                  ],
+                Text(
+                  _searchLocation.isEmpty 
+                    ? 'All Markets' 
+                    : 'Markets in $_searchLocation',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
-                _buildMarketsList(),
+                _buildMarketsStream(),
               ],
             ),
           ),
@@ -301,22 +226,67 @@ class _ShopperHomeState extends State<ShopperHome> {
     );
   }
 
-  Widget _buildMarketsList() {
-    if (_isLoading) {
-      return const LoadingWidget(message: 'Loading markets...');
-    }
+  Widget _buildMarketsStream() {
+    return StreamBuilder<List<Market>>(
+      stream: _selectedCity.isEmpty 
+          ? MarketService.getAllActiveMarketsStream()
+          : MarketService.getMarketsByCityStream(_selectedCity),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Loading markets...');
+        }
 
-    if (_markets.isEmpty) {
-      return _buildNoResultsMessage();
-    }
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 64, color: Colors.red[300]),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading markets',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  snapshot.error.toString(),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _markets.length,
-      itemBuilder: (context, index) {
-        final market = _markets[index];
-        return _buildMarketCard(market);
+        final markets = snapshot.data ?? [];
+
+        if (markets.isEmpty) {
+          return _buildNoResultsMessage();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${markets.length} found',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: markets.length,
+              itemBuilder: (context, index) {
+                final market = markets[index];
+                return _buildMarketCard(market);
+              },
+            ),
+          ],
+        );
       },
     );
   }

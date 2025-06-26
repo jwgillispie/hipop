@@ -5,6 +5,7 @@ import '../services/market_service.dart';
 import '../services/user_profile_service.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
+import '../blocs/auth/auth_event.dart';
 import '../widgets/market_form_dialog.dart';
 
 class MarketManagementScreen extends StatefulWidget {
@@ -104,8 +105,10 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
 
     if (result != null) {
       await _associateMarketWithUser(result.id);
-      _loadMarkets();
+      // Wait a bit for the AuthBloc to update, then reload markets
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
+        _loadMarkets();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${result.name} created successfully!'),
@@ -123,6 +126,11 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
         final userProfileService = UserProfileService();
         final updatedProfile = authState.userProfile!.addManagedMarket(marketId);
         await userProfileService.updateUserProfile(updatedProfile);
+        
+        // Refresh the AuthBloc to get updated user profile
+        if (mounted) {
+          context.read<AuthBloc>().add(ReloadUserEvent());
+        }
       }
     } catch (e) {
       debugPrint('Error associating market with user: $e');

@@ -24,7 +24,11 @@ class MarketService {
     try {
       final doc = await _marketsCollection.doc(marketId).get();
       if (doc.exists) {
-        return Market.fromFirestore(doc);
+        final market = Market.fromFirestore(doc);
+        // Only return active markets
+        if (market.isActive) {
+          return market;
+        }
       }
       return null;
     } catch (e) {
@@ -138,6 +142,42 @@ class MarketService {
     } catch (e) {
       throw Exception('Failed to get all markets: $e');
     }
+  }
+
+  // Stream-based methods for real-time updates
+  static Stream<List<Market>> getAllActiveMarketsStream() {
+    return _marketsCollection
+        .where('isActive', isEqualTo: true)
+        .orderBy('city')
+        .orderBy('name')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Market.fromFirestore(doc))
+            .toList());
+  }
+
+  static Stream<List<Market>> getMarketsByCityStream(String city) {
+    return _marketsCollection
+        .where('city', isEqualTo: city)
+        .where('isActive', isEqualTo: true)
+        .orderBy('name')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Market.fromFirestore(doc))
+            .toList());
+  }
+
+  static Stream<List<Market>> getMarketsByIdsStream(List<String> marketIds) {
+    if (marketIds.isEmpty) {
+      return Stream.value([]);
+    }
+    
+    return _marketsCollection
+        .where(FieldPath.documentId, whereIn: marketIds)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Market.fromFirestore(doc))
+            .toList());
   }
 
   static Future<void> updateMarket(String marketId, Map<String, dynamic> updates) async {
