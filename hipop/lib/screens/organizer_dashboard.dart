@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
-import '../widgets/common/settings_dropdown.dart';
 import '../services/analytics_service.dart';
+import '../services/onboarding_service.dart';
+import '../blocs/auth/auth_event.dart';
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -22,6 +24,33 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
   void initState() {
     super.initState();
     _loadMetrics();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      
+      // Only check onboarding for authenticated market organizers
+      if (authState is! Authenticated || authState.userType != 'market_organizer') {
+        return;
+      }
+      
+      final isCompleted = await OnboardingService.isOrganizerOnboardingComplete();
+      debugPrint('Organizer onboarding completed: $isCompleted');
+      
+      if (!isCompleted && mounted) {
+        debugPrint('Showing organizer onboarding');
+        // Show onboarding after a short delay to let the dashboard load
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            context.pushNamed('organizerOnboarding');
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking onboarding: $e');
+    }
   }
 
   Future<void> _loadMetrics() async {
@@ -54,7 +83,85 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,
             actions: [
-              const SettingsDropdown(),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.settings),
+                tooltip: 'Settings',
+                onSelected: (String value) {
+                  switch (value) {
+                    case 'onboarding':
+                      context.pushNamed('organizerOnboarding');
+                      break;
+                    case 'reset-onboarding':
+                      _resetOnboarding();
+                      break;
+                    case 'profile':
+                      context.pushNamed('organizerProfile');
+                      break;
+                    case 'change-password':
+                      context.pushNamed('organizerChangePassword');
+                      break;
+                    case 'logout':
+                      context.read<AuthBloc>().add(LogoutEvent());
+                      break;
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem<String>(
+                    value: 'onboarding',
+                    child: Row(
+                      children: [
+                        Icon(Icons.help_outline, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('View Tutorial'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_outline, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Text('Profile'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'change-password',
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_outline, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Text('Change Password'),
+                      ],
+                    ),
+                  ),
+                  if (kDebugMode) ...[
+                    const PopupMenuItem<String>(
+                      value: 'reset-onboarding',
+                      child: Row(
+                        children: [
+                          Icon(Icons.refresh, color: Colors.orange),
+                          SizedBox(width: 12),
+                          Text('Reset Tutorial'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                  ],
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.grey),
+                        SizedBox(width: 12),
+                        Text('Sign Out'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           body: SingleChildScrollView(
@@ -182,12 +289,20 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       () => context.pushNamed('analytics'),
                     ),
                     _buildActionCard(
-                      'Fix Market Association',
-                      'Run if vendor/event management shows errors',
-                      Icons.build_circle,
-                      Colors.orange,
-                      () => context.pushNamed('adminFix'),
+                      'Market Calendar',
+                      'View market schedules',
+                      Icons.calendar_today,
+                      Colors.teal,
+                      () => context.pushNamed('organizerCalendar'),
                     ),
+                    if (kDebugMode)
+                      _buildActionCard(
+                        'Fix Market Association',
+                        'Run if vendor/event management shows errors',
+                        Icons.build_circle,
+                        Colors.orange,
+                        () => context.pushNamed('adminFix'),
+                      ),
                   ],
                 ),
               ],
@@ -271,8 +386,8 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
       );
     }
 
-    final vendorMetrics = _realTimeMetrics!['vendors'] as Map<String, dynamic>? ?? {};
-    final recipeMetrics = _realTimeMetrics!['recipes'] as Map<String, dynamic>? ?? {};
+    final vendorMetrics = (_realTimeMetrics!['vendors'] as Map<String, dynamic>?) ?? {};
+    final recipeMetrics = (_realTimeMetrics!['recipes'] as Map<String, dynamic>?) ?? {};
 
     return Column(
       children: [
@@ -358,6 +473,18 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
         ),
       ),
     );
+  }
+
+  Future<void> _resetOnboarding() async {
+    await OnboardingService.resetOrganizerOnboarding();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tutorial reset! It will show again next time you open the dashboard.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 
   Widget _buildActionCard(

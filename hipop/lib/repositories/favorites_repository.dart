@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class FavoritesRepository {
   static const String _favoriteVendorsKey = 'favorite_vendors';
   static const String _favoritePostsKey = 'favorite_posts';
+  static const String _favoriteMarketsKey = 'favorite_markets';
 
   // Favorite vendor posts
   Future<List<String>> getFavoritePostIds() async {
@@ -60,17 +61,47 @@ class FavoritesRepository {
     return favorites.contains(vendorId);
   }
 
+  // Favorite markets
+  Future<List<String>> getFavoriteMarketIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favoritesJson = prefs.getStringList(_favoriteMarketsKey) ?? [];
+    return favoritesJson;
+  }
+
+  Future<void> addFavoriteMarket(String marketId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = await getFavoriteMarketIds();
+    if (!favorites.contains(marketId)) {
+      favorites.add(marketId);
+      await prefs.setStringList(_favoriteMarketsKey, favorites);
+    }
+  }
+
+  Future<void> removeFavoriteMarket(String marketId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = await getFavoriteMarketIds();
+    favorites.remove(marketId);
+    await prefs.setStringList(_favoriteMarketsKey, favorites);
+  }
+
+  Future<bool> isMarketFavorite(String marketId) async {
+    final favorites = await getFavoriteMarketIds();
+    return favorites.contains(marketId);
+  }
+
   // Clear all favorites (useful for logout)
   Future<void> clearAllFavorites() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_favoritePostsKey);
     await prefs.remove(_favoriteVendorsKey);
+    await prefs.remove(_favoriteMarketsKey);
   }
 
   // Get favorites count
   Future<int> getFavoritesCount() async {
     final posts = await getFavoritePostIds();
     final vendors = await getFavoriteVendorIds();
-    return posts.length + vendors.length;
+    final markets = await getFavoriteMarketIds();
+    return posts.length + vendors.length + markets.length;
   }
 }

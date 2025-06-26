@@ -327,7 +327,7 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
   }
 
   Widget _buildVendorAnalytics() {
-    final vendorMetrics = _realTimeMetrics!['vendors'] as Map<String, dynamic>;
+    final vendorMetrics = (_realTimeMetrics!['vendors'] as Map<String, dynamic>?) ?? {};
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,7 +384,7 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
   }
 
   Widget _buildEventAnalytics() {
-    final eventMetrics = _realTimeMetrics!['events'] as Map<String, dynamic>;
+    final eventMetrics = (_realTimeMetrics!['events'] as Map<String, dynamic>?) ?? {};
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +441,7 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
   }
 
   Widget _buildRecipeAnalytics() {
-    final recipeMetrics = _realTimeMetrics!['recipes'] as Map<String, dynamic>;
+    final recipeMetrics = (_realTimeMetrics!['recipes'] as Map<String, dynamic>?) ?? {};
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

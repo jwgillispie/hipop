@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +26,10 @@ import '../screens/admin_fix_screen.dart';
 import '../screens/market_organizer_signup_screen.dart';
 import '../screens/market_management_screen.dart';
 import '../screens/vendor_application_form.dart';
+import '../screens/favorites_screen.dart';
+import '../screens/organizer_calendar_screen.dart';
+import '../screens/shopper_calendar_screen.dart';
+import '../screens/organizer_onboarding_screen.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -82,6 +87,16 @@ class AppRouter {
                 final vendorPost = state.extra as VendorPost;
                 return VendorPostDetailScreen(vendorPost: vendorPost);
               },
+            ),
+            GoRoute(
+              path: 'favorites',
+              name: 'favorites',
+              builder: (context, state) => const FavoritesScreen(),
+            ),
+            GoRoute(
+              path: 'calendar',
+              name: 'shopperCalendar',
+              builder: (context, state) => const ShopperCalendarScreen(),
             ),
           ],
         ),
@@ -155,10 +170,21 @@ class AppRouter {
               builder: (context, state) => const ChangePasswordScreen(),
             ),
             GoRoute(
-              path: 'admin-fix',
-              name: 'adminFix',
-              builder: (context, state) => const AdminFixScreen(),
+              path: 'calendar',
+              name: 'organizerCalendar',
+              builder: (context, state) => const OrganizerCalendarScreen(),
             ),
+            GoRoute(
+              path: 'onboarding',
+              name: 'organizerOnboarding',
+              builder: (context, state) => const OrganizerOnboardingScreen(),
+            ),
+            if (kDebugMode)
+              GoRoute(
+                path: 'admin-fix',
+                name: 'adminFix',
+                builder: (context, state) => const AdminFixScreen(),
+              ),
           ],
         ),
         // Public vendor application form - accessible without authentication
@@ -190,10 +216,19 @@ class AppRouter {
             }
           }
           
-          // Skip onboarding for vendors and organizers - they go straight to dashboard
-          if ((authState.userType == 'vendor' || authState.userType == 'market_organizer') && 
+          // Skip onboarding for vendors, organizers, and shoppers - they go straight to dashboard
+          if ((authState.userType == 'vendor' || authState.userType == 'market_organizer' || authState.userType == 'shopper') && 
               state.matchedLocation == '/onboarding') {
-            return authState.userType == 'vendor' ? '/vendor' : '/organizer';
+            switch (authState.userType) {
+              case 'vendor':
+                return '/vendor';
+              case 'market_organizer':
+                return '/organizer';
+              case 'shopper':
+                return '/shopper';
+              default:
+                return '/shopper';
+            }
           }
           
           // Prevent wrong user type from accessing wrong routes

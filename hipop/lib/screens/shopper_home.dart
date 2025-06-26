@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
+import '../blocs/favorites/favorites_bloc.dart';
 import '../widgets/common/simple_places_widget.dart';
 import '../services/places_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/settings_dropdown.dart';
+import '../widgets/common/favorite_button.dart';
 import '../services/market_service.dart';
 import '../models/market.dart';
 
@@ -29,6 +31,7 @@ class _ShopperHomeState extends State<ShopperHome> {
     _loadAllMarkets();
   }
 
+
   void _loadAllMarkets() async {
     setState(() {
       _isLoading = true;
@@ -36,7 +39,7 @@ class _ShopperHomeState extends State<ShopperHome> {
     
     try {
       // Load from common cities
-      final cities = ['Atlanta', 'Decatur', 'Marietta', 'Sandy Springs', 'Buckhead'];
+      final cities = ['Atlanta', 'Decatur', 'Marietta', 'Sandy Springs', 'Buckhead', 'Tucker'];
       final Set<Market> allMarkets = {};
       
       for (final city in cities) {
@@ -127,6 +130,50 @@ class _ShopperHomeState extends State<ShopperHome> {
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
             actions: [
+              BlocBuilder<FavoritesBloc, FavoritesState>(
+                builder: (context, favoritesState) {
+                  final totalFavorites = favoritesState.totalFavorites;
+                  return Stack(
+                    children: [
+                      IconButton(
+                        onPressed: () => context.pushNamed('favorites'),
+                        icon: const Icon(Icons.favorite),
+                        tooltip: 'My Favorites',
+                      ),
+                      if (totalFavorites > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '$totalFavorites',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              IconButton(
+                onPressed: () => context.pushNamed('shopperCalendar'),
+                icon: const Icon(Icons.calendar_today),
+                tooltip: 'Market Calendar',
+              ),
               const SettingsDropdown(),
             ],
           ),
@@ -147,7 +194,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                               backgroundColor: Colors.orange,
                               child: Icon(Icons.shopping_bag, color: Colors.white),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -156,7 +203,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                                   style: Theme.of(context).textTheme.titleMedium,
                                 ),
                                 Text(
-                                  'Discover farmers markets and vendors near you',
+                                  'Discover markets and vendors near you',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Colors.grey[600],
                                   ),
@@ -322,6 +369,11 @@ class _ShopperHomeState extends State<ShopperHome> {
                         ),
                       ],
                     ),
+                  ),
+                  FavoriteButton(
+                    itemId: market.id,
+                    type: FavoriteType.market,
+                    size: 20,
                   ),
                 ],
               ),

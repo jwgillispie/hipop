@@ -15,6 +15,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     on<LoadFavorites>(_onLoadFavorites);
     on<TogglePostFavorite>(_onTogglePostFavorite);
     on<ToggleVendorFavorite>(_onToggleVendorFavorite);
+    on<ToggleMarketFavorite>(_onToggleMarketFavorite);
     on<ClearAllFavorites>(_onClearAllFavorites);
   }
 
@@ -27,11 +28,13 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final favoritePostIds = await _favoritesRepository.getFavoritePostIds();
       final favoriteVendorIds = await _favoritesRepository.getFavoriteVendorIds();
+      final favoriteMarketIds = await _favoritesRepository.getFavoriteMarketIds();
       
       emit(state.copyWith(
         status: FavoritesStatus.loaded,
         favoritePostIds: favoritePostIds,
         favoriteVendorIds: favoriteVendorIds,
+        favoriteMarketIds: favoriteMarketIds,
       ));
     } catch (error) {
       emit(state.copyWith(
@@ -89,6 +92,30 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     }
   }
 
+  Future<void> _onToggleMarketFavorite(
+    ToggleMarketFavorite event,
+    Emitter<FavoritesState> emit,
+  ) async {
+    try {
+      final updatedFavoriteMarketIds = List<String>.from(state.favoriteMarketIds);
+      
+      if (updatedFavoriteMarketIds.contains(event.marketId)) {
+        await _favoritesRepository.removeFavoriteMarket(event.marketId);
+        updatedFavoriteMarketIds.remove(event.marketId);
+      } else {
+        await _favoritesRepository.addFavoriteMarket(event.marketId);
+        updatedFavoriteMarketIds.add(event.marketId);
+      }
+      
+      emit(state.copyWith(favoriteMarketIds: updatedFavoriteMarketIds));
+    } catch (error) {
+      emit(state.copyWith(
+        status: FavoritesStatus.error,
+        errorMessage: error.toString(),
+      ));
+    }
+  }
+
   Future<void> _onClearAllFavorites(
     ClearAllFavorites event,
     Emitter<FavoritesState> emit,
@@ -98,6 +125,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
       emit(state.copyWith(
         favoritePostIds: [],
         favoriteVendorIds: [],
+        favoriteMarketIds: [],
       ));
     } catch (error) {
       emit(state.copyWith(

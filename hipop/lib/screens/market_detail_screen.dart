@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../models/market.dart';
 import '../models/managed_vendor.dart';
 import '../services/managed_vendor_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
+import '../widgets/common/favorite_button.dart';
+import '../blocs/favorites/favorites_bloc.dart';
 
 class MarketDetailScreen extends StatefulWidget {
   final Market market;
@@ -40,6 +44,53 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         title: Text(widget.market.name),
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
+        actions: [
+          BlocBuilder<FavoritesBloc, FavoritesState>(
+            builder: (context, favoritesState) {
+              final totalFavorites = favoritesState.totalFavorites;
+              return Stack(
+                children: [
+                  IconButton(
+                    onPressed: () => context.pushNamed('favorites'),
+                    icon: const Icon(Icons.favorite_border),
+                    tooltip: 'My Favorites',
+                  ),
+                  if (totalFavorites > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$totalFavorites',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          FavoriteButton(
+            itemId: widget.market.id,
+            type: FavoriteType.market,
+            favoriteColor: Colors.white,
+            unfavoriteColor: Colors.white70,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
@@ -369,6 +420,11 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                       ),
                     ],
                   ),
+                ),
+                FavoriteButton(
+                  itemId: vendor.id,
+                  type: FavoriteType.vendor,
+                  size: 20,
                 ),
                 if (vendor.isFeatured)
                   Container(

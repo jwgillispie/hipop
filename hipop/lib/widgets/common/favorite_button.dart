@@ -2,36 +2,69 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/favorites/favorites_bloc.dart';
 
+enum FavoriteType { post, vendor, market }
+
 class FavoriteButton extends StatelessWidget {
-  final String postId;
-  final String? vendorId;
+  final String itemId; // Can be postId, vendorId, or marketId
+  final FavoriteType type;
   final double size;
   final Color? favoriteColor;
   final Color? unfavoriteColor;
   final bool showBackground;
+  final bool showLabel;
 
   const FavoriteButton({
     super.key,
-    required this.postId,
-    this.vendorId,
+    required this.itemId,
+    required this.type,
     this.size = 24,
     this.favoriteColor,
     this.unfavoriteColor,
     this.showBackground = false,
+    this.showLabel = false,
   });
+
+  // Legacy constructor for backward compatibility
+  const FavoriteButton.post({
+    super.key,
+    required String postId,
+    String? vendorId,
+    this.size = 24,
+    this.favoriteColor,
+    this.unfavoriteColor,
+    this.showBackground = false,
+    this.showLabel = false,
+  }) : itemId = postId, type = FavoriteType.post;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<FavoritesBloc, FavoritesState>(
       builder: (context, state) {
-        final isPostFavorite = state.isPostFavorite(postId);
-        final isVendorFavorite = vendorId != null ? state.isVendorFavorite(vendorId!) : false;
+        bool isFavorited;
+        switch (type) {
+          case FavoriteType.post:
+            isFavorited = state.isPostFavorite(itemId);
+            break;
+          case FavoriteType.vendor:
+            isFavorited = state.isVendorFavorite(itemId);
+            break;
+          case FavoriteType.market:
+            isFavorited = state.isMarketFavorite(itemId);
+            break;
+        }
         
         return GestureDetector(
           onTap: () {
-            context.read<FavoritesBloc>().add(TogglePostFavorite(postId: postId));
-            if (vendorId != null) {
-              context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: vendorId!));
+            switch (type) {
+              case FavoriteType.post:
+                context.read<FavoritesBloc>().add(TogglePostFavorite(postId: itemId));
+                break;
+              case FavoriteType.vendor:
+                context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: itemId));
+                break;
+              case FavoriteType.market:
+                context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: itemId));
+                break;
             }
           },
           child: Container(
@@ -49,13 +82,36 @@ class FavoriteButton extends StatelessWidget {
                     ],
                   )
                 : null,
-            child: Icon(
-              isPostFavorite ? Icons.favorite : Icons.favorite_border,
-              size: size,
-              color: isPostFavorite
-                  ? (favoriteColor ?? Colors.red)
-                  : (unfavoriteColor ?? Colors.grey[600]),
-            ),
+            child: showLabel 
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isFavorited ? Icons.favorite : Icons.favorite_border,
+                        size: size,
+                        color: isFavorited
+                            ? (favoriteColor ?? Colors.red)
+                            : (unfavoriteColor ?? Colors.grey[600]),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isFavorited ? 'Favorited' : 'Add to Favorites',
+                        style: TextStyle(
+                          color: isFavorited 
+                              ? (favoriteColor ?? Colors.red)
+                              : (unfavoriteColor ?? Colors.grey[600]),
+                          fontWeight: isFavorited ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  )
+                : Icon(
+                    isFavorited ? Icons.favorite : Icons.favorite_border,
+                    size: size,
+                    color: isFavorited
+                        ? (favoriteColor ?? Colors.red)
+                        : (unfavoriteColor ?? Colors.grey[600]),
+                  ),
           ),
         );
       },
@@ -64,20 +120,30 @@ class FavoriteButton extends StatelessWidget {
 }
 
 class AnimatedFavoriteButton extends StatefulWidget {
-  final String postId;
-  final String? vendorId;
+  final String itemId;
+  final FavoriteType type;
   final double size;
   final Color? favoriteColor;
   final Color? unfavoriteColor;
 
   const AnimatedFavoriteButton({
     super.key,
-    required this.postId,
-    this.vendorId,
+    required this.itemId,
+    required this.type,
     this.size = 24,
     this.favoriteColor,
     this.unfavoriteColor,
   });
+
+  // Legacy constructor for backward compatibility
+  const AnimatedFavoriteButton.post({
+    super.key,
+    required String postId,
+    String? vendorId,
+    this.size = 24,
+    this.favoriteColor,
+    this.unfavoriteColor,
+  }) : itemId = postId, type = FavoriteType.post;
 
   @override
   State<AnimatedFavoriteButton> createState() => _AnimatedFavoriteButtonState();
@@ -115,9 +181,16 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
       _animationController.reverse();
     });
     
-    context.read<FavoritesBloc>().add(TogglePostFavorite(postId: widget.postId));
-    if (widget.vendorId != null) {
-      context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: widget.vendorId!));
+    switch (widget.type) {
+      case FavoriteType.post:
+        context.read<FavoritesBloc>().add(TogglePostFavorite(postId: widget.itemId));
+        break;
+      case FavoriteType.vendor:
+        context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: widget.itemId));
+        break;
+      case FavoriteType.market:
+        context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: widget.itemId));
+        break;
     }
   }
 
@@ -125,7 +198,18 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
   Widget build(BuildContext context) {
     return BlocBuilder<FavoritesBloc, FavoritesState>(
       builder: (context, state) {
-        final isPostFavorite = state.isPostFavorite(widget.postId);
+        bool isFavorited;
+        switch (widget.type) {
+          case FavoriteType.post:
+            isFavorited = state.isPostFavorite(widget.itemId);
+            break;
+          case FavoriteType.vendor:
+            isFavorited = state.isVendorFavorite(widget.itemId);
+            break;
+          case FavoriteType.market:
+            isFavorited = state.isMarketFavorite(widget.itemId);
+            break;
+        }
         
         return GestureDetector(
           onTap: _onTap,
@@ -135,9 +219,9 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
               return Transform.scale(
                 scale: _scaleAnimation.value,
                 child: Icon(
-                  isPostFavorite ? Icons.favorite : Icons.favorite_border,
+                  isFavorited ? Icons.favorite : Icons.favorite_border,
                   size: widget.size,
-                  color: isPostFavorite
+                  color: isFavorited
                       ? (widget.favoriteColor ?? Colors.red)
                       : (widget.unfavoriteColor ?? Colors.grey[600]),
                 ),

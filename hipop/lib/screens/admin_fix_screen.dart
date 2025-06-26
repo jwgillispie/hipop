@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/user_profile_service.dart';
 import '../services/market_service.dart';
+import '../services/managed_vendor_service.dart';
 import '../models/market.dart';
+import '../models/managed_vendor.dart';
 
 class AdminFixScreen extends StatefulWidget {
   const AdminFixScreen({super.key});
@@ -17,6 +20,50 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Only show this screen in debug mode
+    if (!kDebugMode) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Not Available'),
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.block,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Admin Features Unavailable',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'This screen is only available in debug mode.',
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Fix'),
@@ -96,6 +143,16 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               child: const Text('Create Tucker\'s Farmers Market'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _createAfterDarkBazaar,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Create After Dark Bazaar'),
             ),
             const SizedBox(height: 24),
             if (_result.isNotEmpty) ...[
@@ -221,6 +278,9 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
       // Add to database
       final marketId = await MarketService.createMarket(tuckersMarket);
       
+      // Add sample vendors to make the market visible to shoppers
+      await _addSampleVendors(marketId);
+      
       String resultText = '🌟 TUCKER\'S FARMERS MARKET CREATED!\n\n';
       resultText += '📍 Market ID: $marketId\n';
       resultText += '📋 Name: ${tuckersMarket.name}\n';
@@ -229,7 +289,10 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
       
       resultText += '🔗 SHAREABLE LINKS:\n';
       resultText += '• Production: https://hipop.app/apply/$marketId\n';
-      resultText += '• Test: hipop://apply/$marketId\n\n';
+      if (kDebugMode) {
+        resultText += '• Test: hipop://apply/$marketId\n';
+      }
+      resultText += '\n';
       
       resultText += '🎯 DEMO READY!\n';
       resultText += 'Use this market for your Tucker\'s Farmers Market demo.\n';
@@ -259,6 +322,271 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _createAfterDarkBazaar() async {
+    setState(() {
+      _isLoading = true;
+      _result = '';
+    });
+
+    try {
+      // Create After Dark Bazaar market
+      final afterDarkMarket = Market(
+        id: '', // Will be auto-generated
+        name: 'After Dark Bazaar',
+        address: '112 Krog Street NE, Atlanta, GA 30307',
+        city: 'Atlanta',
+        state: 'GA',
+        latitude: 33.7557,  // Krog District coordinates
+        longitude: -84.3640,
+        description: 'Evening market featuring local artisans, vintage finds, and live music in the heart of Krog District. A unique nighttime shopping experience with handmade goods and creative vibes.',
+        operatingDays: const {
+          'friday': '6:00 PM - 10:00 PM',
+        },
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+
+      // Add to database
+      final marketId = await MarketService.createMarket(afterDarkMarket);
+      
+      // Add sample vendors for the June 13th event
+      await _addAfterDarkVendors(marketId);
+      
+      String resultText = '🌙 AFTER DARK BAZAAR CREATED!\\n\\n';
+      resultText += '📍 Market ID: $marketId\\n';
+      resultText += '📋 Name: ${afterDarkMarket.name}\\n';
+      resultText += '🏠 Address: ${afterDarkMarket.address}\\n';
+      resultText += '⏰ Hours: Friday 6PM-10PM\\n\\n';
+      
+      resultText += '🔗 SHAREABLE LINKS:\\n';
+      resultText += '• Production: https://hipop.app/apply/$marketId\\n';
+      if (kDebugMode) {
+        resultText += '• Test: hipop://apply/$marketId\\n';
+      }
+      resultText += '\\n';
+      
+      resultText += '🎵 DEMO READY!\\n';
+      resultText += 'Evening market with live music and local artisans.\\n';
+      resultText += 'Perfect for showcasing unique vendor applications.\\n';
+      resultText += 'Features vintage, crafts, and artisanal vendors.\\n\\n';
+      
+      resultText += '📱 NEXT STEPS:\\n';
+      resultText += '1. Go to Vendor Applications screen\\n';
+      resultText += '2. Click "Share Application Link"\\n';
+      resultText += '3. Show how evening markets work\\n';
+      resultText += '4. Demo the nighttime vendor vibe!';
+      
+      setState(() {
+        _result = resultText;
+      });
+
+    } catch (e) {
+      setState(() {
+        _result = '❌ Error creating After Dark Bazaar:\\n\\n$e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addSampleVendors(String marketId) async {
+    try {
+      // Create realistic sample vendors for Tucker's Farmers Market
+      final sampleVendors = [
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Tucker Valley Farm',
+          contactName: 'Sarah Johnson',
+          description: 'Family-owned organic farm specializing in seasonal vegetables, herbs, and fresh eggs. We\'ve been serving the Tucker community for over 15 years with the freshest, locally-grown produce.',
+          categories: [VendorCategory.produce, VendorCategory.spices],
+          email: 'sarah@tuckervalleyfarm.com',
+          phoneNumber: '+1-770-555-0123',
+          products: ['Organic Tomatoes', 'Fresh Lettuce', 'Seasonal Herbs', 'Farm Eggs', 'Zucchini'],
+          isActive: true,
+          isFeatured: true,
+          operatingDays: ['saturday', 'sunday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Artisan Bread Co.',
+          contactName: 'Michael Chen',
+          description: 'Traditional European-style bakery creating handcrafted breads, pastries, and seasonal treats using only natural ingredients and time-honored techniques.',
+          categories: [VendorCategory.bakery, VendorCategory.prepared_foods],
+          email: 'mike@artisanbreadco.com',
+          phoneNumber: '+1-770-555-0456',
+          website: 'www.artisanbreadco.com',
+          instagramHandle: 'artisanbreadco',
+          products: ['Sourdough Bread', 'Croissants', 'Seasonal Pastries', 'Gluten-Free Options'],
+          isActive: true,
+          isFeatured: false,
+          operatingDays: ['saturday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Georgia Honey House',
+          contactName: 'Emma Williams',
+          description: 'Local beekeepers producing pure, raw honey and natural bee products from our Tucker-area apiaries. Taste the difference that local flowers make!',
+          categories: [VendorCategory.honey, VendorCategory.preserves],
+          email: 'emma@georgiahoney.com',
+          phoneNumber: '+1-770-555-0789',
+          products: ['Wildflower Honey', 'Clover Honey', 'Beeswax Candles', 'Honey Soap'],
+          isActive: true,
+          isFeatured: true,
+          operatingDays: ['saturday', 'sunday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Tucker Craft Works',
+          contactName: 'David Rodriguez',
+          description: 'Handmade pottery, jewelry, and home decor items crafted by local Tucker artisans. Each piece is unique and made with love for your home.',
+          categories: [VendorCategory.crafts, VendorCategory.art, VendorCategory.jewelry],
+          email: 'david@tuckercrafts.com',
+          instagramHandle: 'tuckercraftworks',
+          products: ['Handmade Pottery', 'Silver Jewelry', 'Wooden Bowls', 'Canvas Art'],
+          isActive: true,
+          isFeatured: false,
+          operatingDays: ['saturday', 'sunday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+
+      // Add each vendor to the database
+      for (final vendor in sampleVendors) {
+        await ManagedVendorService.createVendor(vendor);
+      }
+
+      debugPrint('Added ${sampleVendors.length} sample vendors to Tucker\'s market');
+    } catch (e) {
+      debugPrint('Error adding sample vendors: $e');
+      // Don't throw - we still want the market creation to succeed
+    }
+  }
+
+  Future<void> _addAfterDarkVendors(String marketId) async {
+    try {
+      // Create vendors for After Dark Bazaar - June 13th event
+      final afterDarkVendors = [
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Vintage Vibes ATL',
+          contactName: 'Maya Thompson',
+          description: 'Curated vintage clothing and accessories from the 70s through 90s. Each piece has been carefully selected for quality and style.',
+          categories: [VendorCategory.clothing],
+          email: 'maya@vintagevibesatl.com',
+          phoneNumber: '+1-404-555-0234',
+          instagramHandle: 'vintagevibesatl',
+          products: ['Vintage Denim', 'Band T-Shirts', 'Retro Accessories', 'Leather Jackets'],
+          isActive: true,
+          isFeatured: true,
+          operatingDays: ['friday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Midnight Metals',
+          contactName: 'Alex Rivera',
+          description: 'Handcrafted silver jewelry with gothic and bohemian influences. Each piece tells a story and captures the night market energy.',
+          categories: [VendorCategory.jewelry],
+          email: 'alex@midnightmetals.com',
+          phoneNumber: '+1-404-555-0567',
+          instagramHandle: 'midnightmetals',
+          products: ['Silver Rings', 'Statement Necklaces', 'Ear Cuffs', 'Custom Pieces'],
+          isActive: true,
+          isFeatured: false,
+          operatingDays: ['friday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Krog Creations',
+          contactName: 'Sam Chen',
+          description: 'Local artist creating canvas prints inspired by Atlanta street art and pottery pieces perfect for urban living.',
+          categories: [VendorCategory.art, VendorCategory.crafts],
+          email: 'sam@krogcreations.com',
+          phoneNumber: '+1-404-555-0890',
+          instagramHandle: 'krogcreations',
+          website: 'www.krogcreations.com',
+          products: ['Canvas Prints', 'Ceramic Mugs', 'Plant Pots', 'Original Paintings'],
+          isActive: true,
+          isFeatured: true,
+          operatingDays: ['friday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Craft & Draft',
+          contactName: 'Jordan Williams',
+          description: 'Small-batch kombucha and artisanal beverages brewed locally. Perfect for sipping while browsing the night market.',
+          categories: [VendorCategory.beverages],
+          email: 'jordan@craftanddraft.com',
+          phoneNumber: '+1-404-555-1234',
+          instagramHandle: 'craftanddraft',
+          products: ['Ginger Kombucha', 'Hibiscus Tea', 'Cold Brew Coffee', 'Fruit Shrubs'],
+          isActive: true,
+          isFeatured: false,
+          operatingDays: ['friday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        ManagedVendor(
+          id: '',
+          marketId: marketId,
+          organizerId: 'demo-organizer',
+          businessName: 'Night Market Eats',
+          contactName: 'Priya Patel',
+          description: 'Gourmet snacks and treats made for evening adventures. Sweet and savory options to fuel your night market browsing.',
+          categories: [VendorCategory.prepared_foods],
+          email: 'priya@nightmarketeats.com',
+          phoneNumber: '+1-404-555-5678',
+          products: ['Spiced Nuts', 'Dark Chocolate Truffles', 'Savory Hand Pies', 'Herbal Energy Bites'],
+          isActive: true,
+          isFeatured: false,
+          operatingDays: ['friday'],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+
+      // Add each vendor to the database
+      for (final vendor in afterDarkVendors) {
+        await ManagedVendorService.createVendor(vendor);
+      }
+
+      debugPrint('Added ${afterDarkVendors.length} vendors to After Dark Bazaar');
+    } catch (e) {
+      debugPrint('Error adding After Dark vendors: $e');
+      // Don't throw - we still want the market creation to succeed
     }
   }
 }

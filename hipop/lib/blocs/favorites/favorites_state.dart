@@ -6,12 +6,14 @@ class FavoritesState extends Equatable {
   final FavoritesStatus status;
   final List<String> favoritePostIds;
   final List<String> favoriteVendorIds;
+  final List<String> favoriteMarketIds;
   final String? errorMessage;
 
   const FavoritesState({
     this.status = FavoritesStatus.loaded,
     this.favoritePostIds = const [],
     this.favoriteVendorIds = const [],
+    this.favoriteMarketIds = const [],
     this.errorMessage,
   });
 
@@ -19,12 +21,14 @@ class FavoritesState extends Equatable {
     FavoritesStatus? status,
     List<String>? favoritePostIds,
     List<String>? favoriteVendorIds,
+    List<String>? favoriteMarketIds,
     String? errorMessage,
   }) {
     return FavoritesState(
       status: status ?? this.status,
       favoritePostIds: favoritePostIds ?? this.favoritePostIds,
       favoriteVendorIds: favoriteVendorIds ?? this.favoriteVendorIds,
+      favoriteMarketIds: favoriteMarketIds ?? this.favoriteMarketIds,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
@@ -37,13 +41,18 @@ class FavoritesState extends Equatable {
     return favoriteVendorIds.contains(vendorId);
   }
 
-  int get totalFavorites => favoritePostIds.length + favoriteVendorIds.length;
+  bool isMarketFavorite(String marketId) {
+    return favoriteMarketIds.contains(marketId);
+  }
+
+  int get totalFavorites => favoritePostIds.length + favoriteVendorIds.length + favoriteMarketIds.length;
 
   @override
   List<Object?> get props => [
         status,
         favoritePostIds,
         favoriteVendorIds,
+        favoriteMarketIds,
         errorMessage,
       ];
 }

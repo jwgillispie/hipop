@@ -69,8 +69,8 @@ class AnalyticsService {
       // Get real-time metrics instead of stored analytics for now
       final realTimeMetrics = await getRealTimeMetrics(marketId);
       
-      final vendorMetrics = realTimeMetrics['vendors'] as Map<String, dynamic>? ?? {};
-      final recipeMetrics = realTimeMetrics['recipes'] as Map<String, dynamic>? ?? {};
+      final vendorMetrics = (realTimeMetrics['vendors'] as Map<String, dynamic>?) ?? {};
+      final recipeMetrics = (realTimeMetrics['recipes'] as Map<String, dynamic>?) ?? {};
       
       // Get current breakdowns
       final vendorApplicationsByStatus = await _getVendorApplicationBreakdown(marketId);
@@ -108,6 +108,12 @@ class AnalyticsService {
       return {
         'vendors': vendorMetrics,
         'recipes': recipeMetrics,
+        'events': {
+          'total': 0,
+          'upcoming': 0,
+          'published': 0,
+          'averageOccupancy': 0.0,
+        },
         'lastUpdated': DateTime.now(),
       };
     } catch (e) {
@@ -116,6 +122,12 @@ class AnalyticsService {
       return {
         'vendors': {'total': 0, 'active': 0, 'pending': 0, 'approved': 0, 'rejected': 0},
         'recipes': {'total': 0, 'public': 0, 'featured': 0, 'likes': 0, 'saves': 0, 'shares': 0},
+        'events': {
+          'total': 0,
+          'upcoming': 0,
+          'published': 0,
+          'averageOccupancy': 0.0,
+        },
         'lastUpdated': DateTime.now(),
       };
     }

@@ -18,7 +18,7 @@ class VendorPostDetailScreen extends StatelessWidget {
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
         actions: [
-          FavoriteButton(
+          FavoriteButton.post(
             postId: vendorPost.id,
             vendorId: vendorPost.vendorId,
             size: 24,

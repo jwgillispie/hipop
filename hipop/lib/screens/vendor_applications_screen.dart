@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/vendor_application.dart';
@@ -35,11 +36,12 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box),
-            onPressed: _addTestData,
-            tooltip: 'Add Test Data',
-          ),
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.add_box),
+              onPressed: _addTestData,
+              tooltip: 'Add Test Data',
+            ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -444,22 +446,23 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
             onPressed: () => Navigator.pop(context),
             child: const Text('Done'),
           ),
-          TextButton.icon(
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: testUrl));
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Test URL copied! Use this for development testing.'),
-                    backgroundColor: Colors.blue,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.bug_report),
-            label: const Text('Copy Test URL'),
-          ),
+          if (kDebugMode)
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: testUrl));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Test URL copied! Use this for development testing.'),
+                      backgroundColor: Colors.blue,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.bug_report),
+              label: const Text('Copy Test URL'),
+            ),
           ElevatedButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: applicationUrl));
