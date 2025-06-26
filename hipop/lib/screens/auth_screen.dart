@@ -140,13 +140,17 @@ class _AuthScreenState extends State<AuthScreen> {
     return Column(
       children: [
         Icon(
-          widget.userType == 'vendor' ? Icons.store : Icons.shopping_bag,
+          widget.userType == 'vendor' 
+              ? Icons.store 
+              : widget.userType == 'market_organizer'
+                  ? Icons.business
+                  : Icons.shopping_bag,
           size: 64,
-          color: Colors.orange,
+          color: widget.userType == 'market_organizer' ? Colors.green : Colors.orange,
         ),
         const SizedBox(height: 16),
         Text(
-          '${widget.userType == 'vendor' ? 'Vendor' : 'Shopper'} ${_isLogin ? 'Login' : 'Sign Up'}',
+          '${widget.userType == 'vendor' ? 'Vendor' : widget.userType == 'market_organizer' ? 'Market Organizer' : 'Shopper'} ${_isLogin ? 'Login' : 'Sign Up'}',
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

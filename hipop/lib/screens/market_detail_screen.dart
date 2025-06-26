@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/market.dart';
-import '../models/vendor_market.dart';
-import '../models/vendor_post.dart';
-import '../services/market_service.dart';
-import '../repositories/vendor_posts_repository.dart';
+import '../models/market_event.dart';
+import '../models/managed_vendor.dart';
+import '../services/market_event_service.dart';
+import '../services/managed_vendor_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
-import '../widgets/common/favorite_button.dart';
-import '../widgets/market/market_calendar_widget.dart';
-import '../screens/vendor_application_form.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_state.dart';
 
 class MarketDetailScreen extends StatefulWidget {
   final Market market;
@@ -28,20 +22,11 @@ class MarketDetailScreen extends StatefulWidget {
 class _MarketDetailScreenState extends State<MarketDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<VendorMarket> _allVendors = [];
-  List<VendorMarket> _activeVendorsToday = [];
-  List<VendorPost> _activePosts = [];
-  List<VendorPost> _allMarketPosts = [];
-  bool _isLoading = true;
-  String? _error;
-  
-  final VendorPostsRepository _vendorPostsRepository = VendorPostsRepository();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _loadMarketData();
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -50,73 +35,33 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
     super.dispose();
   }
 
-  Future<void> _loadMarketData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      // Load all vendors for this market
-      final allVendors = await MarketService.getMarketVendors(widget.market.id);
-      
-      // Load vendors active today
-      final activeToday = await MarketService.getActiveVendorsForMarketToday(widget.market.id);
-      
-      // Load all posts for this market (active, past, and future)
-      final allMarketPosts = await _vendorPostsRepository.getMarketPosts(widget.market.id).first;
-      final activePosts = allMarketPosts.where((post) => post.isActive).toList();
-
-      setState(() {
-        _allVendors = allVendors;
-        _activeVendorsToday = activeToday;
-        _activePosts = activePosts;
-        _allMarketPosts = allMarketPosts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to load market data: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.market.name),
         backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
-          isScrollable: true,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: 'Overview'),
-            Tab(text: 'Calendar'),
-            Tab(text: 'Active Today'),
-            Tab(text: 'All Vendors'),
+            Tab(text: 'Events'),
+            Tab(text: 'Vendors'),
           ],
         ),
       ),
-      floatingActionButton: _buildVendorApplicationFab(),
-      body: _isLoading
-          ? const LoadingWidget(message: 'Loading market details...')
-          : _error != null
-              ? ErrorDisplayWidget(
-                  title: 'Error Loading Market',
-                  message: _error!,
-                  onRetry: _loadMarketData,
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOverviewTab(),
-                    _buildCalendarTab(),
-                    _buildActiveTodayTab(),
-                    _buildAllVendorsTab(),
-                  ],
-                ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildOverviewTab(),
+          _buildEventsTab(),
+          _buildVendorsTab(),
+        ],
+      ),
     );
   }
 
@@ -136,8 +81,8 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                   Row(
                     children: [
                       Icon(
-                        Icons.store,
-                        color: Colors.orange.shade600,
+                        Icons.store_mall_directory,
+                        color: Colors.green.shade600,
                         size: 24,
                       ),
                       const SizedBox(width: 8),
@@ -287,49 +232,86 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
             const SizedBox(height: 16),
           ],
           
-          // Stats Cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Vendors',
-                  '${_getUniqueVendorCount()}',
-                  Icons.people,
-                  Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Active Today',
-                  '${_activeVendorsToday.length}',
-                  Icons.today,
-                  Colors.orange,
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Active Posts',
-                  '${_activePosts.length}',
-                  Icons.announcement,
-                  Colors.green,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(), // Placeholder for future stat
-              ),
-            ],
-          ),
+          // Stats Cards using StreamBuilders
+          _buildStatsCards(),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsCards() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: StreamBuilder<List<MarketEvent>>(
+                stream: MarketEventService.getEventsForMarket(widget.market.id),
+                builder: (context, snapshot) {
+                  final eventCount = snapshot.hasData ? snapshot.data!.length : 0;
+                  return _buildStatCard(
+                    'Events',
+                    '$eventCount',
+                    Icons.event,
+                    Colors.blue,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StreamBuilder<List<ManagedVendor>>(
+                stream: ManagedVendorService.getVendorsForMarket(widget.market.id),
+                builder: (context, snapshot) {
+                  final vendorCount = snapshot.hasData ? snapshot.data!.length : 0;
+                  return _buildStatCard(
+                    'Vendors',
+                    '$vendorCount',
+                    Icons.store,
+                    Colors.green,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 12),
+        
+        Row(
+          children: [
+            Expanded(
+              child: StreamBuilder<List<ManagedVendor>>(
+                stream: ManagedVendorService.getActiveVendorsForMarket(widget.market.id),
+                builder: (context, snapshot) {
+                  final activeCount = snapshot.hasData ? snapshot.data!.length : 0;
+                  return _buildStatCard(
+                    'Active Vendors',
+                    '$activeCount',
+                    Icons.check_circle,
+                    Colors.orange,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StreamBuilder<List<MarketEvent>>(
+                stream: MarketEventService.getUpcomingEvents(widget.market.id),
+                builder: (context, snapshot) {
+                  final upcomingCount = snapshot.hasData ? snapshot.data!.length : 0;
+                  return _buildStatCard(
+                    'Upcoming Events',
+                    '$upcomingCount',
+                    Icons.schedule,
+                    Colors.purple,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -361,167 +343,85 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
     );
   }
 
-  Widget _buildCalendarTab() {
-    if (_allMarketPosts.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.calendar_today,
-                size: 80,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No events scheduled',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Check back later for upcoming vendor events at this market.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+  Widget _buildEventsTab() {
+    return StreamBuilder<List<MarketEvent>>(
+      stream: MarketEventService.getEventsForMarket(widget.market.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Loading events...');
+        }
 
-    return SingleChildScrollView(
-      child: MarketCalendarWidget(
-        posts: _allMarketPosts,
-        onDateSelected: (date, postsForDay) {
-          // Optional: Add functionality for date selection
-        },
-      ),
-    );
-  }
+        if (snapshot.hasError) {
+          return ErrorDisplayWidget.network(
+            onRetry: () => setState(() {}),
+          );
+        }
 
-  Widget _buildActiveTodayTab() {
-    if (_activeVendorsToday.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.event_busy,
-                size: 80,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No vendors active today',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Check back on market days to see active vendors and their latest offerings.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+        final events = snapshot.data ?? [];
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        // Active Posts Section
-        if (_activePosts.isNotEmpty) ...[
-          Text(
-            'Active Posts Today',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
+        if (events.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.event_busy,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No events scheduled',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This market hasn\'t created any events yet. Check back soon for upcoming events!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          
-          ..._activePosts.map((post) => _buildPostCard(post)),
-          
-          const SizedBox(height: 24),
-        ],
-        
-        // Active Vendors Section
-        Text(
-          'Vendors Scheduled Today',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        ..._activeVendorsToday.map((vendorMarket) => _buildVendorCard(vendorMarket, true)),
-      ],
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: events.length,
+          itemBuilder: (context, index) {
+            final event = events[index];
+            return _buildEventCard(event);
+          },
+        );
+      },
     );
   }
 
-  Widget _buildAllVendorsTab() {
-    if (_allVendors.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.store_mall_directory,
-                size: 80,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No vendors found',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This market doesn\'t have any vendors yet. Check back soon!',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
+  Widget _buildEventCard(MarketEvent event) {
+    final now = DateTime.now();
+    final isUpcoming = event.startDateTime.isAfter(now);
+    final isActive = event.startDateTime.isBefore(now) && event.endDateTime.isAfter(now);
+
+    Color statusColor;
+    String statusText;
+    if (isActive) {
+      statusColor = Colors.green;
+      statusText = 'ACTIVE';
+    } else if (isUpcoming) {
+      statusColor = Colors.blue;
+      statusText = 'UPCOMING';
+    } else {
+      statusColor = Colors.grey;
+      statusText = 'PAST';
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        Text(
-          'All Market Vendors',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        ..._allVendors.map((vendorMarket) => _buildVendorCard(vendorMarket, false)),
-      ],
-    );
-  }
-
-  Widget _buildVendorCard(VendorMarket vendorMarket, bool isActiveToday) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -531,11 +431,16 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: isActiveToday ? Colors.green.shade100 : Colors.grey.shade200,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Icon(
-                    Icons.person,
-                    color: isActiveToday ? Colors.green.shade700 : Colors.grey.shade600,
+                    Icons.event,
+                    color: statusColor,
+                    size: 20,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -544,90 +449,48 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        vendorMarket.vendorName,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        event.title,
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (vendorMarket.boothNumber != null)
-                        Text(
-                          'Booth: ${vendorMarket.boothNumber}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        event.eventTypeDisplayName,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
+                      ),
                     ],
                   ),
                 ),
-                if (isActiveToday)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'ACTIVE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
-                      ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
                     ),
                   ),
+                ),
               ],
             ),
             
             const SizedBox(height: 12),
             
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  'Schedule: ${vendorMarket.scheduleDisplay}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPostCard(VendorPost post) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    post.vendorName,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                FavoriteButton(
-                  postId: post.id,
-                  // TODO: Implement favorites logic
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 8),
-            
             Text(
-              post.description,
+              event.description,
               style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
             
             const SizedBox(height: 12),
@@ -637,95 +500,256 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                 Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  post.formattedTimeRange,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  event.formattedDateRange,
+                  style: TextStyle(
+                    fontSize: 13,
                     color: Colors.grey[600],
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: post.isHappening 
-                        ? Colors.green.shade100 
-                        : post.isUpcoming 
-                            ? Colors.orange.shade100 
-                            : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    post.isHappening 
-                        ? 'LIVE NOW' 
-                        : post.isUpcoming 
-                            ? 'UPCOMING' 
-                            : 'ENDED',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: post.isHappening 
-                          ? Colors.green.shade700 
-                          : post.isUpcoming 
-                              ? Colors.orange.shade700 
-                              : Colors.grey.shade600,
-                    ),
                   ),
                 ),
               ],
             ),
+            
+            if (event.selectedVendorIds.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.store, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${event.selectedVendorIds.length} vendors selected',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  int _getUniqueVendorCount() {
-    // Count unique vendors based on vendor posts rather than vendor-market relationships
-    final uniqueVendorIds = _allMarketPosts.map((post) => post.vendorId).toSet();
-    return uniqueVendorIds.length;
-  }
-
-  Widget? _buildVendorApplicationFab() {
-    // Only show the FAB for Community Farmers Market and for authenticated non-organizer users
-    if (widget.market.name != 'Community Farmers Market') {
-      return null;
-    }
-
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        // Only show for authenticated users who are not market organizers
-        if (state is! Authenticated || state.userType == 'market_organizer') {
-          return const SizedBox.shrink();
+  Widget _buildVendorsTab() {
+    return StreamBuilder<List<ManagedVendor>>(
+      stream: ManagedVendorService.getVendorsForMarket(widget.market.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Loading vendors...');
         }
 
-        return FloatingActionButton.extended(
-          onPressed: () => _navigateToVendorApplication(),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.assignment),
-          label: const Text('Apply as Vendor'),
+        if (snapshot.hasError) {
+          return ErrorDisplayWidget.network(
+            onRetry: () => setState(() {}),
+          );
+        }
+
+        final vendors = snapshot.data ?? [];
+
+        if (vendors.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.store_mall_directory,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No vendors yet',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This market hasn\'t added any vendors yet. Check back soon for vendor listings!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: vendors.length,
+          itemBuilder: (context, index) {
+            final vendor = vendors[index];
+            return _buildVendorCard(vendor);
+          },
         );
       },
     );
   }
 
-  void _navigateToVendorApplication() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => VendorApplicationForm(market: widget.market),
+  Widget _buildVendorCard(ManagedVendor vendor) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: vendor.isActive 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.store,
+                    color: vendor.isActive ? Colors.green : Colors.grey,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              vendor.businessName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (vendor.isFeatured)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.star,
+                                    size: 12,
+                                    color: Colors.amber[800],
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'Featured',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.amber[800],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Contact: ${vendor.contactName}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: vendor.isActive 
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    vendor.isActive ? 'ACTIVE' : 'INACTIVE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: vendor.isActive ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Text(
+              vendor.description,
+              style: Theme.of(context).textTheme.bodyMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Categories
+            if (vendor.categories.isNotEmpty) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: vendor.categories.take(3).map((category) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    category.displayName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(height: 8),
+            ],
+            
+            // Products
+            if (vendor.products.isNotEmpty) ...[
+              Row(
+                children: [
+                  Icon(Icons.inventory, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Products: ${vendor.products.take(3).join(', ')}${vendor.products.length > 3 ? '...' : ''}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
-
-    // If application was submitted successfully, show confirmation
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Application submitted! The market organizer will review your application.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
   }
 }

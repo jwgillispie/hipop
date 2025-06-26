@@ -17,10 +17,14 @@ import '../screens/change_password_screen.dart';
 import '../screens/vendor_post_detail_screen.dart';
 import '../screens/organizer_dashboard.dart';
 import '../screens/vendor_applications_screen.dart';
-import '../screens/recipe_management_screen.dart';
+import '../screens/custom_items_screen.dart';
 import '../screens/event_management_screen.dart';
 import '../screens/organizer_analytics_screen.dart';
 import '../screens/organizer_profile_screen.dart';
+import '../screens/vendor_management_screen.dart';
+import '../screens/admin_fix_screen.dart';
+import '../screens/market_organizer_signup_screen.dart';
+import '../screens/market_management_screen.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -52,6 +56,9 @@ class AppRouter {
           name: 'signup',
           builder: (context, state) {
             final userType = state.uri.queryParameters['type'] ?? 'shopper';
+            if (userType == 'market_organizer') {
+              return const MarketOrganizerSignupScreen();
+            }
             return AuthScreen(userType: userType, isLogin: false);
           },
         ),
@@ -113,14 +120,24 @@ class AppRouter {
           builder: (context, state) => const OrganizerDashboard(),
           routes: [
             GoRoute(
+              path: 'market-management',
+              name: 'marketManagement',
+              builder: (context, state) => const MarketManagementScreen(),
+            ),
+            GoRoute(
+              path: 'vendor-management',
+              name: 'vendorManagement',
+              builder: (context, state) => const VendorManagementScreen(),
+            ),
+            GoRoute(
               path: 'vendor-applications',
               name: 'vendorApplications',
               builder: (context, state) => const VendorApplicationsScreen(),
             ),
             GoRoute(
-              path: 'recipes',
-              name: 'recipes',
-              builder: (context, state) => const RecipeManagementScreen(),
+              path: 'custom-items',
+              name: 'customItems',
+              builder: (context, state) => const CustomItemsScreen(),
             ),
             GoRoute(
               path: 'events',
@@ -141,6 +158,11 @@ class AppRouter {
               path: 'change-password',
               name: 'organizerChangePassword',
               builder: (context, state) => const ChangePasswordScreen(),
+            ),
+            GoRoute(
+              path: 'admin-fix',
+              name: 'adminFix',
+              builder: (context, state) => const AdminFixScreen(),
             ),
           ],
         ),

@@ -6,11 +6,11 @@ import '../blocs/auth/auth_state.dart';
 import '../widgets/common/simple_places_widget.dart';
 import '../services/places_service.dart';
 import '../widgets/common/loading_widget.dart';
-import '../widgets/common/error_widget.dart';
-import '../models/unified_search_result.dart';
-import '../services/unified_search_service.dart';
 import '../widgets/common/settings_dropdown.dart';
-import '../widgets/search/unified_result_card.dart';
+import '../services/market_service.dart';
+import '../services/market_event_service.dart';
+import '../models/market.dart';
+import '../models/market_event.dart';
 
 class ShopperHome extends StatefulWidget {
   const ShopperHome({super.key});
@@ -19,62 +19,109 @@ class ShopperHome extends StatefulWidget {
   State<ShopperHome> createState() => _ShopperHomeState();
 }
 
-class _ShopperHomeState extends State<ShopperHome> {
+class _ShopperHomeState extends State<ShopperHome> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String _searchLocation = '';
   PlaceDetails? _selectedSearchPlace;
-  double _searchRadius = 10.0; // Default 10km radius
-  final UnifiedSearchService _unifiedSearchService = UnifiedSearchService();
-  
-  // Use unified search results instead of just vendor posts
-  Future<UnifiedSearchResults>? _searchResults;
-  SearchResultType? _filterType; // For filtering results
+  List<Market> _markets = [];
+  List<MarketEvent> _events = [];
   bool _isLoading = false;
-  
-  static const List<double> _radiusOptions = [5.0, 10.0, 25.0, 50.0];
 
   @override
   void initState() {
     super.initState();
-    // Initialize with empty search to show all results
-    _performSearch('');
+    _tabController = TabController(length: 2, vsync: this);
+    _loadAllMarkets();
+    _loadAllEvents();
   }
 
-  void _performSearch(String location) {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _loadAllMarkets() async {
     setState(() {
-      _searchLocation = location;
-      _selectedSearchPlace = null; // Clear place when doing text search
       _isLoading = true;
-      
-      _searchResults = _unifiedSearchService.searchByLocationWithFilter(
-        location: location,
-        filterType: _filterType,
-      );
     });
     
-    _searchResults?.then((_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
+    try {
+      // Load from common cities
+      final cities = ['Atlanta', 'Decatur', 'Marietta', 'Sandy Springs', 'Buckhead'];
+      final Set<Market> allMarkets = {};
+      
+      for (final city in cities) {
+        try {
+          final cityMarkets = await MarketService.getMarketsByCity(city);
+          allMarkets.addAll(cityMarkets);
+        } catch (e) {
+          debugPrint('Error loading markets for $city: $e');
+        }
       }
-    }).catchError((e) {
+      
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _markets = allMarkets.toList();
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _loadAllEvents() async {
+    try {
+      // Use stream to get public events and convert to list
+      MarketEventService.getPublicEvents().listen((events) {
+        if (mounted) {
+          setState(() {
+            _events = events;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+    }
+  }
+  
+  void _searchMarketsByLocation(String location) async {
+    setState(() {
+      _isLoading = true;
     });
+    
+    try {
+      final markets = await MarketService.getMarketsByCity(location);
+      if (mounted) {
+        setState(() {
+          _markets = markets;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
   
   void _clearSearch() {
     setState(() {
       _searchLocation = '';
       _selectedSearchPlace = null;
-      _searchRadius = 10.0; // Reset to default
-      _filterType = null; // Clear filter
     });
-    _performSearch('');
+    _loadAllMarkets();
   }
   
   void _performPlaceSearch(PlaceDetails? placeDetails) {
     if (placeDetails == null) {
-      // Clear search when place is cleared
       _clearSearch();
       return;
     }
@@ -82,49 +129,14 @@ class _ShopperHomeState extends State<ShopperHome> {
     setState(() {
       _searchLocation = placeDetails.formattedAddress;
       _selectedSearchPlace = placeDetails;
-      _isLoading = true;
-      
-      // Use coordinates if available, otherwise fall back to text search
-      if (placeDetails.latitude != 0 && placeDetails.longitude != 0) {
-        _searchResults = _unifiedSearchService.searchByLocationWithFilter(
-          location: placeDetails.formattedAddress,
-          latitude: placeDetails.latitude,
-          longitude: placeDetails.longitude,
-          radiusKm: _searchRadius,
-          filterType: _filterType,
-        );
-      } else {
-        _searchResults = _unifiedSearchService.searchByLocationWithFilter(
-          location: placeDetails.formattedAddress,
-          filterType: _filterType,
-        );
-      }
     });
     
-    _searchResults?.then((_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }).catchError((e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    });
-  }
-  
-  void _setResultFilter(SearchResultType? filterType) {
-    setState(() {
-      _filterType = filterType;
-    });
+    // Extract city from place details for market search
+    final locationParts = placeDetails.formattedAddress.split(',');
+    final city = locationParts.length > 1 ? locationParts[1].trim() : locationParts[0];
     
-    // Re-run search with new filter
-    if (_selectedSearchPlace != null) {
-      _performPlaceSearch(_selectedSearchPlace);
-    } else {
-      _performSearch(_searchLocation);
-    }
+    _searchMarketsByLocation(city);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -144,342 +156,484 @@ class _ShopperHomeState extends State<ShopperHome> {
             actions: [
               const SettingsDropdown(),
             ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              tabs: const [
+                Tab(icon: Icon(Icons.storefront), text: 'Markets'),
+                Tab(icon: Icon(Icons.event), text: 'Events'),
+              ],
+            ),
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const CircleAvatar(
-                              backgroundColor: Colors.orange,
-                              child: Icon(Icons.shopping_bag, color: Colors.white),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Welcome back!',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                Text(
-                                  state.user.displayName ?? state.user.email ?? 'Shopper',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Find Pop-ups Near You',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  children: [
-                    SimplePlacesWidget(
-                      initialLocation: _searchLocation,
-                      onLocationSelected: _performPlaceSearch,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.grey[300])),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'or browse all',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Colors.grey[300])),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (_selectedSearchPlace != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.tune, size: 16, color: Colors.orange),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Search Radius',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.orange[700],
-                                  ),
-                                ),
-                                const Spacer(),
-                                DropdownButton<double>(
-                                  value: _searchRadius,
-                                  underline: const SizedBox(),
-                                  items: _radiusOptions.map((radius) {
-                                    return DropdownMenuItem<double>(
-                                      value: radius,
-                                      child: Text('${radius.toInt()} km'),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() {
-                                        _searchRadius = value;
-                                      });
-                                      _performPlaceSearch(_selectedSearchPlace);
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildMarketsTab(state),
+              _buildEventsTab(state),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMarketsTab(Authenticated state) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        backgroundColor: Colors.orange,
+                        child: Icon(Icons.shopping_bag, color: Colors.white),
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (_searchLocation.isNotEmpty || _selectedSearchPlace != null) ...[
-                      Row(
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _clearSearch,
-                              icon: const Icon(Icons.clear, size: 16),
-                              label: const Text('Show All Pop-ups'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.orange,
-                                side: const BorderSide(color: Colors.orange),
-                              ),
+                          Text(
+                            'Find Markets',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            'Discover local markets and vendors',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
                             ),
                           ),
                         ],
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _searchLocation.isEmpty 
-                          ? 'All Pop-ups' 
-                          : 'Pop-ups in $_searchLocation',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Find Markets Near You',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            children: [
+              SimplePlacesWidget(
+                initialLocation: _searchLocation,
+                onLocationSelected: _performPlaceSearch,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'or browse all markets',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
                       ),
                     ),
-                    FutureBuilder<UnifiedSearchResults>(
-                      future: _searchResults,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                          return Text(
-                            '${snapshot.data!.totalCount} found',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
+                  ),
+                  Expanded(child: Divider(color: Colors.grey[300])),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_searchLocation.isNotEmpty || _selectedSearchPlace != null) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _clearSearch,
+                        icon: const Icon(Icons.clear, size: 16),
+                        label: const Text('Show All Markets'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(color: Colors.orange),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                _buildFilterBar(),
-                const SizedBox(height: 8),
-                _buildUnifiedResultsWithoutExpanded(),
               ],
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _searchLocation.isEmpty 
+                    ? 'All Markets' 
+                    : 'Markets in $_searchLocation',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (_markets.isNotEmpty)
+                Text(
+                  '${_markets.length} found',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildMarketsList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventsTab(Authenticated state) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        backgroundColor: Colors.orange,
+                        child: Icon(Icons.event, color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Upcoming Events',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            'Discover market events',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        );
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Upcoming Events',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_events.isNotEmpty)
+                Text(
+                  '${_events.length} events',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildEventsList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMarketsList() {
+    if (_isLoading) {
+      return const LoadingWidget(message: 'Loading markets...');
+    }
+
+    if (_markets.isEmpty) {
+      return _buildNoResultsMessage();
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _markets.length,
+      itemBuilder: (context, index) {
+        final market = _markets[index];
+        return _buildMarketCard(market);
       },
     );
   }
 
+  Widget _buildEventsList() {
+    if (_events.isEmpty) {
+      return _buildNoEventsMessage();
+    }
 
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _events.length,
+      itemBuilder: (context, index) {
+        final event = _events[index];
+        return _buildEventCard(event);
+      },
+    );
+  }
 
-  Widget _buildFilterBar() {
-    return Row(
-      children: [
-        Text(
-          'Show: ',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
+  Widget _buildEventCard(MarketEvent event) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _handleEventTap(event),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.event,
+                      color: Colors.blue,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${event.eventTypeDisplayName} • ${event.participatingMarketIds.length} market${event.participatingMarketIds.length != 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (event.isRecurring)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'RECURRING',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.blue[800],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 16,
+                    color: Colors.grey[500],
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      event.formattedDateRange,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (event.description.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  event.description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (event.selectedVendorIds.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.store,
+                      size: 16,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${event.selectedVendorIds.length} vendor${event.selectedVendorIds.length != 1 ? 's' : ''} participating',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        _buildFilterChip('All', null),
-        const SizedBox(width: 8),
-        _buildFilterChip('Markets', SearchResultType.market),
-        const SizedBox(width: 8),
-        _buildFilterChip('Vendors', SearchResultType.independentVendor),
-      ],
+      ),
     );
   }
 
-  Widget _buildFilterChip(String label, SearchResultType? type) {
-    final isSelected = _filterType == type;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        _setResultFilter(selected ? type : null);
-      },
-      selectedColor: Colors.orange.withValues(alpha: 0.2),
-      checkmarkColor: Colors.orange,
+  Widget _buildNoEventsMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.event,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No events found',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Events will appear here when organizers create them',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[500],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
-
-  Widget _buildUnifiedResults() {
-    if (_isLoading) {
-      return const LoadingWidget(message: 'Searching for markets and vendors...');
-    }
-
-    if (_searchResults == null) {
-      return const LoadingWidget(message: 'Loading...');
-    }
-
-    return FutureBuilder<UnifiedSearchResults>(
-      future: _searchResults,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingWidget(message: 'Searching for markets and vendors...');
-        }
-
-        if (snapshot.hasError) {
-          return ErrorDisplayWidget.network(
-            onRetry: () => _performSearch(_searchLocation),
-          );
-        }
-
-        final results = snapshot.data;
-        if (results == null || results.isEmpty) {
-          return _buildNoResultsMessage();
-        }
-
-        final allResults = results.allResults;
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '${allResults.length} result${allResults.length == 1 ? '' : 's'} found',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
+  
+  Widget _buildMarketCard(Market market) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _handleMarketTap(market),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.store_mall_directory,
+                      color: Colors.green,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          market.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Market • ${market.operatingDays.length} days/week',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                itemCount: allResults.length,
-                itemBuilder: (context, index) {
-                  final result = allResults[index];
-                  return UnifiedResultCard(
-                    result: result,
-                    onTap: () => _handleResultTap(result),
-                  );
-                },
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Colors.grey[500],
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      market.address,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildUnifiedResultsWithoutExpanded() {
-    if (_isLoading) {
-      return const LoadingWidget(message: 'Searching for markets and vendors...');
-    }
-
-    if (_searchResults == null) {
-      return const LoadingWidget(message: 'Loading...');
-    }
-
-    return FutureBuilder<UnifiedSearchResults>(
-      future: _searchResults,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingWidget(message: 'Searching for markets and vendors...');
-        }
-
-        if (snapshot.hasError) {
-          return ErrorDisplayWidget.network(
-            onRetry: () => _performSearch(_searchLocation),
-          );
-        }
-
-        final results = snapshot.data;
-        if (results == null || results.isEmpty) {
-          return _buildNoResultsMessage();
-        }
-
-        final allResults = results.allResults;
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '${allResults.length} result${allResults.length == 1 ? '' : 's'} found',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Use ListView with shrinkWrap instead of Expanded to allow parent scrolling
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: allResults.length,
-              itemBuilder: (context, index) {
-                final result = allResults[index];
-                return UnifiedResultCard(
-                  result: result,
-                  onTap: () => _handleResultTap(result),
-                );
-              },
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -489,13 +643,13 @@ class _ShopperHomeState extends State<ShopperHome> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.search_off,
+            Icons.store_mall_directory,
             size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            'No results found',
+            'No markets found',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Colors.grey[600],
             ),
@@ -503,8 +657,8 @@ class _ShopperHomeState extends State<ShopperHome> {
           const SizedBox(height: 8),
           Text(
             _searchLocation.isEmpty
-                ? 'Try searching for a location'
-                : 'Try a different search term or location',
+                ? 'Markets will appear here as they join'
+                : 'No markets found in $_searchLocation',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.grey[500],
             ),
@@ -513,12 +667,12 @@ class _ShopperHomeState extends State<ShopperHome> {
           if (_searchLocation.isNotEmpty) ...[
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => _performSearch(''),
+              onPressed: _clearSearch,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Show All Results'),
+              child: const Text('Show All Markets'),
             ),
           ],
         ],
@@ -526,19 +680,17 @@ class _ShopperHomeState extends State<ShopperHome> {
     );
   }
 
-  void _handleResultTap(SearchResultItem result) {
-    switch (result.type) {
-      case SearchResultType.market:
-        if (result.market != null) {
-          context.pushNamed('marketDetail', extra: result.market);
-        }
-        break;
-      case SearchResultType.independentVendor:
-        if (result.vendorPost != null) {
-          context.pushNamed('vendorPostDetail', extra: result.vendorPost);
-        }
-        break;
-    }
+  void _handleMarketTap(Market market) {
+    context.pushNamed('marketDetail', extra: market);
   }
 
+  void _handleEventTap(MarketEvent event) {
+    // TODO: Navigate to event detail screen when it's implemented
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Event details for "${event.title}" coming soon!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../widgets/common/settings_dropdown.dart';
+import '../services/analytics_service.dart';
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -13,6 +14,30 @@ class OrganizerDashboard extends StatefulWidget {
 }
 
 class _OrganizerDashboardState extends State<OrganizerDashboard> {
+  final String marketId = 'temp_market_id'; // TODO: Get from context/auth
+  Map<String, dynamic>? _realTimeMetrics;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMetrics();
+  }
+
+  Future<void> _loadMetrics() async {
+    try {
+      final metrics = await AnalyticsService.getRealTimeMetrics(marketId);
+      setState(() {
+        _realTimeMetrics = metrics;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
@@ -75,56 +100,34 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                 const SizedBox(height: 24),
 
                 // Quick Stats
-                Text(
-                  'Market Overview',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Market Overview',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (_isLoading)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _loadMetrics,
+                        tooltip: 'Refresh data',
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        'Pending Applications',
-                        '5',
-                        Icons.pending_actions,
-                        Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Active Vendors',
-                        '12',
-                        Icons.store,
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        'Published Recipes',
-                        '28',
-                        Icons.restaurant_menu,
-                        Colors.purple,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Upcoming Events',
-                        '3',
-                        Icons.event,
-                        Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
+                _isLoading
+                    ? _buildLoadingStats()
+                    : _buildRealTimeStats(),
                 const SizedBox(height: 32),
 
                 // Quick Actions
@@ -141,21 +144,28 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.5,
+                  childAspectRatio: 1.0,
                   children: [
+                    _buildActionCard(
+                      'Market Management',
+                      'Create and manage markets',
+                      Icons.storefront,
+                      Colors.teal,
+                      () => context.pushNamed('marketManagement'),
+                    ),
+                    _buildActionCard(
+                      'Vendor Management',
+                      'Create and manage vendors',
+                      Icons.store_mall_directory,
+                      Colors.indigo,
+                      () => context.pushNamed('vendorManagement'),
+                    ),
                     _buildActionCard(
                       'Vendor Applications',
                       'Review new applications',
                       Icons.assignment_turned_in,
                       Colors.orange,
                       () => context.pushNamed('vendorApplications'),
-                    ),
-                    _buildActionCard(
-                      'Recipe Management',
-                      'Create and manage recipes',
-                      Icons.restaurant_menu,
-                      Colors.purple,
-                      () => context.pushNamed('recipes'),
                     ),
                     _buildActionCard(
                       'Event Management',
@@ -165,11 +175,25 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       () => context.pushNamed('events'),
                     ),
                     _buildActionCard(
+                      'Custom Items',
+                      'Manage recipes and content',
+                      Icons.tune,
+                      Colors.purple,
+                      () => context.pushNamed('customItems'),
+                    ),
+                    _buildActionCard(
                       'Analytics',
                       'View market insights',
                       Icons.analytics,
                       Colors.green,
                       () => context.pushNamed('analytics'),
+                    ),
+                    _buildActionCard(
+                      'Fix Market Association',
+                      'Run if vendor/event management shows errors',
+                      Icons.build_circle,
+                      Colors.orange,
+                      () => context.pushNamed('adminFix'),
                     ),
                   ],
                 ),
@@ -178,6 +202,132 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLoadingStats() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildStatCardSkeleton()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCardSkeleton()),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildStatCardSkeleton()),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCardSkeleton()),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCardSkeleton() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              height: 32,
+              width: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRealTimeStats() {
+    if (_realTimeMetrics == null) {
+      return const Center(
+        child: Text('No data available'),
+      );
+    }
+
+    final vendorMetrics = _realTimeMetrics!['vendors'] as Map<String, dynamic>? ?? {};
+    final eventMetrics = _realTimeMetrics!['events'] as Map<String, dynamic>? ?? {};
+    final recipeMetrics = _realTimeMetrics!['recipes'] as Map<String, dynamic>? ?? {};
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Pending Applications',
+                (vendorMetrics['pending'] ?? 0).toString(),
+                Icons.pending_actions,
+                Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                'Active Vendors',
+                (vendorMetrics['active'] ?? 0).toString(),
+                Icons.store,
+                Colors.green,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Published Recipes',
+                (recipeMetrics['public'] ?? 0).toString(),
+                Icons.restaurant_menu,
+                Colors.purple,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                'Upcoming Events',
+                (eventMetrics['upcoming'] ?? 0).toString(),
+                Icons.event,
+                Colors.blue,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

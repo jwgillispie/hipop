@@ -271,6 +271,242 @@ class UserProfileService implements IUserProfileService {
       return null;
     }
   }
+
+  // Administrative function to fix market organizer associations
+  Future<void> fixMarketOrganizerAssociations() async {
+    try {
+      debugPrint('🔧 Starting market organizer association fix...');
+      
+      // First, check if any markets exist
+      final marketsSnapshot = await _firestore.collection('markets').get();
+      debugPrint('Found ${marketsSnapshot.docs.length} existing markets');
+      
+      String marketId;
+      
+      // Check if user already has a market based on their email/name
+      String? existingUserMarketId;
+      final user = _auth.currentUser;
+      
+      if (user != null) {
+        // Look for a market that might belong to this user
+        for (final marketDoc in marketsSnapshot.docs) {
+          final marketData = marketDoc.data();
+          final marketName = marketData['name'] as String? ?? '';
+          final userEmail = user.email ?? '';
+          
+          // Check if market name contains user's name or email prefix
+          final emailPrefix = userEmail.split('@').first.toLowerCase();
+          if (marketName.toLowerCase().contains('jozo') || 
+              marketName.toLowerCase().contains(emailPrefix)) {
+            existingUserMarketId = marketDoc.id;
+            debugPrint('✅ Found existing user market: $marketName with ID: $existingUserMarketId');
+            break;
+          }
+        }
+      }
+      
+      if (existingUserMarketId != null) {
+        marketId = existingUserMarketId;
+      } else {
+        // Create a personalized market for this user
+        final user = _auth.currentUser;
+        final userEmail = user?.email ?? 'organizer@example.com';
+        final emailPrefix = userEmail.split('@').first;
+        final marketName = emailPrefix.contains('jozo') ? 'JOZO Market' : '${emailPrefix.toUpperCase()} Market';
+        
+        debugPrint('📍 Creating personalized market for user: $userEmail');
+        
+        final marketData = {
+          'name': marketName,
+          'address': '123 Market Street',
+          'city': 'Atlanta',
+          'state': 'GA',
+          'latitude': 33.7490,
+          'longitude': -84.3880,
+          'operatingDays': {
+            'saturday': '8:00 AM - 2:00 PM',
+            'sunday': '10:00 AM - 4:00 PM',
+          },
+          'description': 'Local farmers market featuring fresh, quality vendors and artisan goods.',
+          'isActive': true,
+          'createdAt': Timestamp.fromDate(DateTime.now()),
+        };
+        
+        final docRef = await _firestore.collection('markets').add(marketData);
+        marketId = docRef.id;
+        
+        // Update the market with its ID
+        await docRef.update({'id': marketId});
+        
+        debugPrint('✅ Created personalized market: ${marketData['name']} with ID: $marketId');
+      }
+      
+      debugPrint('👤 Looking for market organizer users to update...');
+      
+      // Find users with userType = 'market_organizer' but no managedMarketIds
+      final usersSnapshot = await _firestore
+          .collection(_collection)
+          .where('userType', isEqualTo: 'market_organizer')
+          .get();
+      
+      debugPrint('Found ${usersSnapshot.docs.length} market organizer users');
+      
+      int updatedCount = 0;
+      for (final userDoc in usersSnapshot.docs) {
+        final userData = userDoc.data();
+        final userId = userDoc.id;
+        final displayName = userData['displayName'] ?? userData['organizationName'] ?? 'Unknown User';
+        final managedMarketIds = List<String>.from(userData['managedMarketIds'] ?? []);
+        
+        if (managedMarketIds.isEmpty) {
+          debugPrint('🔧 Updating user: $displayName (ID: $userId)');
+          
+          // Update the user profile to include the market
+          await _firestore.collection(_collection).doc(userId).update({
+            'managedMarketIds': [marketId],
+            'updatedAt': Timestamp.fromDate(DateTime.now()),
+          });
+          
+          updatedCount++;
+          debugPrint('✅ Added market $marketId to user $displayName');
+        } else {
+          debugPrint('⏭️  User $displayName already has markets: $managedMarketIds');
+        }
+      }
+      
+      debugPrint('🎉 Market association fix completed! Updated $updatedCount users.');
+    } catch (e) {
+      debugPrint('❌ Error fixing market associations: $e');
+      throw UserProfileException('Failed to fix market associations: $e');
+    }
+  }
+
+  // Helper method to get current user ID
+  Future<String?> getCurrentUserId() async {
+    final user = _auth.currentUser;
+    return user?.uid;
+  }
+
+  // Helper method to get current user profile
+  Future<UserProfile?> getCurrentUserProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    
+    return await getUserProfile(user.uid);
+  }
+
+  // Helper method to create missing organizer profile
+  Future<UserProfile> createMissingOrganizerProfile(String userId) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw UserProfileException('No authenticated user');
+      }
+
+      debugPrint('🔧 Creating missing market organizer profile for user: $userId');
+      
+      return await createUserProfile(
+        userId: userId,
+        userType: 'market_organizer',
+        email: user.email ?? '',
+        displayName: user.displayName ?? 'Market Organizer',
+      );
+    } catch (e) {
+      debugPrint('❌ Error creating missing organizer profile: $e');
+      throw UserProfileException('Failed to create missing organizer profile: $e');
+    }
+  }
+
+  // Helper method to fix existing managed vendors with old placeholder IDs
+  Future<void> fixExistingManagedVendors() async {
+    try {
+      debugPrint('🔧 Fixing existing managed vendors with placeholder IDs...');
+      
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw UserProfileException('No authenticated user');
+      }
+
+      // Get the current user's profile to find their real market ID
+      final userProfile = await getUserProfile(user.uid);
+      if (userProfile == null || !userProfile.isMarketOrganizer || userProfile.managedMarketIds.isEmpty) {
+        debugPrint('❌ User is not a market organizer with managed markets');
+        return;
+      }
+
+      final realMarketId = userProfile.managedMarketIds.first;
+      final realOrganizerId = user.uid;
+
+      debugPrint('📍 Real market ID: $realMarketId');
+      debugPrint('👤 Real organizer ID: $realOrganizerId');
+
+      // Find managed vendors with placeholder IDs OR belonging to this user
+      final tempMarketVendors = await _firestore
+          .collection('managed_vendors')
+          .where('marketId', isEqualTo: 'temp_market_id')
+          .get();
+
+      final placeholderOrganizerVendors = await _firestore
+          .collection('managed_vendors')
+          .where('organizerId', isEqualTo: 'current_organizer_id')
+          .get();
+
+      final userEmailVendors = await _firestore
+          .collection('managed_vendors')
+          .where('email', isEqualTo: user.email)
+          .get();
+
+      // Combine all potential vendors
+      final allVendorDocs = <QueryDocumentSnapshot>[];
+      allVendorDocs.addAll(tempMarketVendors.docs);
+      allVendorDocs.addAll(placeholderOrganizerVendors.docs);
+      allVendorDocs.addAll(userEmailVendors.docs);
+
+      // Remove duplicates
+      final uniqueVendorDocs = <String, QueryDocumentSnapshot>{};
+      for (final doc in allVendorDocs) {
+        uniqueVendorDocs[doc.id] = doc;
+      }
+
+      debugPrint('Found ${tempMarketVendors.docs.length} vendors with temp_market_id');
+      debugPrint('Found ${placeholderOrganizerVendors.docs.length} vendors with current_organizer_id');
+      debugPrint('Found ${userEmailVendors.docs.length} vendors with your email (${user.email})');
+      debugPrint('Total unique vendors to fix: ${uniqueVendorDocs.length}');
+
+      int updatedCount = 0;
+      for (final vendorDoc in uniqueVendorDocs.values) {
+        final vendorData = vendorDoc.data() as Map<String, dynamic>;
+        final vendorId = vendorDoc.id;
+        final businessName = vendorData['businessName'] ?? 'Unknown Vendor';
+
+        // Check if this vendor belongs to the current user (by organizer ID or email)
+        final vendorOrganizerId = vendorData['organizerId'];
+        final vendorEmail = vendorData['email'];
+        
+        if (vendorOrganizerId == 'current_organizer_id' || 
+            vendorOrganizerId == realOrganizerId ||
+            vendorEmail == user.email) {
+          
+          debugPrint('🔧 Updating vendor: $businessName (ID: $vendorId)');
+          
+          // Update the vendor with real IDs
+          await _firestore.collection('managed_vendors').doc(vendorId).update({
+            'marketId': realMarketId,
+            'organizerId': realOrganizerId,
+            'updatedAt': Timestamp.fromDate(DateTime.now()),
+          });
+          
+          updatedCount++;
+          debugPrint('✅ Updated vendor $businessName with real market and organizer IDs');
+        }
+      }
+
+      debugPrint('🎉 Fixed $updatedCount existing managed vendors!');
+    } catch (e) {
+      debugPrint('❌ Error fixing existing managed vendors: $e');
+      throw UserProfileException('Failed to fix existing managed vendors: $e');
+    }
+  }
 }
 
 class UserProfileException implements Exception {

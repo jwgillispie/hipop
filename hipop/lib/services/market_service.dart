@@ -255,19 +255,4 @@ class MarketService {
     }
   }
 
-  // Batch operations for seeding data
-  static Future<void> seedMarkets(List<Market> markets) async {
-    try {
-      final batch = _firestore.batch();
-      
-      for (final market in markets) {
-        final docRef = _marketsCollection.doc();
-        batch.set(docRef, market.copyWith(id: docRef.id).toFirestore());
-      }
-      
-      await batch.commit();
-    } catch (e) {
-      throw Exception('Failed to seed markets: $e');
-    }
-  }
 }

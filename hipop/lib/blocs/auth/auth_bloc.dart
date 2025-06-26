@@ -3,19 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../repositories/auth_repository.dart';
+import '../../services/user_profile_service.dart';
+import '../../models/user_profile.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final IAuthRepository _authRepository;
   final FirebaseFirestore _firestore;
+  final UserProfileService _userProfileService;
   StreamSubscription<User?>? _authStateSubscription;
 
   AuthBloc({
     required IAuthRepository authRepository,
     FirebaseFirestore? firestore,
+    UserProfileService? userProfileService,
   })  : _authRepository = authRepository,
         _firestore = firestore ?? FirebaseFirestore.instance,
+        _userProfileService = userProfileService ?? UserProfileService(),
         super(AuthInitial()) {
     
     on<AuthStarted>(_onAuthStarted);
@@ -69,17 +74,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           
           print('DEBUG: User doc found, userType: $userType');
           
-          if (userType == null || userType.isEmpty) {
-            print('WARNING: userType is null or empty in Firestore doc');
+          // Try to load user profile as well
+          UserProfile? userProfile;
+          try {
+            userProfile = await _userProfileService.getUserProfile(user.uid);
+            print('DEBUG: User profile loaded: ${userProfile?.userType}');
+          } catch (e) {
+            print('DEBUG: Failed to load user profile: $e');
+          }
+          
+          final effectiveUserType = userProfile?.userType ?? userType;
+          
+          if (effectiveUserType == null || effectiveUserType.isEmpty) {
+            print('WARNING: userType is null or empty in both docs');
             // For existing users with missing userType, check if they have vendor-specific data
             final hasVendorData = userData.containsKey('businessName') || 
                                 userData.containsKey('vendorProfile') ||
                                 userData.containsKey('popups');
             final inferredType = hasVendorData ? 'vendor' : 'shopper';
             print('DEBUG: Inferred userType: $inferredType based on document structure');
-            emit(Authenticated(user: user, userType: inferredType));
+            emit(Authenticated(user: user, userType: inferredType, userProfile: userProfile));
           } else {
-            emit(Authenticated(user: user, userType: userType));
+            emit(Authenticated(user: user, userType: effectiveUserType, userProfile: userProfile));
           }
         } else {
           print('ERROR: User doc still does not exist after ${retries + 1} attempts');
@@ -94,21 +110,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             
             if (vendorPostsQuery.docs.isNotEmpty) {
               print('DEBUG: Found vendor posts for user, setting userType to vendor');
-              emit(Authenticated(user: user, userType: 'vendor'));
+              emit(Authenticated(user: user, userType: 'vendor', userProfile: null));
             } else {
               print('DEBUG: No vendor posts found, defaulting to shopper');
-              emit(Authenticated(user: user, userType: 'shopper'));
+              emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
             }
           } catch (e) {
             print('ERROR: Failed to check vendor posts: $e');
             // Last resort - check the user's email for vendor patterns if needed
-            emit(Authenticated(user: user, userType: 'shopper'));
+            emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
           }
         }
       } catch (e) {
         print('ERROR: Failed to get user profile: $e');
         // If we can't get user profile, still authenticate but with default type
-        emit(Authenticated(user: user, userType: 'shopper'));
+        emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
       }
     } else {
       print('DEBUG: User is null, emitting Unauthenticated');
@@ -204,9 +220,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Reload user to ensure we have the latest data
         await _authRepository.reloadUser();
         
+        // Try to load the created user profile
+        UserProfile? userProfile;
+        try {
+          userProfile = await _userProfileService.getUserProfile(userCredential.user!.uid);  
+        } catch (e) {
+          print('DEBUG: Failed to load user profile after creation: $e');
+        }
+        
         print('DEBUG: Emitting Authenticated state for ${event.userType}');
         // Emit authenticated state directly to avoid race condition
-        emit(Authenticated(user: userCredential.user!, userType: event.userType));
+        emit(Authenticated(user: userCredential.user!, userType: event.userType, userProfile: userProfile));
       }
     } catch (e) {
       print('DEBUG: SignUp error caught: $e');
