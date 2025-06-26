@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/user_profile_service.dart';
+import '../services/market_service.dart';
+import '../models/market.dart';
 
 class AdminFixScreen extends StatefulWidget {
   const AdminFixScreen({super.key});
@@ -65,6 +67,35 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
                       ],
                     )
                   : const Text('Run Market Association Fix'),
+            ),
+            const SizedBox(height: 32),
+            
+            // Tucker's Market Creation Section
+            const Divider(),
+            const SizedBox(height: 24),
+            const Text(
+              'Demo Market Creation',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Create Tucker\'s Farmers Market for demo purposes:',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            const Text('• Creates a realistic market for Tucker, GA'),
+            const Text('• Includes proper address and operating hours'),
+            const Text('• Generates shareable vendor application link'),
+            const Text('• Perfect for sales demos and testing'),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _createTuckersMarket,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Create Tucker\'s Farmers Market'),
             ),
             const SizedBox(height: 24),
             if (_result.isNotEmpty) ...[
@@ -158,6 +189,75 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
     } catch (e) {
       setState(() {
         _result += 'Diagnosis error: $e\n';
+      });
+    }
+  }
+
+  Future<void> _createTuckersMarket() async {
+    setState(() {
+      _isLoading = true;
+      _result = '';
+    });
+
+    try {
+      // Create Tucker's Farmers Market
+      final tuckersMarket = Market(
+        id: '', // Will be auto-generated
+        name: 'Tucker\'s Farmers Market',
+        address: '4796 LaVista Rd, Tucker, GA 30084',
+        city: 'Tucker',
+        state: 'GA',
+        latitude: 33.8567,  // Approximate coordinates for Tucker, GA
+        longitude: -84.2154,
+        description: 'Tucker\'s premier farmers market featuring local vendors, fresh produce, artisanal goods, and community spirit. Operating since 2010, we support local farmers and makers while bringing the community together every weekend.',
+        operatingDays: const {
+          'saturday': '8:00 AM - 1:00 PM',
+          'sunday': '10:00 AM - 2:00 PM',
+        },
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+
+      // Add to database
+      final marketId = await MarketService.createMarket(tuckersMarket);
+      
+      String resultText = '🌟 TUCKER\'S FARMERS MARKET CREATED!\n\n';
+      resultText += '📍 Market ID: $marketId\n';
+      resultText += '📋 Name: ${tuckersMarket.name}\n';
+      resultText += '🏠 Address: ${tuckersMarket.address}\n';
+      resultText += '⏰ Hours: Saturday 8AM-1PM, Sunday 10AM-2PM\n\n';
+      
+      resultText += '🔗 SHAREABLE LINKS:\n';
+      resultText += '• Production: https://hipop.app/apply/$marketId\n';
+      resultText += '• Test: hipop://apply/$marketId\n\n';
+      
+      resultText += '🎯 DEMO READY!\n';
+      resultText += 'Use this market for your Tucker\'s Farmers Market demo.\n';
+      resultText += 'Show them the vendor application form and management system.\n';
+      resultText += 'Market organizers can claim this market by signing up.\n\n';
+      
+      resultText += '📱 NEXT STEPS:\n';
+      resultText += '1. Go to Vendor Applications screen\n';
+      resultText += '2. Click "Share Application Link"\n';
+      resultText += '3. Copy and test the application form\n';
+      resultText += '4. Show Tucker\'s how vendors can apply easily!';
+      
+      setState(() {
+        _result = resultText;
+      });
+
+    } catch (e) {
+      setState(() {
+        _result = '❌ Error creating Tucker\'s Farmers Market:\n\n$e\n\n';
+        _result += '🔧 Alternative: Add this data manually:\n';
+        _result += '1. Sign in as a market organizer\n';
+        _result += '2. Go to Market Management\n';
+        _result += '3. Create new market with Tucker\'s details\n';
+        _result += '4. Use the vendor application system to demo';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
