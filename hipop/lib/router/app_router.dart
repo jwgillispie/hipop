@@ -15,6 +15,12 @@ import '../screens/vendor_my_popups.dart';
 import '../screens/vendor_profile_screen.dart';
 import '../screens/change_password_screen.dart';
 import '../screens/vendor_post_detail_screen.dart';
+import '../screens/organizer_dashboard.dart';
+import '../screens/vendor_applications_screen.dart';
+import '../screens/recipe_management_screen.dart';
+import '../screens/event_management_screen.dart';
+import '../screens/organizer_analytics_screen.dart';
+import '../screens/organizer_profile_screen.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -101,6 +107,43 @@ class AppRouter {
             ),
           ],
         ),
+        GoRoute(
+          path: '/organizer',
+          name: 'organizer',
+          builder: (context, state) => const OrganizerDashboard(),
+          routes: [
+            GoRoute(
+              path: 'vendor-applications',
+              name: 'vendorApplications',
+              builder: (context, state) => const VendorApplicationsScreen(),
+            ),
+            GoRoute(
+              path: 'recipes',
+              name: 'recipes',
+              builder: (context, state) => const RecipeManagementScreen(),
+            ),
+            GoRoute(
+              path: 'events',
+              name: 'events',
+              builder: (context, state) => const EventManagementScreen(),
+            ),
+            GoRoute(
+              path: 'analytics',
+              name: 'analytics',
+              builder: (context, state) => const OrganizerAnalyticsScreen(),
+            ),
+            GoRoute(
+              path: 'profile',
+              name: 'organizerProfile',
+              builder: (context, state) => const OrganizerProfileScreen(),
+            ),
+            GoRoute(
+              path: 'change-password',
+              name: 'organizerChangePassword',
+              builder: (context, state) => const ChangePasswordScreen(),
+            ),
+          ],
+        ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
         final authState = authBloc.state;
@@ -109,19 +152,33 @@ class AppRouter {
         if (authState is Authenticated) {
           final isAuthRoute = ['/auth', '/login', '/signup'].contains(state.matchedLocation);
           if (isAuthRoute) {
-            return authState.userType == 'vendor' ? '/vendor' : '/shopper';
+            switch (authState.userType) {
+              case 'vendor':
+                return '/vendor';
+              case 'market_organizer':
+                return '/organizer';
+              default:
+                return '/shopper';
+            }
           }
           
-          // Skip onboarding for vendors - they go straight to dashboard
-          if (authState.userType == 'vendor' && state.matchedLocation == '/onboarding') {
-            return '/vendor';
+          // Skip onboarding for vendors and organizers - they go straight to dashboard
+          if ((authState.userType == 'vendor' || authState.userType == 'market_organizer') && 
+              state.matchedLocation == '/onboarding') {
+            return authState.userType == 'vendor' ? '/vendor' : '/organizer';
           }
           
           // Prevent wrong user type from accessing wrong routes
-          if (authState.userType == 'vendor' && state.matchedLocation.startsWith('/shopper')) {
+          if (authState.userType == 'vendor' && 
+              (state.matchedLocation.startsWith('/shopper') || state.matchedLocation.startsWith('/organizer'))) {
             return '/vendor';
           }
-          if (authState.userType == 'shopper' && state.matchedLocation.startsWith('/vendor')) {
+          if (authState.userType == 'market_organizer' && 
+              (state.matchedLocation.startsWith('/shopper') || state.matchedLocation.startsWith('/vendor'))) {
+            return '/organizer';
+          }
+          if (authState.userType == 'shopper' && 
+              (state.matchedLocation.startsWith('/vendor') || state.matchedLocation.startsWith('/organizer'))) {
             return '/shopper';
           }
         }

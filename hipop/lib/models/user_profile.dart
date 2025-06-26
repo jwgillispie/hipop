@@ -2,10 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserProfile {
   final String userId;
-  final String userType; // 'vendor' or 'shopper'
+  final String userType; // 'vendor', 'shopper', or 'market_organizer'
   final String email;
   final String? displayName;
   final String? businessName; // For vendors
+  final String? organizationName; // For market organizers
+  final List<String> managedMarketIds; // For market organizers - markets they manage
   final String? bio;
   final String? instagramHandle;
   final String? phoneNumber;
@@ -21,6 +23,8 @@ class UserProfile {
     required this.email,
     this.displayName,
     this.businessName,
+    this.organizationName,
+    this.managedMarketIds = const [],
     this.bio,
     this.instagramHandle,
     this.phoneNumber,
@@ -38,6 +42,8 @@ class UserProfile {
     String? email,
     String? displayName,
     String? businessName,
+    String? organizationName,
+    List<String>? managedMarketIds,
     String? bio,
     String? instagramHandle,
     String? phoneNumber,
@@ -53,6 +59,8 @@ class UserProfile {
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       businessName: businessName ?? this.businessName,
+      organizationName: organizationName ?? this.organizationName,
+      managedMarketIds: managedMarketIds ?? this.managedMarketIds,
       bio: bio ?? this.bio,
       instagramHandle: instagramHandle ?? this.instagramHandle,
       phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -72,6 +80,8 @@ class UserProfile {
       'email': email,
       'displayName': displayName,
       'businessName': businessName,
+      'organizationName': organizationName,
+      'managedMarketIds': managedMarketIds,
       'bio': bio,
       'instagramHandle': instagramHandle,
       'phoneNumber': phoneNumber,
@@ -93,6 +103,8 @@ class UserProfile {
       email: data['email'] ?? '',
       displayName: data['displayName'],
       businessName: data['businessName'],
+      organizationName: data['organizationName'],
+      managedMarketIds: List<String>.from(data['managedMarketIds'] ?? []),
       bio: data['bio'],
       instagramHandle: data['instagramHandle'],
       phoneNumber: data['phoneNumber'],
@@ -112,6 +124,8 @@ class UserProfile {
       email: data['email'] ?? '',
       displayName: data['displayName'],
       businessName: data['businessName'],
+      organizationName: data['organizationName'],
+      managedMarketIds: List<String>.from(data['managedMarketIds'] ?? []),
       bio: data['bio'],
       instagramHandle: data['instagramHandle'],
       phoneNumber: data['phoneNumber'],
@@ -128,6 +142,9 @@ class UserProfile {
     if (userType == 'vendor' && businessName != null && businessName!.isNotEmpty) {
       return businessName!;
     }
+    if (userType == 'market_organizer' && organizationName != null && organizationName!.isNotEmpty) {
+      return organizationName!;
+    }
     return displayName ?? email.split('@').first;
   }
 
@@ -138,6 +155,10 @@ class UserProfile {
     if (userType == 'vendor') {
       // Vendors need business name or display name
       return hasBasicInfo || (businessName != null && businessName!.isNotEmpty);
+    } else if (userType == 'market_organizer') {
+      // Market organizers need organization name or display name, plus at least one managed market
+      return (hasBasicInfo || (organizationName != null && organizationName!.isNotEmpty)) 
+          && managedMarketIds.isNotEmpty;
     } else {
       // Shoppers just need display name
       return hasBasicInfo;
@@ -146,7 +167,7 @@ class UserProfile {
 
   // Helper method to get profile completion percentage
   double get profileCompletionPercentage {
-    int totalFields = userType == 'vendor' ? 7 : 4; // Different expectations for vendors vs shoppers
+    int totalFields;
     int completedFields = 0;
 
     // Always required
@@ -154,13 +175,24 @@ class UserProfile {
     if (displayName != null && displayName!.isNotEmpty) completedFields++;
 
     if (userType == 'vendor') {
+      totalFields = 7;
       // Vendor-specific fields
       if (businessName != null && businessName!.isNotEmpty) completedFields++;
       if (bio != null && bio!.isNotEmpty) completedFields++;
       if (instagramHandle != null && instagramHandle!.isNotEmpty) completedFields++;
       if (categories.isNotEmpty) completedFields++;
       if (website != null && website!.isNotEmpty) completedFields++;
+    } else if (userType == 'market_organizer') {
+      totalFields = 8;
+      // Market organizer-specific fields
+      if (organizationName != null && organizationName!.isNotEmpty) completedFields++;
+      if (managedMarketIds.isNotEmpty) completedFields++;
+      if (bio != null && bio!.isNotEmpty) completedFields++;
+      if (instagramHandle != null && instagramHandle!.isNotEmpty) completedFields++;
+      if (phoneNumber != null && phoneNumber!.isNotEmpty) completedFields++;
+      if (website != null && website!.isNotEmpty) completedFields++;
     } else {
+      totalFields = 4;
       // Shopper-specific fields
       if (bio != null && bio!.isNotEmpty) completedFields++;
       if (instagramHandle != null && instagramHandle!.isNotEmpty) completedFields++;
@@ -184,6 +216,7 @@ class UserProfile {
         other.email == email &&
         other.displayName == displayName &&
         other.businessName == businessName &&
+        other.organizationName == organizationName &&
         other.bio == bio &&
         other.instagramHandle == instagramHandle &&
         other.phoneNumber == phoneNumber &&
@@ -197,9 +230,45 @@ class UserProfile {
         email.hashCode ^
         displayName.hashCode ^
         businessName.hashCode ^
+        organizationName.hashCode ^
         bio.hashCode ^
         instagramHandle.hashCode ^
         phoneNumber.hashCode ^
         website.hashCode;
+  }
+
+  // Helper methods for market organizers
+  bool get isMarketOrganizer => userType == 'market_organizer';
+  
+  bool canManageMarket(String marketId) {
+    return isMarketOrganizer && managedMarketIds.contains(marketId);
+  }
+  
+  // Add a market to managed markets (for organizers)
+  UserProfile addManagedMarket(String marketId) {
+    if (!isMarketOrganizer) return this;
+    
+    final updatedMarkets = List<String>.from(managedMarketIds);
+    if (!updatedMarkets.contains(marketId)) {
+      updatedMarkets.add(marketId);
+    }
+    
+    return copyWith(
+      managedMarketIds: updatedMarkets,
+      updatedAt: DateTime.now(),
+    );
+  }
+  
+  // Remove a market from managed markets (for organizers)
+  UserProfile removeManagedMarket(String marketId) {
+    if (!isMarketOrganizer) return this;
+    
+    final updatedMarkets = List<String>.from(managedMarketIds);
+    updatedMarkets.remove(marketId);
+    
+    return copyWith(
+      managedMarketIds: updatedMarkets,
+      updatedAt: DateTime.now(),
+    );
   }
 }

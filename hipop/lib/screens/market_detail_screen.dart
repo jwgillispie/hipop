@@ -8,6 +8,10 @@ import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
 import '../widgets/market/market_calendar_widget.dart';
+import '../screens/vendor_application_form.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class MarketDetailScreen extends StatefulWidget {
   final Market market;
@@ -95,6 +99,7 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
           ],
         ),
       ),
+      floatingActionButton: _buildVendorApplicationFab(),
       body: _isLoading
           ? const LoadingWidget(message: 'Loading market details...')
           : _error != null
@@ -679,5 +684,48 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
     // Count unique vendors based on vendor posts rather than vendor-market relationships
     final uniqueVendorIds = _allMarketPosts.map((post) => post.vendorId).toSet();
     return uniqueVendorIds.length;
+  }
+
+  Widget? _buildVendorApplicationFab() {
+    // Only show the FAB for Community Farmers Market and for authenticated non-organizer users
+    if (widget.market.name != 'Community Farmers Market') {
+      return null;
+    }
+
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        // Only show for authenticated users who are not market organizers
+        if (state is! Authenticated || state.userType == 'market_organizer') {
+          return const SizedBox.shrink();
+        }
+
+        return FloatingActionButton.extended(
+          onPressed: () => _navigateToVendorApplication(),
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.assignment),
+          label: const Text('Apply as Vendor'),
+        );
+      },
+    );
+  }
+
+  void _navigateToVendorApplication() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => VendorApplicationForm(market: widget.market),
+      ),
+    );
+
+    // If application was submitted successfully, show confirmation
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Application submitted! The market organizer will review your application.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }
