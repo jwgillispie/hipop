@@ -226,37 +226,6 @@ class ManagedVendorService {
     }
   }
 
-  /// Get vendors available for event assignment
-  static Future<List<ManagedVendor>> getVendorsForEventAssignment(
-    String marketId,
-    List<String> operatingDays,
-  ) async {
-    try {
-      final snapshot = await _vendorsCollection
-          .where('marketId', isEqualTo: marketId)
-          .where('isActive', isEqualTo: true)
-          .get();
-
-      final vendors = snapshot.docs
-          .map((doc) => ManagedVendor.fromFirestore(doc))
-          .toList();
-
-      // Filter by operating days if specified
-      if (operatingDays.isNotEmpty) {
-        return vendors
-            .where((vendor) =>
-                vendor.operatingDays.isEmpty ||
-                vendor.operatingDays
-                    .any((day) => operatingDays.contains(day)))
-            .toList();
-      }
-
-      return vendors;
-    } catch (e) {
-      debugPrint('Error getting vendors for event assignment: $e');
-      throw Exception('Failed to get vendors for event assignment: $e');
-    }
-  }
 
   /// Bulk operations
   static Future<void> bulkUpdateVendorStatus(

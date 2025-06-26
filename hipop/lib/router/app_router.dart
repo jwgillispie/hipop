@@ -18,7 +18,6 @@ import '../screens/vendor_post_detail_screen.dart';
 import '../screens/organizer_dashboard.dart';
 import '../screens/vendor_applications_screen.dart';
 import '../screens/custom_items_screen.dart';
-import '../screens/event_management_screen.dart';
 import '../screens/organizer_analytics_screen.dart';
 import '../screens/organizer_profile_screen.dart';
 import '../screens/vendor_management_screen.dart';
@@ -138,11 +137,6 @@ class AppRouter {
               path: 'custom-items',
               name: 'customItems',
               builder: (context, state) => const CustomItemsScreen(),
-            ),
-            GoRoute(
-              path: 'events',
-              name: 'events',
-              builder: (context, state) => const EventManagementScreen(),
             ),
             GoRoute(
               path: 'analytics',

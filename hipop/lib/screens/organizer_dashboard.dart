@@ -168,13 +168,6 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       () => context.pushNamed('vendorApplications'),
                     ),
                     _buildActionCard(
-                      'Event Management',
-                      'Plan upcoming markets',
-                      Icons.event,
-                      Colors.blue,
-                      () => context.pushNamed('events'),
-                    ),
-                    _buildActionCard(
                       'Custom Items',
                       'Manage recipes and content',
                       Icons.tune,
@@ -279,7 +272,6 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
     }
 
     final vendorMetrics = _realTimeMetrics!['vendors'] as Map<String, dynamic>? ?? {};
-    final eventMetrics = _realTimeMetrics!['events'] as Map<String, dynamic>? ?? {};
     final recipeMetrics = _realTimeMetrics!['recipes'] as Map<String, dynamic>? ?? {};
 
     return Column(
@@ -319,9 +311,9 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
-                'Upcoming Events',
-                (eventMetrics['upcoming'] ?? 0).toString(),
-                Icons.event,
+                'Total Markets',
+                (vendorMetrics['markets'] ?? 0).toString(),
+                Icons.storefront,
                 Colors.blue,
               ),
             ),

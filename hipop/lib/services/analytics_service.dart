@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/analytics.dart';
 import '../models/vendor_application.dart';
-import '../models/market_event.dart';
 import '../models/recipe.dart';
 
 class AnalyticsService {
@@ -22,9 +21,6 @@ class AnalyticsService {
       // Get vendor metrics
       final vendorMetrics = await _getVendorMetrics(marketId);
       
-      // Get event metrics
-      final eventMetrics = await _getEventMetrics(marketId);
-      
       // Get recipe metrics
       final recipeMetrics = await _getRecipeMetrics(marketId);
       
@@ -38,11 +34,11 @@ class AnalyticsService {
         newVendorApplications: vendorMetrics['newApplications'] ?? 0,
         approvedApplications: vendorMetrics['approved'] ?? 0,
         rejectedApplications: vendorMetrics['rejected'] ?? 0,
-        totalEvents: eventMetrics['total'] ?? 0,
-        publishedEvents: eventMetrics['published'] ?? 0,
-        completedEvents: eventMetrics['completed'] ?? 0,
-        upcomingEvents: eventMetrics['upcoming'] ?? 0,
-        averageEventOccupancy: eventMetrics['averageOccupancy'] ?? 0.0,
+        totalEvents: 0,
+        publishedEvents: 0,
+        completedEvents: 0,
+        upcomingEvents: 0,
+        averageEventOccupancy: 0.0,
         totalRecipes: recipeMetrics['total'] ?? 0,
         publicRecipes: recipeMetrics['public'] ?? 0,
         featuredRecipes: recipeMetrics['featured'] ?? 0,
@@ -74,22 +70,20 @@ class AnalyticsService {
       final realTimeMetrics = await getRealTimeMetrics(marketId);
       
       final vendorMetrics = realTimeMetrics['vendors'] as Map<String, dynamic>? ?? {};
-      final eventMetrics = realTimeMetrics['events'] as Map<String, dynamic>? ?? {};
       final recipeMetrics = realTimeMetrics['recipes'] as Map<String, dynamic>? ?? {};
       
       // Get current breakdowns
       final vendorApplicationsByStatus = await _getVendorApplicationBreakdown(marketId);
-      final eventsByStatus = await _getEventStatusBreakdown(marketId);
       final recipesByCategory = await _getRecipeCategoryBreakdown(marketId);
       
       return AnalyticsSummary(
         totalVendors: vendorMetrics['total'] ?? 0,
-        totalEvents: eventMetrics['total'] ?? 0,
+        totalEvents: 0,
         totalRecipes: recipeMetrics['total'] ?? 0,
         totalViews: 0, // No view tracking yet
         growthRate: 0.0, // Calculate when we have historical data
         vendorApplicationsByStatus: vendorApplicationsByStatus,
-        eventsByStatus: eventsByStatus,
+        eventsByStatus: <String, int>{},
         recipesByCategory: recipesByCategory,
         dailyData: [], // No historical data yet
       );
@@ -106,16 +100,13 @@ class AnalyticsService {
       debugPrint('Getting real-time metrics for market: $marketId');
       
       final vendorMetrics = await _getVendorMetrics(marketId);
-      final eventMetrics = await _getEventMetrics(marketId);
       final recipeMetrics = await _getRecipeMetrics(marketId);
       
       debugPrint('Vendor metrics: $vendorMetrics');
-      debugPrint('Event metrics: $eventMetrics');
       debugPrint('Recipe metrics: $recipeMetrics');
       
       return {
         'vendors': vendorMetrics,
-        'events': eventMetrics,
         'recipes': recipeMetrics,
         'lastUpdated': DateTime.now(),
       };
@@ -124,7 +115,6 @@ class AnalyticsService {
       // Return default metrics instead of throwing
       return {
         'vendors': {'total': 0, 'active': 0, 'pending': 0, 'approved': 0, 'rejected': 0},
-        'events': {'total': 0, 'published': 0, 'upcoming': 0, 'completed': 0, 'averageOccupancy': 0.0},
         'recipes': {'total': 0, 'public': 0, 'featured': 0, 'likes': 0, 'saves': 0, 'shares': 0},
         'lastUpdated': DateTime.now(),
       };
@@ -169,56 +159,6 @@ class AnalyticsService {
     }
   }
 
-  static Future<Map<String, dynamic>> _getEventMetrics(String marketId) async {
-    try {
-      debugPrint('Getting event metrics for market: $marketId');
-      
-      final eventsSnapshot = await _firestore
-          .collection('market_events')
-          .where('marketId', isEqualTo: marketId)
-          .get();
-      
-      debugPrint('Found ${eventsSnapshot.docs.length} market events');
-      
-      final events = eventsSnapshot.docs
-          .map((doc) => MarketEvent.fromFirestore(doc))
-          .toList();
-      
-      final now = DateTime.now();
-      final upcoming = events.where((event) => 
-          event.startDateTime.isAfter(now) && 
-          event.status == EventStatus.published).length;
-      
-      final completed = events.where((event) => 
-          event.endDateTime.isBefore(now) && 
-          event.status == EventStatus.published).length;
-      
-      // Calculate average occupancy
-      double totalOccupancy = 0.0;
-      int occupancyCount = 0;
-      for (final event in events) {
-        if (event.maxVendorSlots > 0) {
-          totalOccupancy += event.occupancyRate;
-          occupancyCount++;
-        }
-      }
-      
-      final metrics = {
-        'total': events.length,
-        'published': events.where((e) => e.status == EventStatus.published).length,
-        'draft': events.where((e) => e.status == EventStatus.draft).length,
-        'completed': completed,
-        'upcoming': upcoming,
-        'averageOccupancy': occupancyCount > 0 ? totalOccupancy / occupancyCount : 0.0,
-      };
-      
-      debugPrint('Event metrics calculated: $metrics');
-      return metrics;
-    } catch (e) {
-      debugPrint('Error getting event metrics: $e');
-      return {'total': 0, 'published': 0, 'draft': 0, 'completed': 0, 'upcoming': 0, 'averageOccupancy': 0.0};
-    }
-  }
 
   static Future<Map<String, dynamic>> _getRecipeMetrics(String marketId) async {
     try {
@@ -278,27 +218,6 @@ class AnalyticsService {
     }
   }
 
-  static Future<Map<String, int>> _getEventStatusBreakdown(String marketId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('market_events')
-          .where('marketId', isEqualTo: marketId)
-          .get();
-      
-      final events = snapshot.docs
-          .map((doc) => MarketEvent.fromFirestore(doc))
-          .toList();
-      
-      return {
-        'draft': events.where((e) => e.status == EventStatus.draft).length,
-        'published': events.where((e) => e.status == EventStatus.published).length,
-        'cancelled': events.where((e) => e.status == EventStatus.cancelled).length,
-      };
-    } catch (e) {
-      debugPrint('Error getting event status breakdown: $e');
-      return {};
-    }
-  }
 
   static Future<Map<String, int>> _getRecipeCategoryBreakdown(String marketId) async {
     try {
@@ -364,23 +283,8 @@ class AnalyticsService {
           .map((doc) => Recipe.fromFirestore(doc))
           .toList();
       
-      // Get upcoming events by occupancy
-      final eventsSnapshot = await _firestore
-          .collection('market_events')
-          .where('marketId', isEqualTo: marketId)
-          .where('status', isEqualTo: EventStatus.published.name)
-          .get();
-      
-      final events = eventsSnapshot.docs
-          .map((doc) => MarketEvent.fromFirestore(doc))
-          .toList();
-      
-      events.sort((a, b) => b.occupancyRate.compareTo(a.occupancyRate));
-      final topEvents = events.take(5).toList();
-      
       return {
         'topRecipes': topRecipes,
-        'topEvents': topEvents,
       };
     } catch (e) {
       debugPrint('Error getting top performing metrics: $e');
