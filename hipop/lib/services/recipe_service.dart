@@ -518,4 +518,31 @@ class RecipeService {
       throw Exception('Failed to get trending recipes: $e');
     }
   }
+
+  /// Get count of recipes by category (for shopper UI)
+  static Future<int> getRecipeCountByCategory(RecipeCategory category) async {
+    try {
+      final snapshot = await _recipesCollection
+          .where('category', isEqualTo: category.name)
+          .where('isPublic', isEqualTo: true)
+          .get();
+      return snapshot.docs.length;
+    } catch (e) {
+      debugPrint('Error getting recipe count by category: $e');
+      return 0;
+    }
+  }
+
+  /// Get featured recipes across all markets (for shopper UI)
+  static Stream<List<Recipe>> getAllFeaturedRecipes() {
+    return _recipesCollection
+        .where('isFeatured', isEqualTo: true)
+        .where('isPublic', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .limit(20)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Recipe.fromFirestore(doc))
+            .toList());
+  }
 }

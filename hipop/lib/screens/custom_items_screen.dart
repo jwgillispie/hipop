@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class CustomItemsScreen extends StatefulWidget {
   const CustomItemsScreen({super.key});
@@ -63,24 +66,46 @@ class _RecipeManagementTab extends StatefulWidget {
 }
 
 class _RecipeManagementTabState extends State<_RecipeManagementTab> {
-  final String marketId = 'temp_market_id'; // TODO: Get from context/auth
-  final String organizerId = 'current_organizer_id'; // TODO: Get from auth
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildRecipesList(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreateRecipeDialog(),
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('New Recipe'),
-      ),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state is! Authenticated) {
+          return const Center(
+            child: Text('Please log in to manage recipes'),
+          );
+        }
+
+        // Get user info from auth state
+        final userId = state.user.uid;
+        final userProfile = state.userProfile;
+        
+        // Get market ID from user's managed markets (use first one if available)
+        String? marketId;
+        if (userProfile?.isMarketOrganizer == true && 
+            userProfile!.managedMarketIds.isNotEmpty) {
+          marketId = userProfile.managedMarketIds.first;
+        }
+
+        return Scaffold(
+          body: marketId != null 
+              ? _buildRecipesList(marketId!, userId)
+              : _buildNoMarketsView(),
+          floatingActionButton: marketId != null 
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showCreateRecipeDialog(marketId!, userId),
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Recipe'),
+                )
+              : null,
+        );
+      },
     );
   }
 
-  Widget _buildRecipesList() {
+  Widget _buildRecipesList(String marketId, String userId) {
     return StreamBuilder<List<Recipe>>(
       stream: RecipeService.getRecipesForMarket(marketId),
       builder: (context, snapshot) {
@@ -134,7 +159,7 @@ class _RecipeManagementTabState extends State<_RecipeManagementTab> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () => _showCreateRecipeDialog(),
+                  onPressed: () => _showCreateRecipeDialog(marketId, userId),
                   icon: const Icon(Icons.add),
                   label: const Text('Create First Recipe'),
                   style: ElevatedButton.styleFrom(
@@ -545,7 +570,36 @@ class _RecipeManagementTabState extends State<_RecipeManagementTab> {
     }
   }
 
-  void _showCreateRecipeDialog() {
+  Widget _buildNoMarketsView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.store,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No Markets Found',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'You need to be associated with a market to create recipes.',
+            style: TextStyle(color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateRecipeDialog(String marketId, String organizerId) {
     showDialog(
       context: context,
       builder: (context) => _CreateRecipeDialog(

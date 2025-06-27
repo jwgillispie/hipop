@@ -60,7 +60,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
           children: [
             // Progress bar and skip button
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
                   Expanded(
@@ -104,7 +104,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             
             // Navigation buttons
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(24),
               child: Row(
                 children: [
                   if (_currentPage > 0)
@@ -142,12 +142,12 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildWelcomePage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               color: Colors.green.shade100,
               shape: BoxShape.circle,
@@ -158,7 +158,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               color: Colors.green.shade700,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Text(
             'Welcome to HiPop!',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -167,7 +167,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 40),
           Text(
             'You\'re now a Market Organizer! Let us show you how to manage your farmers market with ease.',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -175,9 +175,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -190,7 +190,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
                   color: Colors.amber.shade600,
                   size: 24,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Text(
                   'What you\'ll learn:',
                   style: TextStyle(
@@ -198,7 +198,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
                     color: Colors.green.shade800,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 const Text(
                   '• How to create and manage your market\n'
                   '• Processing vendor applications\n'
@@ -217,23 +217,23 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildMarketManagementPage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: Colors.teal.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.storefront,
-              size: 60,
+              size: 70,
               color: Colors.teal.shade700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Text(
             'Market Management',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -250,9 +250,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -296,23 +296,23 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildVendorApplicationsPage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: Colors.orange.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.assignment_turned_in,
-              size: 60,
+              size: 70,
               color: Colors.orange.shade700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Text(
             'Vendor Applications',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -329,9 +329,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -368,9 +368,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(8),
@@ -399,23 +399,23 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildAnalyticsPage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: Colors.green.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.analytics,
-              size: 60,
+              size: 70,
               color: Colors.green.shade700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Text(
             'Analytics Dashboard',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -432,9 +432,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -471,12 +471,12 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -502,10 +502,10 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -540,23 +540,23 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildCalendarPage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: Colors.teal.shade100,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.calendar_today,
-              size: 60,
+              size: 70,
               color: Colors.teal.shade700,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Text(
             'Market Calendar',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -573,9 +573,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -612,9 +612,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -661,12 +661,12 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildGetStartedPage() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               color: Colors.green.shade100,
               shape: BoxShape.circle,
@@ -677,7 +677,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               color: Colors.green.shade700,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Text(
             'You\'re All Set!',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -694,9 +694,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -733,9 +733,9 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 40),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(8),
@@ -764,18 +764,18 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
 
   Widget _buildFeatureItem(IconData icon, String title, String description, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
