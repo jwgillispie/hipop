@@ -28,12 +28,18 @@ export default async function Markets() {
               Discover fresh, local produce and artisanal foods at farmers markets in your area. 
               Connect with local vendors and support your community.
             </p>
-            <div className="mt-10">
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              <Link
+                href="/apply"
+                className="rounded-md bg-orange-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+              >
+                Apply as Vendor
+              </Link>
               <Link
                 href="https://hipop-markets.web.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-md bg-orange-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+                className="rounded-md bg-white px-6 py-3 text-base font-semibold text-orange-600 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 border border-orange-600"
               >
                 Go to the App
               </Link>
@@ -139,12 +145,18 @@ export default async function Markets() {
                       )}
                     </div>
                     
-                    <div className="mt-6">
+                    <div className="mt-6 flex items-center justify-between">
                       <Link
                         href={`/markets/${market.id}`}
                         className="text-sm font-semibold leading-6 text-orange-600 hover:text-orange-500"
                       >
                         View Details <span aria-hidden="true">→</span>
+                      </Link>
+                      <Link
+                        href={`/apply?market=${market.id}`}
+                        className="inline-flex items-center rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+                      >
+                        Apply as Vendor
                       </Link>
                     </div>
                   </div>

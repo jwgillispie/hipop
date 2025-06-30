@@ -33,6 +33,7 @@ import '../screens/recipe_detail_screen.dart';
 import '../screens/vendor_detail_screen.dart';
 import '../screens/shopper_calendar_screen.dart';
 import '../screens/organizer_onboarding_screen.dart';
+import '../screens/vendor_application_status_screen.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -150,6 +151,11 @@ class AppRouter {
               path: 'change-password',
               name: 'changePassword',
               builder: (context, state) => const ChangePasswordScreen(),
+            ),
+            GoRoute(
+              path: 'applications',
+              name: 'vendorApplicationStatus',
+              builder: (context, state) => const VendorApplicationStatusScreen(),
             ),
           ],
         ),

@@ -4,6 +4,7 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../models/analytics.dart';
 import '../services/analytics_service.dart';
+import '../widgets/vendor_registrations_chart.dart';
 
 class OrganizerAnalyticsScreen extends StatefulWidget {
   const OrganizerAnalyticsScreen({super.key});
@@ -592,26 +593,11 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Icon(Icons.show_chart, size: 48, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(
-                  'Chart Integration',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Charts showing trends over time would be displayed here.\nIntegration with fl_chart or similar library needed.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
+        VendorRegistrationsChart(
+          marketId: marketId,
+          monthsBack: _selectedTimeRange == AnalyticsTimeRange.week ? 3 :
+                      _selectedTimeRange == AnalyticsTimeRange.month ? 6 :
+                      _selectedTimeRange == AnalyticsTimeRange.quarter ? 12 : 12,
         ),
       ],
     );

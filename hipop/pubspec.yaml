@@ -66,6 +66,12 @@ dependencies:
   
   # Calendar functionality
   table_calendar: ^3.1.2
+  
+  # Charts
+  fl_chart: ^0.69.0
+  
+  # QR Code generation
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

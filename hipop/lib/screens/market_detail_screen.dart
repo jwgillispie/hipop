@@ -37,6 +37,11 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
     super.dispose();
   }
 
+  void _applyAsVendor(BuildContext context) {
+    // Navigate to vendor application form
+    context.push('/apply/${widget.market.id}');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +113,13 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
           _buildOverviewTab(),
           _buildVendorsTab(),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _applyAsVendor(context),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.store),
+        label: const Text('Apply as Vendor'),
       ),
     );
   }

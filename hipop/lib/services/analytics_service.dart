@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../models/analytics.dart';
 import '../models/vendor_application.dart';
 import '../models/recipe.dart';
-import '../models/user_favorite.dart';
 
 class AnalyticsService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -319,7 +318,7 @@ class AnalyticsService {
       
       final newMarketFavoritesToday = marketFavoritesSnapshot.docs
           .where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
             return createdAt != null && createdAt.isAfter(startOfDay);
           })
@@ -335,7 +334,7 @@ class AnalyticsService {
       // Filter to only include vendors from this market
       final newVendorFavoritesToday = newVendorFavoritesTodaySnapshot.docs
           .where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
+            final data = doc.data();
             final itemId = data['itemId'] as String?;
             return itemId != null && vendorIds.contains(itemId);
           })
@@ -383,6 +382,107 @@ class AnalyticsService {
       debugPrint('Error exporting analytics data: $e');
       throw Exception('Failed to export analytics data: $e');
     }
+  }
+
+  /// Get vendor registrations by month for chart data
+  static Future<List<Map<String, dynamic>>> getVendorRegistrationsByMonth(
+    String marketId, 
+    int monthsBack
+  ) async {
+    try {
+      debugPrint('Getting vendor registrations by month for market: $marketId');
+      
+      final now = DateTime.now();
+      final startDate = DateTime(now.year, now.month - monthsBack, 1);
+      
+      // Get all vendor applications for this market
+      final applicationsSnapshot = await _firestore
+          .collection('vendor_applications')
+          .where('marketId', isEqualTo: marketId)
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .orderBy('createdAt')
+          .get();
+      
+      final applications = applicationsSnapshot.docs
+          .map((doc) => VendorApplication.fromFirestore(doc))
+          .toList();
+      
+      // Group applications by month
+      final monthlyData = <String, Map<String, int>>{};
+      
+      // Initialize all months with zero values
+      for (int i = 0; i < monthsBack; i++) {
+        final date = DateTime(now.year, now.month - i, 1);
+        final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        monthlyData[monthKey] = {
+          'total': 0,
+          'approved': 0,
+          'pending': 0,
+          'rejected': 0,
+        };
+      }
+      
+      // Count applications by month and status
+      for (final application in applications) {
+        final date = application.createdAt;
+        final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+        
+        if (monthlyData.containsKey(monthKey)) {
+          monthlyData[monthKey]!['total'] = (monthlyData[monthKey]!['total'] ?? 0) + 1;
+          
+          switch (application.status) {
+            case ApplicationStatus.approved:
+              monthlyData[monthKey]!['approved'] = (monthlyData[monthKey]!['approved'] ?? 0) + 1;
+              break;
+            case ApplicationStatus.pending:
+              monthlyData[monthKey]!['pending'] = (monthlyData[monthKey]!['pending'] ?? 0) + 1;
+              break;
+            case ApplicationStatus.rejected:
+              monthlyData[monthKey]!['rejected'] = (monthlyData[monthKey]!['rejected'] ?? 0) + 1;
+              break;
+            case ApplicationStatus.waitlisted:
+              monthlyData[monthKey]!['pending'] = (monthlyData[monthKey]!['pending'] ?? 0) + 1;
+              break;
+          }
+        }
+      }
+      
+      // Convert to list format for charts, sorted by date
+      final result = monthlyData.entries
+          .map((entry) => {
+                'month': entry.key,
+                'monthName': _getMonthName(entry.key),
+                ...entry.value,
+              })
+          .toList();
+      
+      // Sort by month (chronological order)
+      result.sort((a, b) => (a['month'] as String).compareTo(b['month'] as String));
+      
+      debugPrint('Vendor registrations by month: $result');
+      return result;
+    } catch (e) {
+      debugPrint('Error getting vendor registrations by month: $e');
+      return [];
+    }
+  }
+  
+  /// Helper method to get month name from YYYY-MM format
+  static String _getMonthName(String monthKey) {
+    final parts = monthKey.split('-');
+    if (parts.length != 2) return monthKey;
+    
+    final year = int.tryParse(parts[0]) ?? 0;
+    final month = int.tryParse(parts[1]) ?? 1;
+    
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    
+    if (month < 1 || month > 12) return monthKey;
+    
+    return '${months[month - 1]} ${year.toString().substring(2)}'; // e.g., "Jan 24"
   }
 
   /// Get top performing metrics
