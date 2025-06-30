@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../services/favorites_service.dart';
+import '../../models/user_favorite.dart';
 import '../../repositories/favorites_repository.dart';
 
 part 'favorites_event.dart';
@@ -26,9 +28,26 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     emit(state.copyWith(status: FavoritesStatus.loading));
     
     try {
-      final favoritePostIds = await _favoritesRepository.getFavoritePostIds();
-      final favoriteVendorIds = await _favoritesRepository.getFavoriteVendorIds();
-      final favoriteMarketIds = await _favoritesRepository.getFavoriteMarketIds();
+      List<String> favoritePostIds = [];
+      List<String> favoriteVendorIds = [];
+      List<String> favoriteMarketIds = [];
+      
+      if (event.userId != null) {
+        // Use Firestore service for authenticated users
+        final vendorFavorites = await FavoritesService.getUserFavoriteVendors(event.userId!);
+        final marketFavorites = await FavoritesService.getUserFavoriteMarkets(event.userId!);
+        
+        favoriteVendorIds = vendorFavorites.map((v) => v.id).toList();
+        favoriteMarketIds = marketFavorites.map((m) => m.id).toList();
+        
+        // Note: Posts are not supported in Firestore service yet, keep local for now
+        favoritePostIds = await _favoritesRepository.getFavoritePostIds();
+      } else {
+        // Use local repository for anonymous users
+        favoritePostIds = await _favoritesRepository.getFavoritePostIds();
+        favoriteVendorIds = await _favoritesRepository.getFavoriteVendorIds();
+        favoriteMarketIds = await _favoritesRepository.getFavoriteMarketIds();
+      }
       
       emit(state.copyWith(
         status: FavoritesStatus.loaded,
@@ -75,12 +94,30 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final updatedFavoriteVendorIds = List<String>.from(state.favoriteVendorIds);
       
-      if (updatedFavoriteVendorIds.contains(event.vendorId)) {
-        await _favoritesRepository.removeFavoriteVendor(event.vendorId);
-        updatedFavoriteVendorIds.remove(event.vendorId);
+      if (event.userId != null) {
+        // Use Firestore service for authenticated users
+        final newIsFavorited = await FavoritesService.toggleFavorite(
+          userId: event.userId!,
+          itemId: event.vendorId,
+          type: FavoriteType.vendor,
+        );
+        
+        if (newIsFavorited) {
+          if (!updatedFavoriteVendorIds.contains(event.vendorId)) {
+            updatedFavoriteVendorIds.add(event.vendorId);
+          }
+        } else {
+          updatedFavoriteVendorIds.remove(event.vendorId);
+        }
       } else {
-        await _favoritesRepository.addFavoriteVendor(event.vendorId);
-        updatedFavoriteVendorIds.add(event.vendorId);
+        // Use local repository for anonymous users
+        if (updatedFavoriteVendorIds.contains(event.vendorId)) {
+          await _favoritesRepository.removeFavoriteVendor(event.vendorId);
+          updatedFavoriteVendorIds.remove(event.vendorId);
+        } else {
+          await _favoritesRepository.addFavoriteVendor(event.vendorId);
+          updatedFavoriteVendorIds.add(event.vendorId);
+        }
       }
       
       emit(state.copyWith(favoriteVendorIds: updatedFavoriteVendorIds));
@@ -99,12 +136,30 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final updatedFavoriteMarketIds = List<String>.from(state.favoriteMarketIds);
       
-      if (updatedFavoriteMarketIds.contains(event.marketId)) {
-        await _favoritesRepository.removeFavoriteMarket(event.marketId);
-        updatedFavoriteMarketIds.remove(event.marketId);
+      if (event.userId != null) {
+        // Use Firestore service for authenticated users
+        final newIsFavorited = await FavoritesService.toggleFavorite(
+          userId: event.userId!,
+          itemId: event.marketId,
+          type: FavoriteType.market,
+        );
+        
+        if (newIsFavorited) {
+          if (!updatedFavoriteMarketIds.contains(event.marketId)) {
+            updatedFavoriteMarketIds.add(event.marketId);
+          }
+        } else {
+          updatedFavoriteMarketIds.remove(event.marketId);
+        }
       } else {
-        await _favoritesRepository.addFavoriteMarket(event.marketId);
-        updatedFavoriteMarketIds.add(event.marketId);
+        // Use local repository for anonymous users
+        if (updatedFavoriteMarketIds.contains(event.marketId)) {
+          await _favoritesRepository.removeFavoriteMarket(event.marketId);
+          updatedFavoriteMarketIds.remove(event.marketId);
+        } else {
+          await _favoritesRepository.addFavoriteMarket(event.marketId);
+          updatedFavoriteMarketIds.add(event.marketId);
+        }
       }
       
       emit(state.copyWith(favoriteMarketIds: updatedFavoriteMarketIds));
@@ -121,7 +176,14 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     Emitter<FavoritesState> emit,
   ) async {
     try {
-      await _favoritesRepository.clearAllFavorites();
+      if (event.userId != null) {
+        // Use Firestore service for authenticated users
+        await FavoritesService.clearAllFavorites(event.userId!);
+      } else {
+        // Use local repository for anonymous users
+        await _favoritesRepository.clearAllFavorites();
+      }
+      
       emit(state.copyWith(
         favoritePostIds: [],
         favoriteVendorIds: [],

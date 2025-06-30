@@ -4,40 +4,53 @@ abstract class FavoritesEvent extends Equatable {
   const FavoritesEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class LoadFavorites extends FavoritesEvent {
-  const LoadFavorites();
+  final String? userId;
+  
+  const LoadFavorites({this.userId});
+  
+  @override
+  List<Object?> get props => [userId];
 }
 
 class TogglePostFavorite extends FavoritesEvent {
   final String postId;
+  final String? userId;
 
-  const TogglePostFavorite({required this.postId});
+  const TogglePostFavorite({required this.postId, this.userId});
 
   @override
-  List<Object> get props => [postId];
+  List<Object?> get props => [postId, userId];
 }
 
 class ToggleVendorFavorite extends FavoritesEvent {
   final String vendorId;
+  final String? userId;
 
-  const ToggleVendorFavorite({required this.vendorId});
+  const ToggleVendorFavorite({required this.vendorId, this.userId});
 
   @override
-  List<Object> get props => [vendorId];
+  List<Object?> get props => [vendorId, userId];
 }
 
 class ToggleMarketFavorite extends FavoritesEvent {
   final String marketId;
+  final String? userId;
 
-  const ToggleMarketFavorite({required this.marketId});
+  const ToggleMarketFavorite({required this.marketId, this.userId});
 
   @override
-  List<Object> get props => [marketId];
+  List<Object?> get props => [marketId, userId];
 }
 
 class ClearAllFavorites extends FavoritesEvent {
-  const ClearAllFavorites();
+  final String? userId;
+  
+  const ClearAllFavorites({this.userId});
+  
+  @override
+  List<Object?> get props => [userId];
 }

@@ -29,7 +29,18 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadFavorites();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerLoadFavorites();
+    });
+  }
+  
+  void _triggerLoadFavorites() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      context.read<FavoritesBloc>().add(LoadFavorites(userId: authState.user.uid));
+    } else {
+      context.read<FavoritesBloc>().add(const LoadFavorites());
+    }
   }
 
   @override

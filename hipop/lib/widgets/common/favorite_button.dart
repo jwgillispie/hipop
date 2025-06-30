@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/favorites/favorites_bloc.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_state.dart';
 
 enum FavoriteType { post, vendor, market }
 
@@ -55,15 +57,18 @@ class FavoriteButton extends StatelessWidget {
         
         return GestureDetector(
           onTap: () {
+            final authState = context.read<AuthBloc>().state;
+            final userId = authState is Authenticated ? authState.user.uid : null;
+            
             switch (type) {
               case FavoriteType.post:
-                context.read<FavoritesBloc>().add(TogglePostFavorite(postId: itemId));
+                context.read<FavoritesBloc>().add(TogglePostFavorite(postId: itemId, userId: userId));
                 break;
               case FavoriteType.vendor:
-                context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: itemId));
+                context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: itemId, userId: userId));
                 break;
               case FavoriteType.market:
-                context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: itemId));
+                context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: itemId, userId: userId));
                 break;
             }
           },
@@ -181,15 +186,18 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
       _animationController.reverse();
     });
     
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated ? authState.user.uid : null;
+    
     switch (widget.type) {
       case FavoriteType.post:
-        context.read<FavoritesBloc>().add(TogglePostFavorite(postId: widget.itemId));
+        context.read<FavoritesBloc>().add(TogglePostFavorite(postId: widget.itemId, userId: userId));
         break;
       case FavoriteType.vendor:
-        context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: widget.itemId));
+        context.read<FavoritesBloc>().add(ToggleVendorFavorite(vendorId: widget.itemId, userId: userId));
         break;
       case FavoriteType.market:
-        context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: widget.itemId));
+        context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: widget.itemId, userId: userId));
         break;
     }
   }

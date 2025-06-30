@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../repositories/auth_repository.dart';
 import '../../services/user_profile_service.dart';
+import '../../services/favorites_migration_service.dart';
 import '../../models/user_profile.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -97,6 +98,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           } else {
             emit(Authenticated(user: user, userType: effectiveUserType, userProfile: userProfile));
           }
+          
+          // Migrate local favorites to user account for shoppers
+          if ((effectiveUserType == 'shopper' || (effectiveUserType == null && userProfile == null)) && 
+              await FavoritesMigrationService.hasLocalFavorites()) {
+            try {
+              print('DEBUG: Migrating local favorites to user account');
+              await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
+              await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
+              print('DEBUG: Favorites migration completed successfully');
+            } catch (e) {
+              print('DEBUG: Favorites migration failed: $e');
+            }
+          }
         } else {
           print('ERROR: User doc still does not exist after ${retries + 1} attempts');
           
@@ -114,6 +128,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             } else {
               print('DEBUG: No vendor posts found, defaulting to shopper');
               emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
+              
+              // Migrate local favorites for shopper users
+              if (await FavoritesMigrationService.hasLocalFavorites()) {
+                try {
+                  print('DEBUG: Migrating local favorites to user account (shopper)');
+                  await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
+                  await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
+                  print('DEBUG: Favorites migration completed successfully (shopper)');
+                } catch (e) {
+                  print('DEBUG: Favorites migration failed (shopper): $e');
+                }
+              }
             }
           } catch (e) {
             print('ERROR: Failed to check vendor posts: $e');
