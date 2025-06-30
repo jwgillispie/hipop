@@ -292,6 +292,7 @@ class _VendorDashboardState extends State<VendorDashboard>
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
@@ -305,7 +306,7 @@ class _VendorDashboardState extends State<VendorDashboard>
                   color: color,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 2),
               Text(
                 title,
                 style: const TextStyle(

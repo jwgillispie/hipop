@@ -103,6 +103,13 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
           );
         },
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showApplyToMarketsDialog,
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Apply to Market'),
+      ),
     );
   }
 
@@ -127,22 +134,38 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
             ),
             const SizedBox(height: 8),
             Text(
-              'You haven\'t applied to any markets yet. Browse markets to find opportunities to apply as a vendor.',
+              'You haven\'t applied to any markets yet. Apply directly to markets or browse to explore opportunities.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[500],
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => context.go('/shopper/home'),
-              icon: const Icon(Icons.explore),
-              label: const Text('Browse Markets'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _showApplyToMarketsDialog,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Apply to Market'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/shopper/home'),
+                  icon: const Icon(Icons.explore),
+                  label: const Text('Browse Markets'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: const BorderSide(color: Colors.orange),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -542,5 +565,109 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
         ],
       ),
     );
+  }
+
+  Future<void> _showApplyToMarketsDialog() async {
+    try {
+      // Get all active markets
+      final activeMarkets = await MarketService.getAllActiveMarkets();
+      
+      if (!mounted) return;
+      
+      if (activeMarkets.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active markets available at this time.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Get existing applications to filter out markets already applied to
+      final existingApplications = await VendorApplicationService.getApplicationsForVendor(_currentUserId).first;
+      final appliedMarketIds = existingApplications.map((app) => app.marketId).toSet();
+      
+      final availableMarkets = activeMarkets.where((market) => !appliedMarketIds.contains(market.id)).toList();
+      
+      if (!mounted) return;
+      
+      if (availableMarkets.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You have already applied to all available markets.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Apply to Market'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Select a market to apply to:'),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: availableMarkets.length,
+                    itemBuilder: (context, index) {
+                      final market = availableMarkets[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: const Icon(Icons.store_mall_directory, color: Colors.green),
+                          title: Text(market.name),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${market.city}, ${market.state}'),
+                              if (market.operatingDays.isNotEmpty)
+                                Text('${market.operatingDays.length} days/week'),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _applyToMarket(market);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading markets: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _applyToMarket(Market market) {
+    context.push('/apply/${market.id}');
   }
 }

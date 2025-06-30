@@ -351,6 +351,9 @@ class AnalyticsService {
       return metrics;
     } catch (e) {
       debugPrint('Error getting favorites metrics: $e');
+      // For now, ignore permission errors and return empty metrics
+      // This is common when market organizers don't have explicit permission
+      // to read user favorites data
       return {
         'totalMarketFavorites': 0,
         'totalVendorFavorites': 0,

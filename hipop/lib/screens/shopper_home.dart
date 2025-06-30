@@ -10,6 +10,7 @@ import '../widgets/common/loading_widget.dart';
 import '../widgets/common/settings_dropdown.dart';
 import '../widgets/common/favorite_button.dart';
 import '../services/market_service.dart';
+import '../services/url_launcher_service.dart';
 import '../models/market.dart';
 
 class ShopperHome extends StatefulWidget {
@@ -424,11 +425,19 @@ class _ShopperHomeState extends State<ShopperHome> {
                   ),
                   const SizedBox(width: 4),
                   Expanded(
-                    child: Text(
-                      market.address,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
+                    child: InkWell(
+                      onTap: () => _launchMaps(market.address),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          market.address,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue[700],
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -498,5 +507,49 @@ class _ShopperHomeState extends State<ShopperHome> {
 
   void _handleMarketTap(Market market) {
     context.pushNamed('marketDetail', extra: market);
+  }
+  
+  Future<void> _launchMaps(String address) async {
+    try {
+      await UrlLauncherService.launchMaps(address);
+    } catch (e) {
+      if (mounted) {
+        final message = e.toString();
+        if (message.contains('Please copy this URL:')) {
+          // Show dialog with copyable URL
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Open in Maps'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Copy this address to open in your maps app:'),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    address,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open maps: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 }

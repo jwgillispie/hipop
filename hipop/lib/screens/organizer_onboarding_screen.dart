@@ -141,7 +141,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildWelcomePage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -216,7 +216,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildMarketManagementPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -295,7 +295,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildVendorApplicationsPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -398,7 +398,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildAnalyticsPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -539,7 +539,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildCalendarPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -660,7 +660,7 @@ class _OrganizerOnboardingScreenState extends State<OrganizerOnboardingScreen> {
   }
 
   Widget _buildGetStartedPage() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

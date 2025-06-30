@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 import '../models/vendor_application.dart';
 import '../services/vendor_application_service.dart';
 import '../widgets/vendor_application_link_share_widget.dart';
@@ -14,7 +17,6 @@ class VendorApplicationsScreen extends StatefulWidget {
 class _VendorApplicationsScreenState extends State<VendorApplicationsScreen> 
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final String marketId = 'temp_market_id'; // TODO: Get from context/auth
 
   @override
   void initState() {
@@ -26,6 +28,15 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  String? _getCurrentMarketId() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.userProfile?.isMarketOrganizer == true) {
+      final managedMarketIds = authState.userProfile!.managedMarketIds;
+      return managedMarketIds.isNotEmpty ? managedMarketIds.first : null;
+    }
+    return null;
   }
 
   @override
@@ -76,6 +87,11 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
   }
 
   Widget _buildApplicationsList(ApplicationStatus? filterStatus) {
+    final marketId = _getCurrentMarketId();
+    if (marketId == null) {
+      return const Center(child: Text('No market selected'));
+    }
+    
     final stream = filterStatus == null
         ? VendorApplicationService.getApplicationsForMarket(marketId)
         : VendorApplicationService.getApplicationsByStatus(marketId, filterStatus);
@@ -354,6 +370,9 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
   }
 
   Future<void> _shareApplicationLink() async {
+    final marketId = _getCurrentMarketId();
+    if (marketId == null) return;
+    
     showDialog(
       context: context,
       builder: (context) => VendorApplicationLinkShareWidget(
@@ -364,6 +383,9 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
   }
 
   Future<void> _addTestData() async {
+    final marketId = _getCurrentMarketId();
+    if (marketId == null) return;
+    
     try {
       final applications = [
         VendorApplication(

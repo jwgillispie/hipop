@@ -4,6 +4,7 @@ import '../models/managed_vendor.dart';
 import '../models/recipe.dart';
 import '../services/managed_vendor_service.dart';
 import '../services/recipe_service.dart';
+import '../services/url_launcher_service.dart';
 import '../widgets/common/favorite_button.dart';
 
 class VendorDetailScreen extends StatefulWidget {
@@ -975,34 +976,39 @@ class _VendorDetailScreenState extends State<VendorDetailScreen>
     );
   }
 
-  void _launchUrl(String url) {
-    // For now, show a simple dialog with the URL info
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Contact Info'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Contact information:'),
-            const SizedBox(height: 8),
-            SelectableText(url),
-            const SizedBox(height: 16),
-            const Text(
-              'Copy this information to use in your preferred app.',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+  Future<void> _launchUrl(String url) async {
+    try {
+      if (url.startsWith('tel:')) {
+        await UrlLauncherService.launchPhone(url.substring(4));
+      } else if (url.startsWith('mailto:')) {
+        await UrlLauncherService.launchEmail(url.substring(7));
+      } else if (url.contains('instagram.com/')) {
+        final handle = url.split('instagram.com/').last;
+        await UrlLauncherService.launchInstagram(handle);
+      } else if (url.contains('facebook.com/')) {
+        await UrlLauncherService.launchWebsite(url);
+      } else if (url.startsWith('https://maps.google.com/')) {
+        // Extract address from Google Maps URL
+        final uri = Uri.parse(url);
+        final query = uri.queryParameters['q'];
+        if (query != null) {
+          await UrlLauncherService.launchMaps(query);
+        } else {
+          await UrlLauncherService.launchWebsite(url);
+        }
+      } else {
+        await UrlLauncherService.launchWebsite(url);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open link: $e'),
+            backgroundColor: Colors.red,
           ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   void _shareVendor() {

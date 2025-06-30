@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/market.dart';
 import '../models/managed_vendor.dart';
 import '../services/managed_vendor_service.dart';
+import '../services/url_launcher_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
@@ -172,11 +173,19 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
-                                  child: Text(
-                                    widget.market.address,
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
+                                  child: InkWell(
+                                    onTap: () => _launchMaps(widget.market.address),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        widget.market.address,
+                                        style: TextStyle(
+                                          color: Colors.blue[700],
+                                          fontSize: 14,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -513,18 +522,26 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                 ),
             ],
             
-            if (vendor.phoneNumber != null || vendor.email != null) ...[
+            if (vendor.phoneNumber != null || vendor.email != null || vendor.instagramHandle != null) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
                   if (vendor.phoneNumber != null) ...[
                     Icon(Icons.phone, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
-                    Text(
-                      vendor.phoneNumber!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                    InkWell(
+                      onTap: () => _launchPhone(vendor.phoneNumber!),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          vendor.phoneNumber!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue[700],
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -534,16 +551,49 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
                     Icon(Icons.email, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Expanded(
-                      child: Text(
-                        vendor.email!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                      child: InkWell(
+                        onTap: () => _launchEmail(vendor.email!),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            vendor.email!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[700],
+                              decoration: TextDecoration.underline,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
+                ],
+              ),
+            ],
+            
+            if (vendor.instagramHandle != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.camera_alt, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () => _launchInstagram(vendor.instagramHandle!),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '@${vendor.instagramHandle!}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -551,5 +601,65 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
         ),
       ),
     );
+  }
+  
+  Future<void> _launchMaps(String address) async {
+    try {
+      await UrlLauncherService.launchMaps(address);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open maps: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _launchPhone(String phoneNumber) async {
+    try {
+      await UrlLauncherService.launchPhone(phoneNumber);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not make call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _launchEmail(String email) async {
+    try {
+      await UrlLauncherService.launchEmail(email);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not send email: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _launchInstagram(String handle) async {
+    try {
+      await UrlLauncherService.launchInstagram(handle);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open Instagram: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

@@ -14,12 +14,12 @@ class OrganizerAnalyticsScreen extends StatefulWidget {
 }
 
 class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
-  final String marketId = 'temp_market_id'; // TODO: Get from context/auth
   AnalyticsTimeRange _selectedTimeRange = AnalyticsTimeRange.month;
   bool _isLoading = true;
   AnalyticsSummary? _summary;
   Map<String, dynamic>? _realTimeMetrics;
   String? _error;
+  String? _currentMarketId;
 
   @override
   void initState() {
@@ -34,6 +34,29 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
     });
 
     try {
+      final authState = context.read<AuthBloc>().state;
+      
+      if (authState is! Authenticated || authState.userProfile?.isMarketOrganizer != true) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Not authenticated as market organizer';
+        });
+        return;
+      }
+      
+      final managedMarketIds = authState.userProfile!.managedMarketIds;
+      
+      if (managedMarketIds.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _error = 'No managed markets found';
+        });
+        return;
+      }
+      
+      // Use the first managed market for now, or could aggregate across all
+      final marketId = managedMarketIds.first;
+      
       final summary = await AnalyticsService.getAnalyticsSummary(
         marketId,
         _selectedTimeRange,
@@ -41,6 +64,7 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
       final realTimeMetrics = await AnalyticsService.getRealTimeMetrics(marketId);
 
       setState(() {
+        _currentMarketId = marketId;
         _summary = summary;
         _realTimeMetrics = realTimeMetrics;
         _isLoading = false;
@@ -594,7 +618,7 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
         ),
         const SizedBox(height: 16),
         VendorRegistrationsChart(
-          marketId: marketId,
+          marketId: _currentMarketId ?? '',
           monthsBack: _selectedTimeRange == AnalyticsTimeRange.week ? 3 :
                       _selectedTimeRange == AnalyticsTimeRange.month ? 6 :
                       _selectedTimeRange == AnalyticsTimeRange.quarter ? 12 : 12,
