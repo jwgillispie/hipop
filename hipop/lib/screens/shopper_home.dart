@@ -514,41 +514,12 @@ class _ShopperHomeState extends State<ShopperHome> {
       await UrlLauncherService.launchMaps(address);
     } catch (e) {
       if (mounted) {
-        final message = e.toString();
-        if (message.contains('Please copy this URL:')) {
-          // Show dialog with copyable URL
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Open in Maps'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Copy this address to open in your maps app:'),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    address,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Could not open maps: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open maps: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }

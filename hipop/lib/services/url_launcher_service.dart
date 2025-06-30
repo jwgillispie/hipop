@@ -1,55 +1,31 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+// Conditional import for web-only features
+import 'url_launcher_web_stub.dart' 
+  if (dart.library.html) 'url_launcher_web_impl.dart' as web_launcher;
 
 class UrlLauncherService {
   /// Launch Instagram profile
   static Future<void> launchInstagram(String handle) async {
-    // Remove @ symbol if present
     final cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
-    
-    String url;
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      // Try Instagram app first on iOS, fall back to web
-      url = 'instagram://user?username=$cleanHandle';
-      if (!await canLaunchUrl(Uri.parse(url))) {
-        url = 'https://instagram.com/$cleanHandle';
-      }
-    } else {
-      // Android, web, and other platforms - use web URL
-      url = 'https://instagram.com/$cleanHandle';
-    }
-    
+    final url = 'https://instagram.com/$cleanHandle';
     await _launchUrl(url);
   }
   
   /// Launch address in maps app
   static Future<void> launchMaps(String address) async {
     final encodedAddress = Uri.encodeComponent(address);
-    
-    String url;
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      // Try Apple Maps first on iOS, fall back to Google Maps
-      url = 'http://maps.apple.com/?q=$encodedAddress';
-      if (!await canLaunchUrl(Uri.parse(url))) {
-        url = 'https://maps.google.com/?q=$encodedAddress';
-      }
-    } else {
-      // Android, web, and other platforms - use Google Maps
-      url = 'https://maps.google.com/?q=$encodedAddress';
-    }
-    
+    final url = 'https://maps.google.com/?q=$encodedAddress';
     await _launchUrl(url);
   }
   
   /// Launch website URL
   static Future<void> launchWebsite(String url) async {
-    // Ensure URL has protocol
     String finalUrl = url;
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       finalUrl = 'https://$url';
     }
-    
     await _launchUrl(finalUrl);
   }
   
@@ -68,40 +44,22 @@ class UrlLauncherService {
   /// Internal method to launch URL with error handling
   static Future<void> _launchUrl(String url) async {
     try {
-      final uri = Uri.parse(url);
+      if (kIsWeb) {
+        // For Flutter Web, use web-specific implementation
+        web_launcher.openUrl(url);
+        return;
+      }
       
-      try {
-        // Try the standard url_launcher approach first
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
-        } else {
-          throw Exception('Cannot launch URL: $url');
-        }
-      } on MissingPluginException catch (e) {
-        debugPrint('MissingPluginException for $url: $e');
-        // Handle missing plugin gracefully - likely on web or unsupported platform
-        await _launchUrlFallback(url);
-      } on PlatformException catch (e) {
-        debugPrint('PlatformException for $url: $e');
-        // Handle platform-specific issues
-        await _launchUrlFallback(url);
+      // For mobile platforms
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        throw Exception('Cannot launch URL: $url');
       }
     } catch (e) {
       debugPrint('Error launching URL $url: $e');
-      await _launchUrlFallback(url);
-    }
-  }
-  
-  /// Fallback URL launching for when plugins aren't available
-  static Future<void> _launchUrlFallback(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      // Try a simpler launch approach
-      await launchUrl(uri, mode: LaunchMode.platformDefault);
-    } catch (e) {
-      debugPrint('Fallback URL launch failed for $url: $e');
-      // Last resort: provide user with copyable URL
-      throw Exception('Cannot open link automatically. Please copy this URL: $url');
+      throw Exception('Cannot open link: $url');
     }
   }
 }
