@@ -174,6 +174,10 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
             _buildRecipeAnalytics(),
             const SizedBox(height: 24),
 
+            // Favorites analytics
+            _buildFavoritesAnalytics(),
+            const SizedBox(height: 24),
+
             // Charts and trends
             _buildChartsSection(),
             const SizedBox(height: 24),
@@ -281,10 +285,10 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
               Colors.orange,
             ),
             _buildMetricCard(
-              'Total Views',
-              _formatNumber(_summary!.totalViews),
-              Icons.visibility,
-              Colors.green,
+              'Total Favorites',
+              _summary!.totalFavorites.toString(),
+              Icons.favorite,
+              Colors.red,
             ),
           ],
         ),
@@ -704,6 +708,83 @@ class _OrganizerAnalyticsScreenState extends State<OrganizerAnalyticsScreen> {
       default:
         return Colors.blue;
     }
+  }
+
+  Widget _buildFavoritesAnalytics() {
+    final favoritesMetrics = (_realTimeMetrics!['favorites'] as Map<String, dynamic>?) ?? {};
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Favorites Analytics',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMiniMetric(
+                        'Market Favorites',
+                        favoritesMetrics['totalMarketFavorites']?.toString() ?? '0',
+                        Colors.red,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildMiniMetric(
+                        'Vendor Favorites',
+                        favoritesMetrics['totalVendorFavorites']?.toString() ?? '0',
+                        Colors.pink,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildMiniMetric(
+                        'Total Favorites',
+                        ((favoritesMetrics['totalMarketFavorites'] ?? 0) + (favoritesMetrics['totalVendorFavorites'] ?? 0)).toString(),
+                        Colors.purple,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMiniMetric(
+                        'New Market Favorites Today',
+                        favoritesMetrics['newMarketFavoritesToday']?.toString() ?? '0',
+                        Colors.orange,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildMiniMetric(
+                        'New Vendor Favorites Today',
+                        favoritesMetrics['newVendorFavoritesToday']?.toString() ?? '0',
+                        Colors.cyan,
+                      ),
+                    ),
+                    const Expanded(child: SizedBox()), // Empty space for alignment
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_summary!.favoritesByType.isNotEmpty)
+                  _buildStatusBreakdown(
+                    'Favorites by Type',
+                    _summary!.favoritesByType,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   String _formatNumber(int number) {

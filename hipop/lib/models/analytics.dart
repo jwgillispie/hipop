@@ -28,6 +28,12 @@ class MarketAnalytics extends Equatable {
   final int totalRecipeSaves;
   final int totalRecipeShares;
   
+  // Favorites metrics
+  final int totalMarketFavorites;
+  final int totalVendorFavorites;
+  final int newMarketFavoritesToday;
+  final int newVendorFavoritesToday;
+  
   // Engagement metrics
   final int totalViews;
   final int uniqueVisitors;
@@ -59,6 +65,10 @@ class MarketAnalytics extends Equatable {
     this.totalRecipeLikes = 0,
     this.totalRecipeSaves = 0,
     this.totalRecipeShares = 0,
+    this.totalMarketFavorites = 0,
+    this.totalVendorFavorites = 0,
+    this.newMarketFavoritesToday = 0,
+    this.newVendorFavoritesToday = 0,
     this.totalViews = 0,
     this.uniqueVisitors = 0,
     this.averageSessionDuration = 0.0,
@@ -91,6 +101,10 @@ class MarketAnalytics extends Equatable {
       totalRecipeLikes: data['totalRecipeLikes'] ?? 0,
       totalRecipeSaves: data['totalRecipeSaves'] ?? 0,
       totalRecipeShares: data['totalRecipeShares'] ?? 0,
+      totalMarketFavorites: data['totalMarketFavorites'] ?? 0,
+      totalVendorFavorites: data['totalVendorFavorites'] ?? 0,
+      newMarketFavoritesToday: data['newMarketFavoritesToday'] ?? 0,
+      newVendorFavoritesToday: data['newVendorFavoritesToday'] ?? 0,
       totalViews: data['totalViews'] ?? 0,
       uniqueVisitors: data['uniqueVisitors'] ?? 0,
       averageSessionDuration: (data['averageSessionDuration'] ?? 0.0).toDouble(),
@@ -122,6 +136,10 @@ class MarketAnalytics extends Equatable {
       'totalRecipeLikes': totalRecipeLikes,
       'totalRecipeSaves': totalRecipeSaves,
       'totalRecipeShares': totalRecipeShares,
+      'totalMarketFavorites': totalMarketFavorites,
+      'totalVendorFavorites': totalVendorFavorites,
+      'newMarketFavoritesToday': newMarketFavoritesToday,
+      'newVendorFavoritesToday': newVendorFavoritesToday,
       'totalViews': totalViews,
       'uniqueVisitors': uniqueVisitors,
       'averageSessionDuration': averageSessionDuration,
@@ -153,6 +171,10 @@ class MarketAnalytics extends Equatable {
         totalRecipeLikes,
         totalRecipeSaves,
         totalRecipeShares,
+        totalMarketFavorites,
+        totalVendorFavorites,
+        newMarketFavoritesToday,
+        newVendorFavoritesToday,
         totalViews,
         uniqueVisitors,
         averageSessionDuration,
@@ -173,6 +195,8 @@ class AnalyticsSummary extends Equatable {
   final Map<String, int> vendorApplicationsByStatus;
   final Map<String, int> eventsByStatus;
   final Map<String, int> recipesByCategory;
+  final int totalFavorites;
+  final Map<String, int> favoritesByType;
   final List<MarketAnalytics> dailyData;
 
   const AnalyticsSummary({
@@ -185,6 +209,8 @@ class AnalyticsSummary extends Equatable {
     this.vendorApplicationsByStatus = const {},
     this.eventsByStatus = const {},
     this.recipesByCategory = const {},
+    this.totalFavorites = 0,
+    this.favoritesByType = const {},
     this.dailyData = const [],
   });
 
@@ -199,6 +225,8 @@ class AnalyticsSummary extends Equatable {
         vendorApplicationsByStatus,
         eventsByStatus,
         recipesByCategory,
+        totalFavorites,
+        favoritesByType,
         dailyData,
       ];
 }

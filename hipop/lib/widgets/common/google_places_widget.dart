@@ -25,7 +25,7 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
   List<PlacePrediction> _predictions = [];
   bool _isLoading = false;
   bool _showPredictions = false;
-  bool _isTyping = false;
+  // Removed _isTyping field as it's no longer used
   String _lastQuery = '';
   bool _hasSearched = false;
   String? _selectedPlaceId;
@@ -60,7 +60,6 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
 
   Future<void> _searchPlaces(String query) async {
     setState(() {
-      _isTyping = true;
       _lastQuery = query;
     });
 
@@ -77,7 +76,6 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
         _predictions = [];
         _showPredictions = false;
         _isLoading = false;
-        _isTyping = false;
         _hasSearched = query.isNotEmpty;
       });
       return;
@@ -85,7 +83,6 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
 
     setState(() {
       _isLoading = true;
-      _isTyping = false;
     });
 
     try {
@@ -153,81 +150,63 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
     }
   }
 
-  void _finalizeSearch() {
-    if (_controller.text.trim().isNotEmpty && widget.onTextSearch != null) {
+  void _performDirectSearch() {
+    if (_controller.text.trim().isNotEmpty) {
       _focusNode.unfocus();
       setState(() {
         _predictions = [];
         _showPredictions = false;
       });
-      widget.onTextSearch!(_controller.text.trim());
+      
+      // Create a fake PlaceDetails for the typed text
+      final directPlaceDetails = PlaceDetails(
+        placeId: 'direct_search_${_controller.text}',
+        name: _controller.text.trim(),
+        formattedAddress: _controller.text.trim(),
+        latitude: 0.0, // Will be handled by the parent
+        longitude: 0.0,
+      );
+      
+      widget.onPlaceSelected(directPlaceDetails);
     }
+  }
+  
+  List<Map<String, dynamic>> _buildSearchItems() {
+    final items = <Map<String, dynamic>>[];
+    
+    // Add direct search option as first item if user has typed something
+    if (_controller.text.trim().isNotEmpty) {
+      items.add({
+        'mainText': 'Search for "${_controller.text.trim()}"',
+        'secondaryText': 'Use exactly what you typed',
+        'icon': Icons.search,
+        'isDirect': true,
+        'isSelected': false,
+        'onTap': () => _performDirectSearch(),
+      });
+    }
+    
+    // Add Google Places predictions
+    for (final prediction in _predictions) {
+      final isSelected = _selectedPlaceId == prediction.placeId;
+      items.add({
+        'mainText': prediction.mainText,
+        'secondaryText': prediction.secondaryText,
+        'icon': Icons.location_on,
+        'isDirect': false,
+        'isSelected': isSelected,
+        'onTap': isSelected ? null : () {
+          debugPrint('GooglePlacesWidget: InkWell tapped for ${prediction.placeId}');
+          debugPrint('BROWSER LOG: Place clicked - ${prediction.mainText}');
+          _getPlaceDetails(prediction.placeId);
+        },
+      });
+    }
+    
+    return items;
   }
 
-  Widget _buildSuffixIcon() {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-          ),
-        ),
-      );
-    }
-    
-    if (_isTyping) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-          ),
-        ),
-      );
-    }
-    
-    if (_controller.text.isNotEmpty) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.onTextSearch != null)
-            IconButton(
-              icon: const Icon(Icons.search, color: Colors.orange),
-              onPressed: _finalizeSearch,
-              tooltip: 'Search for "${_controller.text}"',
-            ),
-          IconButton(
-            icon: const Icon(Icons.clear, color: Colors.grey),
-            onPressed: () {
-              _controller.clear();
-              setState(() {
-                _predictions = [];
-                _showPredictions = false;
-                _hasSearched = false;
-                _isTyping = false;
-                _isLoading = false;
-                _selectedPlaceId = null;
-                _lastQuery = '';
-              });
-              // Notify parent that field was cleared
-              if (widget.onCleared != null) {
-                widget.onCleared!();
-              }
-            },
-          ),
-        ],
-      );
-    }
-    
-    return const Icon(Icons.search, color: Colors.grey);
-  }
+  // Removed _buildSuffixIcon method as we now use inline search button
 
   Widget _buildSearchFeedback() {
     if (_isLoading && _controller.text.length >= 3) {
@@ -298,7 +277,7 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                     ),
                   ),
                   Text(
-                    'Try a different search term',
+                    'Try "Atlanta", "ATL", or a neighborhood name',
                     style: TextStyle(
                       color: Colors.grey[500],
                       fontSize: 12,
@@ -366,7 +345,7 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
             ),
             const SizedBox(height: 8),
             Text(
-              '• Search by city, neighborhood, or address\n• Try "Atlanta", "Buckhead", or "Ponce City Market"',
+              '• Search by city, neighborhood, or address\n• Try "Atlanta", "ATL", "Buckhead", or "Decatur"\n• Use abbreviations like "ATL" for Atlanta',
               style: TextStyle(
                 color: Colors.blue[600],
                 fontSize: 12,
@@ -396,36 +375,93 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
               ),
             ],
           ),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            decoration: InputDecoration(
-              hintText: _isLoading ? 'Searching...' : 'Search for a location...',
-              prefixIcon: const Icon(Icons.location_on, color: Colors.orange),
-              suffixIcon: _buildSuffixIcon(),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  decoration: InputDecoration(
+                    hintText: _isLoading ? 'Searching...' : 'Search for a location...',
+                    prefixIcon: const Icon(Icons.location_on, color: Colors.orange),
+                    suffixIcon: _controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: () {
+                              _controller.clear();
+                              setState(() {
+                                _predictions = [];
+                                _showPredictions = false;
+                                _hasSearched = false;
+                                _isLoading = false;
+                                _selectedPlaceId = null;
+                                _lastQuery = '';
+                              });
+                              if (widget.onCleared != null) {
+                                widget.onCleared!();
+                              }
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onChanged: _searchPlaces,
+                  onSubmitted: (value) => _performDirectSearch(),
+                  onTap: () {
+                    if (_controller.text.isNotEmpty) {
+                      setState(() => _showPredictions = true);
+                    }
+                  },
+                ),
               ),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-            ),
-            onChanged: _searchPlaces,
-            onSubmitted: (value) => _finalizeSearch(),
-            onTap: () {
-              if (_predictions.isNotEmpty) {
-                setState(() => _showPredictions = true);
-              }
-            },
+              // Search Button
+              if (_controller.text.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _performDirectSearch,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, size: 18),
+                              SizedBox(width: 4),
+                              Text('Search'),
+                            ],
+                          ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
         _buildSearchFeedback(),
-        if (_showPredictions && _predictions.isNotEmpty) ...[
+        if (_showPredictions && (_predictions.isNotEmpty || _controller.text.isNotEmpty)) ...[
           const SizedBox(height: 8),
           Container(
             constraints: const BoxConstraints(maxHeight: 300),
@@ -442,25 +478,20 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
             ),
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: _predictions.length,
+              itemCount: _buildSearchItems().length,
               itemBuilder: (context, index) {
-                final prediction = _predictions[index];
-                final isSelected = _selectedPlaceId == prediction.placeId;
+                final searchItem = _buildSearchItems()[index];
                 
                 return InkWell(
-                  onTap: isSelected ? null : () {
-                    debugPrint('GooglePlacesWidget: InkWell tapped for ${prediction.placeId}');
-                    print('BROWSER LOG: Place clicked - ${prediction.mainText}');
-                    _getPlaceDetails(prediction.placeId);
-                  },
+                  onTap: searchItem['onTap'],
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.orange.withValues(alpha: 0.1) : null,
-                      border: index < _predictions.length - 1
+                      color: searchItem['isSelected'] ? Colors.orange.withValues(alpha: 0.1) : null,
+                      border: index < _buildSearchItems().length - 1
                           ? Border(
                               bottom: BorderSide(
                                 color: Colors.grey.withValues(alpha: 0.1),
@@ -471,8 +502,8 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                     child: Row(
                       children: [
                         Icon(
-                          Icons.location_on, 
-                          color: isSelected ? Colors.orange : Colors.grey, 
+                          searchItem['icon'] as IconData,
+                          color: searchItem['isSelected'] ? Colors.orange : (searchItem['isDirect'] ? Colors.blue : Colors.grey),
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -481,27 +512,31 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                prediction.mainText,
+                                searchItem['mainText'],
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
-                                  color: isSelected ? Colors.orange[700] : null,
+                                  color: searchItem['isSelected'] 
+                                      ? Colors.orange[700] 
+                                      : (searchItem['isDirect'] ? Colors.blue[700] : null),
                                 ),
                               ),
-                              if (prediction.secondaryText.isNotEmpty) ...[
+                              if (searchItem['secondaryText'] != null && searchItem['secondaryText'].isNotEmpty) ...[
                                 const SizedBox(height: 2),
                                 Text(
-                                  prediction.secondaryText,
+                                  searchItem['secondaryText'],
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: isSelected ? Colors.orange[600] : Colors.grey[600],
+                                    color: searchItem['isSelected'] 
+                                        ? Colors.orange[600] 
+                                        : (searchItem['isDirect'] ? Colors.blue[600] : Colors.grey[600]),
                                   ),
                                 ),
                               ],
                             ],
                           ),
                         ),
-                        if (isSelected)
+                        if (searchItem['isSelected'])
                           const SizedBox(
                             width: 16,
                             height: 16,
@@ -512,8 +547,8 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
                           )
                         else
                           Icon(
-                            Icons.north_west, 
-                            color: Colors.grey[400], 
+                            searchItem['isDirect'] ? Icons.search : Icons.north_west,
+                            color: searchItem['isDirect'] ? Colors.blue[400] : Colors.grey[400],
                             size: 16,
                           ),
                       ],

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/analytics.dart';
 import '../models/vendor_application.dart';
 import '../models/recipe.dart';
+import '../models/user_favorite.dart';
 
 class AnalyticsService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -23,6 +24,9 @@ class AnalyticsService {
       
       // Get recipe metrics
       final recipeMetrics = await _getRecipeMetrics(marketId);
+      
+      // Get favorites metrics
+      final favoritesMetrics = await _getFavoritesMetrics(marketId);
       
       // Create analytics record
       final analytics = MarketAnalytics(
@@ -45,6 +49,10 @@ class AnalyticsService {
         totalRecipeLikes: recipeMetrics['likes'] ?? 0,
         totalRecipeSaves: recipeMetrics['saves'] ?? 0,
         totalRecipeShares: recipeMetrics['shares'] ?? 0,
+        totalMarketFavorites: favoritesMetrics['totalMarketFavorites'] ?? 0,
+        totalVendorFavorites: favoritesMetrics['totalVendorFavorites'] ?? 0,
+        newMarketFavoritesToday: favoritesMetrics['newMarketFavoritesToday'] ?? 0,
+        newVendorFavoritesToday: favoritesMetrics['newVendorFavoritesToday'] ?? 0,
       );
       
       // Store or update analytics
@@ -71,6 +79,7 @@ class AnalyticsService {
       
       final vendorMetrics = (realTimeMetrics['vendors'] as Map<String, dynamic>?) ?? {};
       final recipeMetrics = (realTimeMetrics['recipes'] as Map<String, dynamic>?) ?? {};
+      final favoritesMetrics = (realTimeMetrics['favorites'] as Map<String, dynamic>?) ?? {};
       
       // Get current breakdowns
       final vendorApplicationsByStatus = await _getVendorApplicationBreakdown(marketId);
@@ -85,6 +94,11 @@ class AnalyticsService {
         vendorApplicationsByStatus: vendorApplicationsByStatus,
         eventsByStatus: <String, int>{},
         recipesByCategory: recipesByCategory,
+        totalFavorites: (favoritesMetrics['totalMarketFavorites'] ?? 0) + (favoritesMetrics['totalVendorFavorites'] ?? 0),
+        favoritesByType: {
+          'market': favoritesMetrics['totalMarketFavorites'] ?? 0,
+          'vendor': favoritesMetrics['totalVendorFavorites'] ?? 0,
+        },
         dailyData: [], // No historical data yet
       );
     } catch (e) {
@@ -101,6 +115,7 @@ class AnalyticsService {
       
       final vendorMetrics = await _getVendorMetrics(marketId);
       final recipeMetrics = await _getRecipeMetrics(marketId);
+      final favoritesMetrics = await _getFavoritesMetrics(marketId);
       
       debugPrint('Vendor metrics: $vendorMetrics');
       debugPrint('Recipe metrics: $recipeMetrics');
@@ -108,6 +123,7 @@ class AnalyticsService {
       return {
         'vendors': vendorMetrics,
         'recipes': recipeMetrics,
+        'favorites': favoritesMetrics,
         'events': {
           'total': 0,
           'upcoming': 0,
@@ -122,6 +138,7 @@ class AnalyticsService {
       return {
         'vendors': {'total': 0, 'active': 0, 'pending': 0, 'approved': 0, 'rejected': 0},
         'recipes': {'total': 0, 'public': 0, 'featured': 0, 'likes': 0, 'saves': 0, 'shares': 0},
+        'favorites': {'totalMarketFavorites': 0, 'totalVendorFavorites': 0, 'newMarketFavoritesToday': 0, 'newVendorFavoritesToday': 0},
         'events': {
           'total': 0,
           'upcoming': 0,
@@ -253,6 +270,94 @@ class AnalyticsService {
     } catch (e) {
       debugPrint('Error getting recipe category breakdown: $e');
       return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getFavoritesMetrics(String marketId) async {
+    try {
+      debugPrint('Getting favorites metrics for market: $marketId');
+      
+      // Get all market favorites for this market
+      final marketFavoritesSnapshot = await _firestore
+          .collection('user_favorites')
+          .where('itemId', isEqualTo: marketId)
+          .where('type', isEqualTo: 'market')
+          .get();
+      
+      final totalMarketFavorites = marketFavoritesSnapshot.docs.length;
+      
+      // Get vendor favorites for vendors in this market
+      // First, get all vendors for this market from managed_vendors
+      final managedVendorsSnapshot = await _firestore
+          .collection('managed_vendors')
+          .where('marketId', isEqualTo: marketId)
+          .where('isActive', isEqualTo: true)
+          .get();
+      
+      final vendorIds = managedVendorsSnapshot.docs
+          .map((doc) => doc.id)
+          .toList();
+      
+      int totalVendorFavorites = 0;
+      if (vendorIds.isNotEmpty) {
+        // Firestore "in" queries can only handle up to 10 items
+        // If more than 10 vendors, we need to batch the queries
+        for (int i = 0; i < vendorIds.length; i += 10) {
+          final batch = vendorIds.skip(i).take(10).toList();
+          final vendorFavoritesSnapshot = await _firestore
+              .collection('user_favorites')
+              .where('itemId', whereIn: batch)
+              .where('type', isEqualTo: 'vendor')
+              .get();
+          totalVendorFavorites += vendorFavoritesSnapshot.docs.length;
+        }
+      }
+      
+      // Get new favorites today
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      
+      final newMarketFavoritesToday = marketFavoritesSnapshot.docs
+          .where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+            return createdAt != null && createdAt.isAfter(startOfDay);
+          })
+          .length;
+      
+      // Get new vendor favorites today (simplified - just count all vendor favorites created today)
+      final newVendorFavoritesTodaySnapshot = await _firestore
+          .collection('user_favorites')
+          .where('type', isEqualTo: 'vendor')
+          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .get();
+      
+      // Filter to only include vendors from this market
+      final newVendorFavoritesToday = newVendorFavoritesTodaySnapshot.docs
+          .where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final itemId = data['itemId'] as String?;
+            return itemId != null && vendorIds.contains(itemId);
+          })
+          .length;
+      
+      final metrics = {
+        'totalMarketFavorites': totalMarketFavorites,
+        'totalVendorFavorites': totalVendorFavorites,
+        'newMarketFavoritesToday': newMarketFavoritesToday,
+        'newVendorFavoritesToday': newVendorFavoritesToday,
+      };
+      
+      debugPrint('Favorites metrics calculated: $metrics');
+      return metrics;
+    } catch (e) {
+      debugPrint('Error getting favorites metrics: $e');
+      return {
+        'totalMarketFavorites': 0,
+        'totalVendorFavorites': 0,
+        'newMarketFavoritesToday': 0,
+        'newVendorFavoritesToday': 0,
+      };
     }
   }
 

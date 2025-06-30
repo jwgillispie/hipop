@@ -42,10 +42,62 @@ class _ShopperHomeState extends State<ShopperHome> {
       _searchLocation = placeDetails.formattedAddress;
       _selectedSearchPlace = placeDetails;
       
-      // Extract city from place details for market search
-      final locationParts = placeDetails.formattedAddress.split(',');
-      _selectedCity = locationParts.length > 1 ? locationParts[1].trim() : locationParts[0];
+      // Extract city from place details for market search using better logic
+      _selectedCity = _extractCityFromPlace(placeDetails);
     });
+  }
+  
+  String _extractCityFromPlace(PlaceDetails placeDetails) {
+    debugPrint('ShopperHome: Extracting city from ${placeDetails.name} - ${placeDetails.formattedAddress}');
+    
+    // First try to extract city from the formatted address
+    final addressParts = placeDetails.formattedAddress.split(', ');
+    
+    // For US addresses, the format is usually:
+    // "Street Address, City, State ZIP" or "City, State" or "Neighborhood, City, State"
+    if (addressParts.length >= 2) {
+      // Look for the part that contains the city (before state)
+      for (int i = 0; i < addressParts.length - 1; i++) {
+        final part = addressParts[i].trim();
+        // Skip if it looks like a street address (contains numbers at start)
+        if (!RegExp(r'^\d').hasMatch(part)) {
+          // Check if next part looks like a state (2 letters) or state + ZIP
+          final nextPart = addressParts[i + 1].trim();
+          if (RegExp(r'^[A-Z]{2}(\s+\d{5})?$').hasMatch(nextPart) || 
+              RegExp(r'^(Georgia|Alabama|Florida|South Carolina|North Carolina|Tennessee)').hasMatch(nextPart)) {
+            debugPrint('ShopperHome: Extracted city from address: $part');
+            return _cleanCityName(part);
+          }
+        }
+      }
+    }
+    
+    // Try using the place name if it looks like a city
+    String name = placeDetails.name;
+    
+    // If name is the same as formatted address, try to extract the first meaningful part
+    if (name == placeDetails.formattedAddress && addressParts.isNotEmpty) {
+      // Use the first part if it doesn't start with a number
+      final firstPart = addressParts[0].trim();
+      if (!RegExp(r'^\d').hasMatch(firstPart)) {
+        name = firstPart;
+      }
+    }
+    
+    debugPrint('ShopperHome: Using place name as city: $name');
+    return _cleanCityName(name);
+  }
+  
+  String _cleanCityName(String cityName) {
+    // Remove common suffixes that aren't part of the city name
+    String cleaned = cityName
+        .replaceAll(RegExp(r',\s*(GA|Georgia|AL|Alabama|FL|Florida|SC|South Carolina|NC|North Carolina|TN|Tennessee)\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r',\s*USA\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s+(County|Metro|Metropolitan|Area)\s*$', caseSensitive: false), '')
+        .trim();
+        
+    debugPrint('ShopperHome: Cleaned city name: "$cityName" -> "$cleaned"');
+    return cleaned;
   }
 
   @override
@@ -207,14 +259,29 @@ class _ShopperHomeState extends State<ShopperHome> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  _searchLocation.isEmpty 
-                    ? 'All Markets' 
-                    : 'Markets in $_searchLocation',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _searchLocation.isEmpty 
+                        ? 'All Markets' 
+                        : 'Markets in $_searchLocation',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (_searchLocation.isNotEmpty && _selectedCity != _searchLocation) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Searching for: $_selectedCity',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.orange[700],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 16),
                 _buildMarketsStream(),
@@ -407,7 +474,7 @@ class _ShopperHomeState extends State<ShopperHome> {
           Text(
             _searchLocation.isEmpty
                 ? 'Markets will appear here as they join'
-                : 'No markets found in $_searchLocation',
+                : 'No markets found in $_searchLocation\n\nTry searching for:\n• "Atlanta" or "ATL" for Atlanta area\n• "Decatur" or "DEC" for Decatur area\n• Other Georgia cities',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.grey[500],
             ),

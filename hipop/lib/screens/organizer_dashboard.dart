@@ -480,6 +480,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
 
     final vendorMetrics = (_realTimeMetrics!['vendors'] as Map<String, dynamic>?) ?? {};
     final recipeMetrics = (_realTimeMetrics!['recipes'] as Map<String, dynamic>?) ?? {};
+    final favoritesMetrics = (_realTimeMetrics!['favorites'] as Map<String, dynamic>?) ?? {};
 
     return Column(
       children: [
@@ -513,6 +514,28 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                 (recipeMetrics['public'] ?? 0).toString(),
                 Icons.restaurant_menu,
                 Colors.purple,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                'Market Favorites',
+                (favoritesMetrics['totalMarketFavorites'] ?? 0).toString(),
+                Icons.favorite,
+                Colors.red,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                'Vendor Favorites',
+                (favoritesMetrics['totalVendorFavorites'] ?? 0).toString(),
+                Icons.favorite_border,
+                Colors.pink,
               ),
             ),
             const SizedBox(width: 12),

@@ -64,6 +64,51 @@ class MarketService {
     }
   }
   
+  // City aliases for common abbreviations and alternative names
+  static const Map<String, List<String>> _cityAliases = {
+    'atlanta': ['atl', 'hotlanta', 'the a', 'atlanta georgia', 'atlanta ga'],
+    'decatur': ['dec', 'decatur georgia', 'decatur ga'],
+    'marietta': ['marietta georgia', 'marietta ga'],
+    'athens': ['athens georgia', 'athens ga', 'classic city'],
+    'savannah': ['savannah georgia', 'savannah ga', 'sav'],
+    'columbus': ['columbus georgia', 'columbus ga'],
+    'augusta': ['augusta georgia', 'augusta ga'],
+    'macon': ['macon georgia', 'macon ga'],
+    'sandy springs': ['sandy springs georgia', 'sandy springs ga'],
+    'roswell': ['roswell georgia', 'roswell ga'],
+    'johns creek': ['johns creek georgia', 'johns creek ga'],
+    'alpharetta': ['alpharetta georgia', 'alpharetta ga'],
+    'warner robins': ['warner robins georgia', 'warner robins ga'],
+    'smyrna': ['smyrna georgia', 'smyrna ga'],
+    'dunwoody': ['dunwoody georgia', 'dunwoody ga'],
+  };
+
+  static String _normalizeSearchCity(String searchCity) {
+    final normalized = searchCity.toLowerCase().trim();
+    
+    // Check if the search term is an alias
+    for (final entry in _cityAliases.entries) {
+      final city = entry.key;
+      final aliases = entry.value;
+      
+      // Check if normalized search matches any alias
+      for (final alias in aliases) {
+        if (normalized == alias || 
+            normalized.startsWith('$alias ') || 
+            normalized.endsWith(' $alias') ||
+            normalized.contains(' $alias ')) {
+          return city;
+        }
+      }
+    }
+    
+    // Remove common suffixes and return normalized
+    return normalized
+        .replaceAll(RegExp(r',\s*(ga|georgia|al|alabama|fl|florida|sc|south carolina|nc|north carolina|tn|tennessee)\s*$'), '')
+        .replaceAll(RegExp(r',\s*usa\s*$'), '')
+        .trim();
+  }
+
   static Future<List<Market>> _getMarketsByCityFlexible(String searchCity) async {
     try {
       // Get all active markets and filter in memory for flexible matching
@@ -77,12 +122,15 @@ class MarketService {
           
       debugPrint('MarketService: Total active markets: ${allMarkets.length}');
       
-      // Normalize search city for comparison
-      final normalizedSearchCity = searchCity.toLowerCase().trim();
+      // Normalize search city for comparison (handles aliases)
+      final normalizedSearchCity = _normalizeSearchCity(searchCity);
+      debugPrint('MarketService: Normalized search city: "$searchCity" -> "$normalizedSearchCity"');
       
       // Filter markets with flexible matching
       final matchingMarkets = allMarkets.where((market) {
         final marketCity = market.city.toLowerCase().trim();
+        final marketState = market.state.toLowerCase().trim();
+        final marketAddress = market.address.toLowerCase().trim();
         
         // Exact match (case insensitive)
         if (marketCity == normalizedSearchCity) {
@@ -96,6 +144,16 @@ class MarketService {
         
         // Check if market city contains search city (e.g., "Atlanta" contains "Atlan")
         if (marketCity.contains(normalizedSearchCity)) {
+          return true;
+        }
+        
+        // Check market address for partial matches
+        if (marketAddress.contains(normalizedSearchCity)) {
+          return true;
+        }
+        
+        // Check state matches for abbreviations
+        if (normalizedSearchCity.length == 2 && marketState.startsWith(normalizedSearchCity)) {
           return true;
         }
         

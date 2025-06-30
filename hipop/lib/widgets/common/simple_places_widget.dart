@@ -106,47 +106,112 @@ class _SimplePlacesWidgetState extends State<SimplePlacesWidget> {
     }
   }
 
+  void _performDirectSearch() {
+    if (_controller.text.trim().isNotEmpty) {
+      setState(() {
+        _predictions = [];
+        _showPredictions = false;
+      });
+      
+      // Create a PlaceDetails for the typed text
+      final directPlaceDetails = PlaceDetails(
+        placeId: 'direct_search_${_controller.text}',
+        name: _controller.text.trim(),
+        formattedAddress: _controller.text.trim(),
+        latitude: 0.0, // Will trigger text-only search
+        longitude: 0.0,
+      );
+      
+      widget.onLocationSelected(directPlaceDetails);
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: 'Search for a location...',
-            prefixIcon: const Icon(Icons.location_on, color: Colors.orange),
-            suffixIcon: _isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : _controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _controller.clear();
-                          setState(() {
-                            _predictions = [];
-                            _showPredictions = false;
-                          });
-                          widget.onLocationSelected(null);
-                        },
-                      )
-                    : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            filled: true,
-            fillColor: Colors.white,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
           ),
-          onChanged: _searchPlaces,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'Search for a location...',
+                    prefixIcon: const Icon(Icons.location_on, color: Colors.orange),
+                    suffixIcon: _controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _controller.clear();
+                              setState(() {
+                                _predictions = [];
+                                _showPredictions = false;
+                              });
+                              widget.onLocationSelected(null);
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onChanged: (value) {
+                    _searchPlaces(value);
+                    setState(() {
+                      _showPredictions = value.isNotEmpty;
+                    });
+                  },
+                  onSubmitted: (value) => _performDirectSearch(),
+                ),
+              ),
+              // Search Button
+              if (_controller.text.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _performDirectSearch,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, size: 16),
+                              SizedBox(width: 4),
+                              Text('Search', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                  ),
+                ),
+            ],
+          ),
         ),
-        if (_showPredictions) ...[
+        if (_showPredictions && (_predictions.isNotEmpty || _controller.text.isNotEmpty)) ...[
           const SizedBox(height: 8),
           Container(
             constraints: const BoxConstraints(maxHeight: 200),
@@ -164,20 +229,36 @@ class _SimplePlacesWidgetState extends State<SimplePlacesWidget> {
             ),
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: _predictions.length,
+              itemCount: _getSearchItems().length,
               itemBuilder: (context, index) {
-                final prediction = _predictions[index];
+                final item = _getSearchItems()[index];
                 return ListTile(
-                  leading: const Icon(Icons.location_on, color: Colors.orange),
-                  title: Text(
-                    prediction.mainText,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  leading: Icon(
+                    item['icon'] as IconData,
+                    color: item['isDirect'] ? Colors.blue : Colors.orange,
                   ),
-                  subtitle: prediction.secondaryText.isNotEmpty
-                      ? Text(prediction.secondaryText)
+                  title: Text(
+                    item['title'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: item['isDirect'] ? Colors.blue[700] : null,
+                    ),
+                  ),
+                  subtitle: item['subtitle'] != null && item['subtitle'].isNotEmpty
+                      ? Text(
+                          item['subtitle'],
+                          style: TextStyle(
+                            color: item['isDirect'] ? Colors.blue[600] : null,
+                          ),
+                        )
                       : null,
-                  onTap: () => _selectPlace(prediction),
+                  onTap: item['onTap'],
                   dense: true,
+                  trailing: Icon(
+                    item['isDirect'] ? Icons.search : Icons.north_west,
+                    size: 16,
+                    color: item['isDirect'] ? Colors.blue[400] : Colors.grey[400],
+                  ),
                 );
               },
             ),
@@ -185,5 +266,33 @@ class _SimplePlacesWidgetState extends State<SimplePlacesWidget> {
         ],
       ],
     );
+  }
+  
+  List<Map<String, dynamic>> _getSearchItems() {
+    final items = <Map<String, dynamic>>[];
+    
+    // Add direct search option as first item if user has typed something
+    if (_controller.text.trim().isNotEmpty) {
+      items.add({
+        'title': 'Search for "${_controller.text.trim()}"',
+        'subtitle': 'Use exactly what you typed',
+        'icon': Icons.search,
+        'isDirect': true,
+        'onTap': () => _performDirectSearch(),
+      });
+    }
+    
+    // Add Google Places predictions
+    for (final prediction in _predictions) {
+      items.add({
+        'title': prediction.mainText,
+        'subtitle': prediction.secondaryText,
+        'icon': Icons.location_on,
+        'isDirect': false,
+        'onTap': () => _selectPlace(prediction),
+      });
+    }
+    
+    return items;
   }
 }
