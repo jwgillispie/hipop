@@ -290,6 +290,7 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(

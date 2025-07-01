@@ -141,31 +141,15 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _showApplyToMarketsDialog,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Apply to Market'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                OutlinedButton.icon(
-                  onPressed: () => context.go('/shopper/home'),
-                  icon: const Icon(Icons.explore),
-                  label: const Text('Browse Markets'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: const BorderSide(color: Colors.orange),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                ),
-              ],
+            ElevatedButton.icon(
+              onPressed: _showApplyToMarketsDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Apply to Market'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
           ],
         ),
@@ -320,7 +304,7 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                     child: OutlinedButton.icon(
                       onPressed: () => _withdrawApplication(application),
                       icon: const Icon(Icons.cancel, size: 16),
-                      label: const Text('Withdraw'),
+                      label: const Text('Cancel'),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.red),
                         foregroundColor: Colors.red,
@@ -342,6 +326,7 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                 ],
                 const SizedBox(width: 8),
                 Expanded(
+
                   child: ElevatedButton.icon(
                     onPressed: () => _contactMarket(application),
                     icon: const Icon(Icons.message, size: 16),

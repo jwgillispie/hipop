@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../services/analytics_service.dart';
 import '../services/onboarding_service.dart';
 import '../blocs/auth/auth_event.dart';
+import '../models/market.dart';
+import '../models/managed_vendor.dart';
+import '../models/vendor_post.dart';
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -394,6 +398,22 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                         Colors.orange,
                         () => context.pushNamed('adminFix'),
                       ),
+                    if (kDebugMode)
+                      _buildActionCard(
+                        'Add L5P Markets',
+                        'Create Little 5 Points markets for Bien Vegano demo',
+                        Icons.add_location_alt,
+                        Colors.green,
+                        () => _addLittle5PointsMarkets(),
+                      ),
+                    if (kDebugMode)
+                      _buildActionCard(
+                        'Add SK8 THE ROOF',
+                        'Create Ponce City Market roller rink event',
+                        Icons.sports_hockey,
+                        Colors.purple,
+                        () => _addSk8TheRoof(),
+                      ),
                   ],
                 ),
               ],
@@ -481,6 +501,8 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
     final vendorMetrics = (_realTimeMetrics!['vendors'] as Map<String, dynamic>?) ?? {};
     final recipeMetrics = (_realTimeMetrics!['recipes'] as Map<String, dynamic>?) ?? {};
     final favoritesMetrics = (_realTimeMetrics!['favorites'] as Map<String, dynamic>?) ?? {};
+    
+    debugPrint('Dashboard favorites metrics: $favoritesMetrics');
 
     return Column(
       children: [
@@ -638,5 +660,332 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
         ),
       ),
     );
+  }
+
+  Future<void> _addLittle5PointsMarkets() async {
+    if (!kDebugMode) return; // Extra safety check
+    
+    try {
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Creating Little 5 Points markets...'),
+            ],
+          ),
+        ),
+      );
+
+      final firestore = FirebaseFirestore.instance;
+      final now = DateTime.now();
+
+      // Create Little 5 Points Market for July 13th, 2025
+      final market1 = Market(
+        id: 'little5points_liminal_july13_2025',
+        name: 'Little 5 Points Community Market at Liminal Space - July 13th',
+        address: '483 Moreland Ave NE, Atlanta, GA 30307',
+        city: 'Atlanta',
+        state: 'GA',
+        latitude: 33.7656,
+        longitude: -84.3477,
+        placeId: 'ChIJX8XLpTwE9YgRBvtEHCwPl8k',
+        operatingDays: const {'sunday': '1:00 PM - 5:00 PM'},
+        description: 'A vibrant plant-based market in the heart of Little 5 Points featuring vegan vendors, handmade crafts, and community energy. Free and open to all!',
+        imageUrl: 'https://example.com/little5points_market_july13.jpg',
+        isActive: true,
+        createdAt: now,
+      );
+
+      // Create Little 5 Points Market for July 20th, 2025
+      final market2 = Market(
+        id: 'little5points_liminal_july20_2025',
+        name: 'Little 5 Points Community Market at Liminal Space - July 20th',
+        address: '483 Moreland Ave NE, Atlanta, GA 30307',
+        city: 'Atlanta',
+        state: 'GA',
+        latitude: 33.7656,
+        longitude: -84.3477,
+        placeId: 'ChIJX8XLpTwE9YgRBvtEHCwPl8k',
+        operatingDays: const {'sunday': '1:00 PM - 5:00 PM'},
+        description: 'A vibrant plant-based market in the heart of Little 5 Points featuring vegan vendors, handmade crafts, and community energy. Free and open to all!',
+        imageUrl: 'https://example.com/little5points_market_july20.jpg',
+        isActive: true,
+        createdAt: now,
+      );
+
+      // Save markets
+      await firestore.collection('markets').doc(market1.id).set(market1.toFirestore());
+      await firestore.collection('markets').doc(market2.id).set(market2.toFirestore());
+
+      // Create Bien Vegano vendor for both markets
+      final bienVeganoVendor1 = ManagedVendor(
+        id: 'bien_vegano_july13_2025',
+        marketId: market1.id,
+        organizerId: 'liminal_space_organizer',
+        businessName: 'Bien Vegano',
+        contactName: 'Bien Vegano Team',
+        email: 'hello@bienvegano.com',
+        phoneNumber: '(404) 555-0123',
+        address: 'Atlanta, GA',
+        city: 'Atlanta',
+        state: 'GA',
+        zipCode: '30307',
+        categories: const [VendorCategory.prepared_foods, VendorCategory.beverages, VendorCategory.other],
+        products: const [
+          'Plant-based meals',
+          'Vegan desserts',
+          'Cold-pressed juices',
+          'Organic smoothies',
+          'Raw treats'
+        ],
+        specialties: const [
+          'Handcrafted vegan cuisine',
+          'Locally sourced ingredients',
+          'Sustainable packaging'
+        ],
+        description: 'Bringing plant-based goodness and community energy to Atlanta markets. We specialize in handmade vegan foods that nourish both body and soul.',
+        story: 'Born from a passion for plant-based living and community connection, Bien Vegano creates delicious vegan foods that bring people together.',
+        slogan: 'Plant-based goodness, handmade magic & community energy',
+        instagramHandle: 'bienvegano',
+        website: 'https://bienvegano.com',
+        isOrganic: true,
+        isLocallySourced: true,
+        certifications: 'Organic, Plant-based certified',
+        operatingDays: const ['sunday'],
+        canDeliver: false,
+        acceptsOrders: true,
+        imageUrl: 'https://example.com/bien_vegano_logo.jpg',
+        logoUrl: 'https://example.com/bien_vegano_logo.jpg',
+        tags: const ['vegan', 'organic', 'plant-based', 'handmade'],
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final bienVeganoVendor2 = bienVeganoVendor1.copyWith(
+        id: 'bien_vegano_july20_2025',
+        marketId: market2.id,
+      );
+
+      // Save vendors
+      await firestore.collection('managed_vendors').doc(bienVeganoVendor1.id).set(bienVeganoVendor1.toFirestore());
+      await firestore.collection('managed_vendors').doc(bienVeganoVendor2.id).set(bienVeganoVendor2.toFirestore());
+
+      // Create vendor posts for Instagram announcement
+      final vendorPost1 = VendorPost(
+        id: 'bien_vegano_l5p_july13_2025',
+        vendorId: bienVeganoVendor1.id,
+        vendorName: 'Bien Vegano',
+        description: 'Bien Vegano is headed to Little 5 Points this July for TWO back-to-back cozy markets! We\'re bringing all the plant-based goodness, handmade magic & community energy to this iconic ATL spot — and you don\'t want to miss it!',
+        location: '483 Moreland Ave NE, Atlanta, GA 30307',
+        locationKeywords: VendorPost.generateLocationKeywords('483 Moreland Ave NE, Atlanta, GA 30307'),
+        latitude: 33.7656,
+        longitude: -84.3477,
+        placeId: 'ChIJX8XLpTwE9YgRBvtEHCwPl8k',
+        locationName: 'Liminal Space ATL',
+        popUpStartDateTime: DateTime(2025, 7, 13, 13, 0),
+        popUpEndDateTime: DateTime(2025, 7, 13, 17, 0),
+        instagramHandle: 'bienvegano',
+        marketId: market1.id,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final vendorPost2 = vendorPost1.copyWith(
+        id: 'bien_vegano_l5p_july20_2025',
+        vendorId: bienVeganoVendor2.id,
+        popUpStartDateTime: DateTime(2025, 7, 20, 13, 0),
+        popUpEndDateTime: DateTime(2025, 7, 20, 17, 0),
+        marketId: market2.id,
+      );
+
+      // Save vendor posts
+      await firestore.collection('vendor_posts').doc(vendorPost1.id).set(vendorPost1.toFirestore());
+      await firestore.collection('vendor_posts').doc(vendorPost2.id).set(vendorPost2.toFirestore());
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🌱 Successfully created Little 5 Points markets for Bien Vegano demo!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error creating markets: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addSk8TheRoof() async {
+    if (!kDebugMode) return; // Extra safety check
+    
+    try {
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Creating SK8 THE ROOF...'),
+            ],
+          ),
+        ),
+      );
+
+      final firestore = FirebaseFirestore.instance;
+      final now = DateTime.now();
+
+      // Create SK8 THE ROOF event at Ponce City Market
+      final market = Market(
+        id: 'sk8_the_roof_pcm_2025',
+        name: 'SK8 THE ROOF - Ponce City Market Roller Rink',
+        address: '675 Ponce De Leon Ave NE, Atlanta, GA 30308',
+        city: 'Atlanta',
+        state: 'GA',
+        latitude: 33.7701,
+        longitude: -84.3677,
+        placeId: 'ChIJBYXhVwYE9YgRbHKXCVHVTDQ',
+        operatingDays: const {
+          'monday': '10:00 AM - 10:00 PM',
+          'tuesday': '10:00 AM - 10:00 PM',
+          'wednesday': '10:00 AM - 10:00 PM',
+          'thursday': '10:00 AM - 10:00 PM',
+          'friday': '10:00 AM - 10:00 PM',
+          'saturday': '10:00 AM - 10:00 PM',
+          'sunday': '10:00 AM - 10:00 PM',
+        },
+        description: 'Get ready to roll with SK8 THE ROOF, a new roller rink at Ponce City Market. Open daily all summer, the 3,000-square-foot, 80s-inspired rink features complimentary skate rentals, weekend DJ sets, and nightly laser shows. Access is included with all access gameplay tickets or Skyline memberships.',
+        imageUrl: 'https://example.com/sk8_the_roof.jpg',
+        isActive: true,
+        createdAt: now,
+      );
+
+      // Save market/event
+      await firestore.collection('markets').doc(market.id).set(market.toFirestore());
+
+      // Create vendor for the roller rink itself
+      final sk8Vendor = ManagedVendor(
+        id: 'sk8_the_roof_vendor_2025',
+        marketId: market.id,
+        organizerId: 'ponce_city_organizer',
+        businessName: 'SK8 THE ROOF',
+        contactName: 'Ponce City Roof Team',
+        description: '80s-inspired roller rink experience with complimentary skate rentals, weekend DJ sets, and nightly laser shows.',
+        categories: const [VendorCategory.other],
+        products: const [
+          'Roller skating sessions',
+          'Complimentary skate rentals',
+          'DJ entertainment',
+          'Laser light shows',
+          'All access gameplay tickets',
+          'Skyline memberships'
+        ],
+        specialties: const [
+          '80s-inspired atmosphere',
+          'Weekend DJ sets',
+          'Nightly laser shows',
+          'Free skate rentals'
+        ],
+        instagramHandle: 'poncecityroof',
+        website: 'https://poncecityroof.com',
+        address: '675 Ponce De Leon Ave NE, Atlanta, GA 30308',
+        city: 'Atlanta',
+        state: 'GA',
+        zipCode: '30308',
+        canDeliver: false,
+        acceptsOrders: true,
+        operatingDays: const ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+        tags: const ['roller-skating', '80s', 'entertainment', 'laser-shows', 'dj', 'summer'],
+        specialRequirements: '3,000-square-foot rink space',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      // Save vendor
+      await firestore.collection('managed_vendors').doc(sk8Vendor.id).set(sk8Vendor.toFirestore());
+
+      // Create announcement post
+      final eventPost = VendorPost(
+        id: 'sk8_the_roof_announcement_2025',
+        vendorId: sk8Vendor.id,
+        vendorName: 'SK8 THE ROOF',
+        description: 'Get ready to roll at @poncecityroof with SK8 THE ROOF, a new roller rink at Ponce City Market. Open daily all summer, the 3,000-square-foot, 80s-inspired rink features complimentary skate rentals, weekend DJ sets, and nightly laser shows. Access is included with all access gameplay tickets or Skyline memberships. Learn more at poncecityroof.com.',
+        location: '675 Ponce De Leon Ave NE, Atlanta, GA 30308',
+        locationKeywords: VendorPost.generateLocationKeywords('675 Ponce De Leon Ave NE, Atlanta, GA 30308'),
+        latitude: 33.7701,
+        longitude: -84.3677,
+        placeId: 'ChIJBYXhVwYE9YgRbHKXCVHVTDQ',
+        locationName: 'Ponce City Market Roof',
+        popUpStartDateTime: DateTime(2025, 6, 1, 10, 0), // Summer season start
+        popUpEndDateTime: DateTime(2025, 8, 31, 22, 0),  // Summer season end
+        instagramHandle: 'poncecityroof',
+        marketId: market.id,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      // Save event post
+      await firestore.collection('vendor_posts').doc(eventPost.id).set(eventPost.toFirestore());
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🛼 Successfully created SK8 THE ROOF roller rink event!'),
+            backgroundColor: Colors.purple,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error creating SK8 THE ROOF: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      }
+    }
   }
 }
