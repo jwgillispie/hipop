@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/managed_vendor.dart';
 import '../services/managed_vendor_service.dart';
+import '../services/market_service.dart';
 import '../widgets/vendor_form_dialog.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
@@ -19,11 +22,81 @@ class _VendorManagementScreenState extends State<VendorManagementScreen> {
   VendorCategory? _selectedCategory;
   bool _showActiveOnly = false;
   String _searchQuery = '';
+  String? _selectedMarketId;
+  Map<String, String> _marketNames = {}; // marketId -> marketName
+  List<String> _validMarketIds = []; // Only markets that actually exist
+  bool _loadingMarketNames = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMarketId = _getInitialMarketId();
+    _loadMarketNames();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  String? _getInitialMarketId() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.userProfile?.isMarketOrganizer == true) {
+      final managedMarketIds = authState.userProfile!.managedMarketIds;
+      return managedMarketIds.isNotEmpty ? managedMarketIds.first : null;
+    }
+    return null;
+  }
+
+  List<String> _getManagedMarketIds() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.userProfile?.isMarketOrganizer == true) {
+      return authState.userProfile!.managedMarketIds;
+    }
+    return [];
+  }
+
+  String? _getCurrentMarketId() {
+    return _selectedMarketId;
+  }
+
+  Future<void> _loadMarketNames() async {
+    try {
+      final managedMarketIds = _getManagedMarketIds();
+      final Map<String, String> marketNames = {};
+      final List<String> validMarketIds = [];
+      
+      for (String marketId in managedMarketIds) {
+        try {
+          final market = await MarketService.getMarket(marketId);
+          if (market != null && market.isActive) {
+            marketNames[marketId] = market.name;
+            validMarketIds.add(marketId);
+          }
+        } catch (e) {
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _marketNames = marketNames;
+          _validMarketIds = validMarketIds;
+          _loadingMarketNames = false;
+          
+          // If current selected market is not valid, switch to first valid one
+          if (_selectedMarketId != null && !validMarketIds.contains(_selectedMarketId)) {
+            _selectedMarketId = validMarketIds.isNotEmpty ? validMarketIds.first : null;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingMarketNames = false;
+        });
+      }
+    }
   }
 
   @override
@@ -53,8 +126,16 @@ class _VendorManagementScreenState extends State<VendorManagementScreen> {
           );
         }
 
-        final marketId = state.userProfile!.managedMarketIds.first;
         final organizerId = state.user.uid;
+        final managedMarketIds = _loadingMarketNames ? _getManagedMarketIds() : _validMarketIds;
+        
+        // If no market is selected or no markets available, show message
+        if (_selectedMarketId == null || managedMarketIds.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Vendor Management')),
+            body: const Center(child: Text('No markets available')),
+          );
+        }
 
         return Scaffold(
           appBar: AppBar(
@@ -66,16 +147,61 @@ class _VendorManagementScreenState extends State<VendorManagementScreen> {
                 icon: const Icon(Icons.filter_list),
                 onPressed: _showFilterDialog,
               ),
+              if (kDebugMode)
+                IconButton(
+                  icon: const Icon(Icons.bug_report),
+                  onPressed: _debugVendors,
+                  tooltip: 'Debug Vendors',
+                ),
             ],
           ),
           body: Column(
             children: [
+              // Market selector dropdown (if multiple markets)
+              if (managedMarketIds.length > 1)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Market: ',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          value: _selectedMarketId,
+                          isExpanded: true,
+                          items: managedMarketIds.map((marketId) {
+                            final marketName = _marketNames[marketId] ?? 
+                                (_loadingMarketNames ? 'Loading...' : 'Market ${marketId.substring(0, 8)}...');
+                            return DropdownMenuItem<String>(
+                              value: marketId,
+                              child: Text(
+                                marketName,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedMarketId = newValue;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _buildSearchAndFilters(),
-              Expanded(child: _buildVendorsList(marketId)),
+              Expanded(child: _buildVendorsList(_selectedMarketId!)),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showCreateVendorDialog(marketId, organizerId),
+            onPressed: () => _showCreateVendorDialog(_selectedMarketId!, organizerId),
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
@@ -159,6 +285,7 @@ class _VendorManagementScreenState extends State<VendorManagementScreen> {
   }
 
   Widget _buildVendorsList(String marketId) {
+    
     return StreamBuilder<List<ManagedVendor>>(
       stream: ManagedVendorService.getVendorsForMarket(marketId),
       builder: (context, snapshot) {
@@ -663,5 +790,49 @@ class _VendorManagementScreenState extends State<VendorManagementScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _debugVendors() async {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is! Authenticated) return;
+      
+      final marketId = _selectedMarketId;
+      
+      // Get all managed vendors from Firestore directly
+      final snapshot = await FirebaseFirestore.instance
+          .collection('managed_vendors')
+          .get();
+      
+      
+      int matchingMarketCount = 0;
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        
+        if (data['marketId'] == marketId) {
+          matchingMarketCount++;
+        }
+      }
+      
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Found ${snapshot.docs.length} total vendors, $matchingMarketCount for this market. Check console.'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Debug error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

@@ -67,6 +67,7 @@ class ManagedVendor extends Equatable {
   final String marketId;
   final String organizerId; // Market organizer who created this vendor
   final String businessName;
+  final String? vendorName; // Individual vendor name (separate from business)
   final String contactName;
   final String description;
   final List<VendorCategory> categories;
@@ -77,6 +78,7 @@ class ManagedVendor extends Equatable {
   // Contact Information
   final String? email;
   final String? phoneNumber;
+  final List<String> ccEmails; // Additional contact emails for CC
   final String? website;
   final String? instagramHandle;
   final String? facebookHandle;
@@ -92,6 +94,7 @@ class ManagedVendor extends Equatable {
   
   // Products & Services
   final List<String> products; // List of main products/services
+  final String? specificProducts; // Detailed product description from application
   final List<String> specialties; // What they're known for
   final String? priceRange; // e.g., "$", "$$", "$$$"
   final bool isOrganic;
@@ -120,6 +123,7 @@ class ManagedVendor extends Equatable {
     required this.marketId,
     required this.organizerId,
     required this.businessName,
+    this.vendorName,
     required this.contactName,
     required this.description,
     this.categories = const [],
@@ -128,6 +132,7 @@ class ManagedVendor extends Equatable {
     this.logoUrl,
     this.email,
     this.phoneNumber,
+    this.ccEmails = const [],
     this.website,
     this.instagramHandle,
     this.facebookHandle,
@@ -139,6 +144,7 @@ class ManagedVendor extends Equatable {
     this.acceptsOrders = false,
     this.deliveryNotes,
     this.products = const [],
+    this.specificProducts,
     this.specialties = const [],
     this.priceRange,
     this.isOrganic = false,
@@ -165,6 +171,7 @@ class ManagedVendor extends Equatable {
       marketId: data['marketId'] ?? '',
       organizerId: data['organizerId'] ?? '',
       businessName: data['businessName'] ?? '',
+      vendorName: data['vendorName'],
       contactName: data['contactName'] ?? '',
       description: data['description'] ?? '',
       categories: (data['categories'] as List?)
@@ -178,6 +185,7 @@ class ManagedVendor extends Equatable {
       logoUrl: data['logoUrl'],
       email: data['email'],
       phoneNumber: data['phoneNumber'],
+      ccEmails: List<String>.from(data['ccEmails'] ?? []),
       website: data['website'],
       instagramHandle: data['instagramHandle'],
       facebookHandle: data['facebookHandle'],
@@ -189,6 +197,7 @@ class ManagedVendor extends Equatable {
       acceptsOrders: data['acceptsOrders'] ?? false,
       deliveryNotes: data['deliveryNotes'],
       products: List<String>.from(data['products'] ?? []),
+      specificProducts: data['specificProducts'],
       specialties: List<String>.from(data['specialties'] ?? []),
       priceRange: data['priceRange'],
       isOrganic: data['isOrganic'] ?? false,
@@ -213,6 +222,7 @@ class ManagedVendor extends Equatable {
       'marketId': marketId,
       'organizerId': organizerId,
       'businessName': businessName,
+      'vendorName': vendorName,
       'contactName': contactName,
       'description': description,
       'categories': categories.map((cat) => cat.name).toList(),
@@ -221,6 +231,7 @@ class ManagedVendor extends Equatable {
       'logoUrl': logoUrl,
       'email': email,
       'phoneNumber': phoneNumber,
+      'ccEmails': ccEmails,
       'website': website,
       'instagramHandle': instagramHandle,
       'facebookHandle': facebookHandle,
@@ -232,6 +243,7 @@ class ManagedVendor extends Equatable {
       'acceptsOrders': acceptsOrders,
       'deliveryNotes': deliveryNotes,
       'products': products,
+      'specificProducts': specificProducts,
       'specialties': specialties,
       'priceRange': priceRange,
       'isOrganic': isOrganic,
@@ -256,6 +268,7 @@ class ManagedVendor extends Equatable {
     String? marketId,
     String? organizerId,
     String? businessName,
+    String? vendorName,
     String? contactName,
     String? description,
     List<VendorCategory>? categories,
@@ -264,6 +277,7 @@ class ManagedVendor extends Equatable {
     String? logoUrl,
     String? email,
     String? phoneNumber,
+    List<String>? ccEmails,
     String? website,
     String? instagramHandle,
     String? facebookHandle,
@@ -275,6 +289,7 @@ class ManagedVendor extends Equatable {
     bool? acceptsOrders,
     String? deliveryNotes,
     List<String>? products,
+    String? specificProducts,
     List<String>? specialties,
     String? priceRange,
     bool? isOrganic,
@@ -297,6 +312,7 @@ class ManagedVendor extends Equatable {
       marketId: marketId ?? this.marketId,
       organizerId: organizerId ?? this.organizerId,
       businessName: businessName ?? this.businessName,
+      vendorName: vendorName ?? this.vendorName,
       contactName: contactName ?? this.contactName,
       description: description ?? this.description,
       categories: categories ?? this.categories,
@@ -305,6 +321,7 @@ class ManagedVendor extends Equatable {
       logoUrl: logoUrl ?? this.logoUrl,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      ccEmails: ccEmails ?? this.ccEmails,
       website: website ?? this.website,
       instagramHandle: instagramHandle ?? this.instagramHandle,
       facebookHandle: facebookHandle ?? this.facebookHandle,
@@ -316,6 +333,7 @@ class ManagedVendor extends Equatable {
       acceptsOrders: acceptsOrders ?? this.acceptsOrders,
       deliveryNotes: deliveryNotes ?? this.deliveryNotes,
       products: products ?? this.products,
+      specificProducts: specificProducts ?? this.specificProducts,
       specialties: specialties ?? this.specialties,
       priceRange: priceRange ?? this.priceRange,
       isOrganic: isOrganic ?? this.isOrganic,
@@ -381,6 +399,7 @@ class ManagedVendor extends Equatable {
         marketId,
         organizerId,
         businessName,
+        vendorName,
         contactName,
         description,
         categories,
@@ -389,6 +408,7 @@ class ManagedVendor extends Equatable {
         logoUrl,
         email,
         phoneNumber,
+        ccEmails,
         website,
         instagramHandle,
         facebookHandle,
@@ -400,6 +420,7 @@ class ManagedVendor extends Equatable {
         acceptsOrders,
         deliveryNotes,
         products,
+        specificProducts,
         specialties,
         priceRange,
         isOrganic,

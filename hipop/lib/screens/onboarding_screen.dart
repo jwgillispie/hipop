@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/onboarding_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -11,6 +12,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _isLoading = true;
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
@@ -40,6 +42,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    // Check if onboarding has already been completed
+    final isCompleted = await OnboardingService.isShopperOnboardingComplete();
+    
+    if (mounted) {
+      if (isCompleted) {
+        // Onboarding already completed, redirect to auth
+        context.go('/auth');
+      } else {
+        // Show onboarding
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -65,13 +90,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  void _completeOnboarding() {
-    // Mark onboarding as completed (we'll implement this with shared preferences later)
-    context.go('/auth');
+  Future<void> _completeOnboarding() async {
+    // Mark onboarding as completed
+    await OnboardingService.markShopperOnboardingComplete();
+    if (mounted) {
+      context.go('/auth');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show loading while checking onboarding status
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.orange,
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

@@ -21,6 +21,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   final _bioController = TextEditingController();
   final _instagramController = TextEditingController();
   final _websiteController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
+  final _specificProductsController = TextEditingController();
   
   final UserProfileService _profileService = UserProfileService();
   UserProfile? _currentProfile;
@@ -30,6 +32,37 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
   bool _isDeleting = false;
   String? _errorMessage;
   String? _successMessage;
+  List<String> _ccEmails = [];
+  List<String> _selectedProductCategories = [];
+  
+  // Common product categories for farmers markets
+  final List<String> _productCategories = [
+    'Fresh Produce',
+    'Organic Vegetables',
+    'Fruits',
+    'Herbs',
+    'Dairy Products',
+    'Meat & Poultry',
+    'Eggs',
+    'Baked Goods',
+    'Bread & Pastries',
+    'Honey',
+    'Jams & Preserves',
+    'Pickles & Fermented Foods',
+    'Prepared Foods',
+    'Beverages',
+    'Coffee & Tea',
+    'Flowers',
+    'Plants & Seeds',
+    'Crafts & Artwork',
+    'Skincare Products',
+    'Clothing & Accessories',
+    'Jewelry',
+    'Woodworking',
+    'Pottery',
+    'Candles & Soaps',
+    'Spices & Seasonings',
+  ];
 
   @override
   void initState() {
@@ -44,6 +77,8 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
     _bioController.dispose();
     _instagramController.dispose();
     _websiteController.dispose();
+    _phoneNumberController.dispose();
+    _specificProductsController.dispose();
     super.dispose();
   }
 
@@ -74,6 +109,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           _bioController.text = profile.bio ?? '';
           _instagramController.text = profile.instagramHandle ?? '';
           _websiteController.text = profile.website ?? '';
+          _phoneNumberController.text = profile.phoneNumber ?? '';
+          _specificProductsController.text = profile.specificProducts ?? '';
+          _ccEmails = List.from(profile.ccEmails);
+          _selectedProductCategories = List.from(profile.categories);
           _isLoading = false;
         });
       }
@@ -112,6 +151,14 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
         website: _websiteController.text.trim().isEmpty 
             ? null 
             : _websiteController.text.trim(),
+        phoneNumber: _phoneNumberController.text.trim().isEmpty 
+            ? null 
+            : _phoneNumberController.text.trim(),
+        specificProducts: _specificProductsController.text.trim().isEmpty 
+            ? null 
+            : _specificProductsController.text.trim(),
+        ccEmails: _ccEmails,
+        categories: _selectedProductCategories,
       );
 
       // Save to Firestore (this will also update Firebase Auth display name)
@@ -560,6 +607,55 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
           ),
         ),
 
+        const SizedBox(height: 16),
+
+        // Phone Number
+        TextField(
+          controller: _phoneNumberController,
+          enabled: _isEditing,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.phone),
+            helperText: 'Your business contact number',
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+
+        const SizedBox(height: 16),
+
+        // Product Categories
+        if (_isEditing) ...[
+          _buildProductCategoriesField(),
+          const SizedBox(height: 16),
+        ] else if (_selectedProductCategories.isNotEmpty) ...[
+          _buildProductCategoriesDisplay(),
+          const SizedBox(height: 16),
+        ],
+
+        // Specific Products
+        TextField(
+          controller: _specificProductsController,
+          enabled: _isEditing,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Additional Product Details',
+            border: OutlineInputBorder(),
+            helperText: 'Add any specific details about your products not covered above',
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // CC Emails
+        if (_isEditing) ...[
+          _buildCCEmailsField(),
+          const SizedBox(height: 16),
+        ] else if (_ccEmails.isNotEmpty) ...[
+          _buildCCEmailsDisplay(),
+          const SizedBox(height: 16),
+        ],
+
         if (_isEditing) ...[
           const SizedBox(height: 16),
           Row(
@@ -576,6 +672,10 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                         _bioController.text = _currentProfile!.bio ?? '';
                         _instagramController.text = _currentProfile!.instagramHandle ?? '';
                         _websiteController.text = _currentProfile!.website ?? '';
+                        _phoneNumberController.text = _currentProfile!.phoneNumber ?? '';
+                        _specificProductsController.text = _currentProfile!.specificProducts ?? '';
+                        _ccEmails = List.from(_currentProfile!.ccEmails);
+                        _selectedProductCategories = List.from(_currentProfile!.categories);
                       }
                       _errorMessage = null;
                       _successMessage = null;
@@ -652,6 +752,218 @@ class _VendorProfileScreenState extends State<VendorProfileScreen> {
                 )
               : const Icon(Icons.arrow_forward_ios, color: Colors.red),
           onTap: _isDeleting ? null : _deleteAccount,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCCEmailsField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Additional Contacts',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _addCCEmail,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Add email addresses for others who should be included in market communications',
+          style: TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        if (_ccEmails.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'No additional contacts',
+              style: TextStyle(color: Colors.grey),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _ccEmails.map((email) => Chip(
+              label: Text(email),
+              onDeleted: () {
+                setState(() {
+                  _ccEmails.remove(email);
+                });
+              },
+            )).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCCEmailsDisplay() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Additional Contacts',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _ccEmails.map((email) => Chip(
+            label: Text(email),
+          )).toList(),
+        ),
+      ],
+    );
+  }
+
+  void _addCCEmail() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Add Contact Email'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'Enter email address',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final email = controller.text.trim();
+                if (email.isNotEmpty && email.contains('@') && !_ccEmails.contains(email)) {
+                  setState(() {
+                    _ccEmails.add(email);
+                  });
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProductCategoriesField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'What Products Do You Sell?',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Select all categories that apply to your business',
+          style: TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _productCategories.map((category) {
+            final isSelected = _selectedProductCategories.contains(category);
+            return FilterChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedProductCategories.add(category);
+                  } else {
+                    _selectedProductCategories.remove(category);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+        if (_selectedProductCategories.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              border: Border.all(color: Colors.green.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selected Products (${_selectedProductCategories.length})',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: _selectedProductCategories.map((category) => Chip(
+                    label: Text(category),
+                    backgroundColor: Colors.green.shade100,
+                    deleteIcon: const Icon(Icons.close, size: 18),
+                    onDeleted: () {
+                      setState(() {
+                        _selectedProductCategories.remove(category);
+                      });
+                    },
+                  )).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildProductCategoriesDisplay() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Products Sold',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _selectedProductCategories.map((category) => Chip(
+            label: Text(category),
+            backgroundColor: Colors.green.shade100,
+          )).toList(),
         ),
       ],
     );

@@ -9,6 +9,8 @@ import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 import '../widgets/common/favorite_button.dart';
 import '../blocs/favorites/favorites_bloc.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class MarketDetailScreen extends StatefulWidget {
   final Market market;
@@ -115,12 +117,20 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
           _buildVendorsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _applyAsVendor(context),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.store),
-        label: const Text('Apply as Vendor'),
+      floatingActionButton: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          // Only show the Apply as Vendor button for authenticated vendors
+          if (state is Authenticated && state.userType == 'vendor') {
+            return FloatingActionButton.extended(
+              onPressed: () => _applyAsVendor(context),
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.store),
+              label: const Text('Apply as Vendor'),
+            );
+          }
+          return const SizedBox.shrink(); // Hide button for non-vendors
+        },
       ),
     );
   }

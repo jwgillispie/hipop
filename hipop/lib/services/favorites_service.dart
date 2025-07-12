@@ -119,6 +119,22 @@ class FavoritesService {
     }
   }
 
+  // Get user's favorite vendor IDs only (fast for BLoC state)
+  static Future<List<String>> getUserFavoriteVendorIds(String userId) async {
+    try {
+      final favoritesSnapshot = await _favoritesCollection
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: FavoriteType.vendor.name)
+          .get();
+
+      return favoritesSnapshot.docs
+          .map((doc) => UserFavorite.fromFirestore(doc).itemId)
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get favorite vendor IDs: $e');
+    }
+  }
+
   // Get user's favorite vendors with full vendor data
   static Future<List<ManagedVendor>> getUserFavoriteVendors(String userId) async {
     try {
@@ -145,6 +161,22 @@ class FavoritesService {
       return vendors;
     } catch (e) {
       throw Exception('Failed to get favorite vendors: $e');
+    }
+  }
+
+  // Get user's favorite market IDs only (fast for BLoC state)
+  static Future<List<String>> getUserFavoriteMarketIds(String userId) async {
+    try {
+      final favoritesSnapshot = await _favoritesCollection
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: FavoriteType.market.name)
+          .get();
+
+      return favoritesSnapshot.docs
+          .map((doc) => UserFavorite.fromFirestore(doc).itemId)
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get favorite market IDs: $e');
     }
   }
 

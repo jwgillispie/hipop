@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../models/vendor_application.dart';
 import '../services/vendor_application_service.dart';
-import '../widgets/vendor_application_link_share_widget.dart';
+import '../services/market_service.dart';
+import '../widgets/vendor_applications_calendar.dart';
 
 class VendorApplicationsScreen extends StatefulWidget {
   const VendorApplicationsScreen({super.key});
@@ -17,11 +19,18 @@ class VendorApplicationsScreen extends StatefulWidget {
 class _VendorApplicationsScreenState extends State<VendorApplicationsScreen> 
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String? _selectedMarketId;
+  Map<String, String> _marketNames = {}; // marketId -> marketName
+  List<String> _validMarketIds = []; // Only markets that actually exist
+  bool _loadingMarketNames = true;
+  bool _showCalendarView = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _selectedMarketId = _getInitialMarketId();
+    _loadMarketNames();
   }
 
   @override
@@ -30,74 +39,239 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     super.dispose();
   }
 
-  String? _getCurrentMarketId() {
+  String? _getInitialMarketId() {
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated && authState.userProfile?.isMarketOrganizer == true) {
       final managedMarketIds = authState.userProfile!.managedMarketIds;
+      // Return first market ID, but _loadMarketNames() will validate and potentially change it
       return managedMarketIds.isNotEmpty ? managedMarketIds.first : null;
     }
     return null;
   }
 
+  List<String> _getManagedMarketIds() {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.userProfile?.isMarketOrganizer == true) {
+      return authState.userProfile!.managedMarketIds;
+    }
+    return [];
+  }
+
+  String? _getCurrentMarketId() {
+    return _selectedMarketId;
+  }
+
+  Future<void> _loadMarketNames() async {
+    try {
+      final managedMarketIds = _getManagedMarketIds();
+      final Map<String, String> marketNames = {};
+      final List<String> validMarketIds = [];
+      
+      if (kDebugMode) {
+        print('DEBUG: Checking ${managedMarketIds.length} managed markets: $managedMarketIds');
+      }
+      
+      for (String marketId in managedMarketIds) {
+        try {
+          final market = await MarketService.getMarket(marketId);
+          if (market != null && market.isActive) {
+            // Market exists and is active - include it
+            marketNames[marketId] = market.name;
+            validMarketIds.add(marketId);
+            if (kDebugMode) {
+              print('DEBUG: Found valid market: ${market.name} ($marketId)');
+            }
+          } else {
+            if (kDebugMode) {
+              print('DEBUG: Market $marketId not found or inactive - excluding from list');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('DEBUG: Error loading market $marketId: $e - excluding from list');
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _marketNames = marketNames;
+          _validMarketIds = validMarketIds;
+          _loadingMarketNames = false;
+          
+          // If current selected market is not valid, switch to first valid one
+          if (_selectedMarketId != null && !validMarketIds.contains(_selectedMarketId)) {
+            _selectedMarketId = validMarketIds.isNotEmpty ? validMarketIds.first : null;
+            if (kDebugMode) {
+              print('DEBUG: Switched to valid market: $_selectedMarketId');
+            }
+          }
+        });
+        
+        // Auto-reject expired applications for this market
+        if (_selectedMarketId != null) {
+          _autoRejectExpiredApplications(_selectedMarketId!);
+        }
+        
+        if (kDebugMode) {
+          print('DEBUG: Valid markets: $_marketNames');
+          print('DEBUG: Selected market: $_selectedMarketId');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: Error loading market names: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _loadingMarketNames = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _autoRejectExpiredApplications(String marketId) async {
+    try {
+      final rejectedCount = await VendorApplicationService.autoRejectExpiredApplications(marketId);
+      if (rejectedCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Auto-rejected $rejectedCount applications with past dates'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: Error auto-rejecting expired applications: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Use valid market IDs instead of all managed market IDs
+    final managedMarketIds = _loadingMarketNames ? _getManagedMarketIds() : _validMarketIds;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vendor Applications'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
-          if (kDebugMode)
+          IconButton(
+            icon: Icon(_showCalendarView ? Icons.list : Icons.calendar_today),
+            onPressed: () {
+              setState(() {
+                _showCalendarView = !_showCalendarView;
+              });
+            },
+            tooltip: _showCalendarView ? 'Show List View' : 'Show Calendar View',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+            tooltip: 'Refresh Applications',
+          ),
+          if (kDebugMode) ...[
+            IconButton(
+              icon: const Icon(Icons.bug_report),
+              onPressed: _debugAllApplications,
+              tooltip: 'Debug All Applications',
+            ),
             IconButton(
               icon: const Icon(Icons.add_box),
               onPressed: _addTestData,
               tooltip: 'Add Test Data',
             ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Pending'),
-            Tab(text: 'Approved'),
-            Tab(text: 'Rejected'),
           ],
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(120),
+          child: Column(
+            children: [
+              // Market selector dropdown
+              if (managedMarketIds.length > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Market: ',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                      ),
+                      Expanded(
+                        child: DropdownButton<String>(
+                          value: _selectedMarketId,
+                          dropdownColor: Colors.green.shade700,
+                          style: const TextStyle(color: Colors.white),
+                          underline: Container(
+                            height: 1,
+                            color: Colors.white70,
+                          ),
+                          items: managedMarketIds.map((marketId) {
+                            final marketName = _marketNames[marketId] ?? 
+                                (_loadingMarketNames ? 'Loading...' : 'Market ${marketId.substring(0, 8)}...');
+                            return DropdownMenuItem<String>(
+                              value: marketId,
+                              child: Text(
+                                marketName,
+                                style: const TextStyle(color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedMarketId = newValue;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // Tab bar
+              TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: const [
+                  Tab(text: 'All'),
+                  Tab(text: 'Pending'),
+                  Tab(text: 'Approved'),
+                  Tab(text: 'Rejected'),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildApplicationsList(null),
-          _buildApplicationsList(ApplicationStatus.pending),
-          _buildApplicationsList(ApplicationStatus.approved),
-          _buildApplicationsList(ApplicationStatus.rejected),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _shareApplicationLink,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.share),
-        label: const Text('Share Application Link'),
-      ),
+      body: _showCalendarView
+          ? _buildCalendarView()
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildApplicationsList(null),
+                _buildApplicationsList(ApplicationStatus.pending),
+                _buildApplicationsList(ApplicationStatus.approved),
+                _buildApplicationsList(ApplicationStatus.rejected),
+              ],
+            ),
     );
   }
 
-  Widget _buildApplicationsList(ApplicationStatus? filterStatus) {
+  Widget _buildCalendarView() {
     final marketId = _getCurrentMarketId();
+    
     if (marketId == null) {
       return const Center(child: Text('No market selected'));
     }
     
-    final stream = filterStatus == null
-        ? VendorApplicationService.getApplicationsForMarket(marketId)
-        : VendorApplicationService.getApplicationsByStatus(marketId, filterStatus);
-
     return StreamBuilder<List<VendorApplication>>(
-      stream: stream,
+      stream: VendorApplicationService.getApplicationsForMarket(marketId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -122,6 +296,159 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         }
 
         final applications = snapshot.data ?? [];
+        final applicationsWithDates = applications.where((app) => app.hasRequestedDates).toList();
+
+        if (applicationsWithDates.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No applications with dates',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Applications with specific dates will appear here in calendar view.',
+                  style: TextStyle(color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        return VendorApplicationsCalendar(
+          applications: applicationsWithDates,
+          onApplicationTap: (application) {
+            _showApplicationDetails(application);
+          },
+        );
+      },
+    );
+  }
+
+  void _showApplicationDetails(VendorApplication application) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(application.vendorBusinessName),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Status: ${application.status.name.toUpperCase()}'),
+              const SizedBox(height: 8),
+              if (application.hasRequestedDates)
+                Text('Requested Dates: ${application.requestedDatesDisplayString}'),
+              if (application.specialMessage?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text('Message: ${application.specialMessage}'),
+              ],
+              if (application.reviewNotes?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text('Review Notes: ${application.reviewNotes}'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          if (application.status == ApplicationStatus.pending) ...[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showReviewDialog(application, ApplicationStatus.rejected);
+              },
+              child: const Text('Reject', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showReviewDialog(application, ApplicationStatus.approved);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Approve', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplicationsList(ApplicationStatus? filterStatus) {
+    final marketId = _getCurrentMarketId();
+    
+    if (kDebugMode) {
+      print('DEBUG: Selected market ID: $marketId');
+      print('DEBUG: Valid markets: $_validMarketIds');
+      print('DEBUG: Filter status: $filterStatus');
+    }
+    
+    if (marketId == null) {
+      return const Center(child: Text('No market selected'));
+    }
+    
+    if (kDebugMode) {
+      print('DEBUG: Building applications list for market: $marketId');
+      print('DEBUG: Filter status: $filterStatus');
+    }
+    
+    final stream = filterStatus == null
+        ? VendorApplicationService.getApplicationsForMarket(marketId)
+        : VendorApplicationService.getApplicationsByStatus(marketId, filterStatus);
+
+    return StreamBuilder<List<VendorApplication>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (kDebugMode) {
+          print('DEBUG: StreamBuilder - Connection state: ${snapshot.connectionState}');
+          print('DEBUG: StreamBuilder - Has error: ${snapshot.hasError}');
+          if (snapshot.hasError) {
+            print('DEBUG: StreamBuilder - Error: ${snapshot.error}');
+          }
+          print('DEBUG: StreamBuilder - Has data: ${snapshot.hasData}');
+          if (snapshot.hasData) {
+            print('DEBUG: StreamBuilder - Data count: ${snapshot.data?.length}');
+          }
+        }
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error: ${snapshot.error}'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => setState(() {}),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final applications = snapshot.data ?? [];
+        
+        if (kDebugMode) {
+          print('DEBUG: Received ${applications.length} applications');
+          for (var app in applications) {
+            print('DEBUG: Application ID: ${app.id}, Vendor: ${app.vendorBusinessName}, Market: ${app.marketId}');
+          }
+        }
 
         if (applications.isEmpty) {
           return Center(
@@ -182,7 +509,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        application.businessName,
+                        application.vendorBusinessName,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -190,19 +517,44 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        application.vendorName,
+                        'Contact: ${application.vendorDisplayName}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
                         ),
                       ),
-                      Text(
-                        application.vendorEmail,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                      if (application.vendorEmail != null)
+                        Text(
+                          application.vendorEmail!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                      ),
+                      if (application.vendorCategories.isNotEmpty)
+                        Text(
+                          'Categories: ${application.vendorCategories.join(', ')}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      if (application.hasRequestedDates)
+                        Text(
+                          'Requested Dates: ${application.requestedDatesDisplayString}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        )
+                      else if (application.operatingDays.isNotEmpty)
+                        Text(
+                          'Days: ${application.operatingDays.join(', ')}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -210,28 +562,22 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              application.businessDescription,
-              style: const TextStyle(fontSize: 14),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (application.productCategories.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 4,
-                children: application.productCategories
-                    .take(3)
-                    .map((category) => Chip(
-                          label: Text(
-                            category,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ))
-                    .toList(),
+            if (application.specialMessage?.isNotEmpty == true)
+              Text(
+                application.specialMessage!,
+                style: const TextStyle(fontSize: 14),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              )
+            else
+              Text(
+                'No special message provided',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
-            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -309,7 +655,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${application.businessName} - ${application.vendorName}'),
+            Text('Application ${application.id.substring(0, 8)}...'),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -329,12 +675,24 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           ElevatedButton(
             onPressed: () async {
               try {
-                await VendorApplicationService.updateApplicationStatus(
-                  application.id,
-                  newStatus,
-                  'current_organizer_id', // TODO: Get from auth
-                  reviewNotes: controller.text.trim().isEmpty ? null : controller.text.trim(),
-                );
+                // Get the current organizer ID from auth state
+                final authState = context.read<AuthBloc>().state;
+                final organizerId = authState is Authenticated ? authState.user.uid : 'unknown';
+                
+                if (newStatus == ApplicationStatus.approved) {
+                  await VendorApplicationService.approveApplication(
+                    application.id,
+                    organizerId,
+                    notes: controller.text.trim().isEmpty ? null : controller.text.trim(),
+                  );
+                } else {
+                  await VendorApplicationService.updateApplicationStatus(
+                    application.id,
+                    newStatus,
+                    organizerId,
+                    reviewNotes: controller.text.trim().isEmpty ? null : controller.text.trim(),
+                  );
+                }
                 
                 if (mounted) {
                   Navigator.pop(context);
@@ -369,38 +727,27 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     );
   }
 
-  Future<void> _shareApplicationLink() async {
-    final marketId = _getCurrentMarketId();
-    if (marketId == null) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => VendorApplicationLinkShareWidget(
-        marketId: marketId,
-        marketName: 'Your Market', // TODO: Get actual market name from context/auth
-      ),
-    );
-  }
 
   Future<void> _addTestData() async {
     final marketId = _getCurrentMarketId();
     if (marketId == null) return;
     
     try {
+      final now = DateTime.now();
+      
       final applications = [
         VendorApplication(
           id: '',
           marketId: marketId,
           vendorId: 'vendor_1',
-          vendorName: 'Sarah Johnson',
-          vendorEmail: 'sarah@localbakes.com',
-          vendorPhone: '+1-555-0123',
-          businessName: 'Local Bakes Co.',
-          businessDescription: 'Artisanal bakery specializing in sourdough breads, pastries, and seasonal treats made with locally sourced ingredients.',
-          productCategories: ['Baked Goods', 'Artisanal', 'Local'],
-          websiteUrl: 'https://localbakes.com',
-          instagramHandle: '@localbakes',
-          specialRequests: 'Need access to electrical outlet for display refrigerator',
+          operatingDays: ['Saturday', 'Sunday'],
+          requestedDates: [
+            now.add(const Duration(days: 7)), // Next Saturday
+            now.add(const Duration(days: 8)), // Next Sunday
+            now.add(const Duration(days: 14)), // Following Saturday
+            now.add(const Duration(days: 15)), // Following Sunday
+          ],
+          specialMessage: 'Need access to electrical outlet for display refrigerator',
           status: ApplicationStatus.pending,
           createdAt: DateTime.now().subtract(const Duration(days: 2)),
           updatedAt: DateTime.now().subtract(const Duration(days: 2)),
@@ -409,15 +756,14 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           id: '',
           marketId: marketId,
           vendorId: 'vendor_2',
-          vendorName: 'Mike Chen',
-          vendorEmail: 'mike@freshgreens.com',
-          vendorPhone: '+1-555-0456',
-          businessName: 'Fresh Greens Farm',
-          businessDescription: 'Organic vegetable farm offering fresh, seasonal produce including heirloom tomatoes, leafy greens, and herbs.',
-          productCategories: ['Organic', 'Vegetables', 'Farm Fresh'],
-          websiteUrl: 'https://freshgreens.farm',
-          instagramHandle: '@freshgreensfarm',
-          specialRequests: 'Would like corner spot for easy truck access',
+          operatingDays: ['Wednesday', 'Saturday'],
+          requestedDates: [
+            now.add(const Duration(days: 3)), // Next Wednesday
+            now.add(const Duration(days: 7)), // Next Saturday
+            now.add(const Duration(days: 10)), // Following Wednesday
+            now.add(const Duration(days: 14)), // Following Saturday
+          ],
+          specialMessage: 'Would like corner spot for easy truck access',
           status: ApplicationStatus.approved,
           reviewedBy: 'organizer_1',
           reviewedAt: DateTime.now().subtract(const Duration(days: 1)),
@@ -429,13 +775,13 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           id: '',
           marketId: marketId,
           vendorId: 'vendor_3',
-          vendorName: 'Lisa Rodriguez',
-          vendorEmail: 'lisa@handmadecrafts.com',
-          businessName: 'Handmade Crafts Studio',
-          businessDescription: 'Unique handcrafted jewelry, pottery, and home decor items made with sustainable materials.',
-          productCategories: ['Handmade', 'Jewelry', 'Home Decor'],
-          websiteUrl: 'https://handmadecrafts.com',
-          instagramHandle: '@handmadecraftsstudio',
+          operatingDays: ['Friday', 'Saturday'],
+          requestedDates: [
+            now.add(const Duration(days: 5)), // Next Friday
+            now.add(const Duration(days: 6)), // Next Saturday
+            now.add(const Duration(days: 12)), // Following Friday
+          ],
+          specialMessage: null,
           status: ApplicationStatus.waitlisted,
           reviewedBy: 'organizer_1',
           reviewedAt: DateTime.now().subtract(const Duration(hours: 12)),
@@ -447,12 +793,13 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           id: '',
           marketId: marketId,
           vendorId: 'vendor_4',
-          vendorName: 'Tom Wilson',
-          vendorEmail: 'tom@streetfood.com',
-          businessName: 'Tom\'s Street Food',
-          businessDescription: 'Gourmet food truck offering Asian fusion dishes, tacos, and specialty sandwiches.',
-          productCategories: ['Food Truck', 'Asian Fusion', 'Street Food'],
-          specialRequests: 'Need large space for food truck and seating area',
+          operatingDays: ['Thursday', 'Friday', 'Saturday'],
+          requestedDates: [
+            now.add(const Duration(days: 4)), // Next Thursday
+            now.add(const Duration(days: 5)), // Next Friday
+            now.add(const Duration(days: 6)), // Next Saturday
+          ],
+          specialMessage: 'Need large space for food truck and seating area',
           status: ApplicationStatus.rejected,
           reviewedBy: 'organizer_1',
           reviewedAt: DateTime.now().subtract(const Duration(hours: 6)),
@@ -464,14 +811,12 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           id: '',
           marketId: marketId,
           vendorId: 'vendor_5',
-          vendorName: 'Emma Thompson',
-          vendorEmail: 'emma@naturalsoaps.com',
-          vendorPhone: '+1-555-0789',
-          businessName: 'Natural Soaps & More',
-          businessDescription: 'Handcrafted natural soaps, bath bombs, and skincare products made with organic ingredients.',
-          productCategories: ['Natural', 'Skincare', 'Handmade'],
-          websiteUrl: 'https://naturalsoaps.com',
-          instagramHandle: '@naturalsoapsmore',
+          operatingDays: ['Saturday'],
+          requestedDates: [
+            now.add(const Duration(days: 7)), // Next Saturday
+            now.add(const Duration(days: 21)), // Saturday in 3 weeks
+          ],
+          specialMessage: null,
           status: ApplicationStatus.pending,
           createdAt: DateTime.now().subtract(const Duration(hours: 8)),
           updatedAt: DateTime.now().subtract(const Duration(hours: 8)),
@@ -495,6 +840,59 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error adding test data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _debugAllApplications() async {
+    try {
+      // Get all applications from Firestore directly
+      final snapshot = await FirebaseFirestore.instance
+          .collection('vendor_applications')
+          .get();
+      
+      print('DEBUG: Found ${snapshot.docs.length} total applications in Firestore');
+      
+      final currentMarketId = _getCurrentMarketId();
+      int matchingMarketCount = 0;
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        print('DEBUG: App ${doc.id}: Market=${data['marketId']}, Vendor=${data['vendorId']}, Status=${data['status']}');
+        
+        if (data['marketId'] == currentMarketId) {
+          matchingMarketCount++;
+          print('  ✅ MATCHES current market!');
+        }
+      }
+      
+      // Show market organizer info
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        print('DEBUG: Current user: ${authState.userProfile?.email}');
+        print('DEBUG: Current user type: ${authState.userType}');
+        print('DEBUG: Managed markets: ${authState.userProfile?.managedMarketIds}');
+        print('DEBUG: Currently viewing market: $currentMarketId');
+        print('DEBUG: Applications for this market: $matchingMarketCount');
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Found ${snapshot.docs.length} total applications, $matchingMarketCount for this market. Check console.'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      print('DEBUG: Error getting all applications: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Debug error: $e'),
             backgroundColor: Colors.red,
           ),
         );

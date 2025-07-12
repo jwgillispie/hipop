@@ -29,18 +29,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _triggerLoadFavorites();
-    });
-  }
-  
-  void _triggerLoadFavorites() {
-    final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
-      context.read<FavoritesBloc>().add(LoadFavorites(userId: authState.user.uid));
-    } else {
-      context.read<FavoritesBloc>().add(const LoadFavorites());
-    }
+    // Favorites are now automatically loaded when auth state changes in main.dart
   }
 
   @override
@@ -72,7 +61,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
             vendors.add(vendor);
           }
         } catch (e) {
-          debugPrint('Error fetching vendor $vendorId: $e');
+          // Error fetching vendor
         }
       }
 
@@ -107,7 +96,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
             markets.add(market);
           }
         } catch (e) {
-          debugPrint('Error fetching market $marketId: $e');
+          // Error fetching market
         }
       }
 

@@ -8,6 +8,7 @@ import '../../services/favorites_migration_service.dart';
 import '../../models/user_profile.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import '../../utils/validation_utils.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final IAuthRepository _authRepository;
@@ -46,22 +47,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onAuthUserChanged(AuthUserChanged event, Emitter<AuthState> emit) async {
     final user = event.user as User?;
     
-    print('DEBUG: _onAuthUserChanged called with user: ${user?.uid}');
-    
     if (user != null) {
       try {
-        // Get user profile from Firestore with retry logic
+        // FIRST: Try to load user profile from user_profiles collection (new system)
+        UserProfile? userProfile;
+        try {
+          userProfile = await _userProfileService.getUserProfile(user.uid);
+          
+          if (userProfile != null) {
+            // Use the user profile data as primary source
+            emit(Authenticated(user: user, userType: userProfile.userType, userProfile: userProfile));
+            
+            // Migrate local favorites to user account for shoppers
+            if (userProfile.userType == 'shopper' && await FavoritesMigrationService.hasLocalFavorites()) {
+              try {
+                await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
+                await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
+              } catch (e) {
+                // Handle migration error silently
+              }
+            }
+            return; // Exit early if we have a user profile
+          }
+        } catch (e) {
+          // Failed to load user profile, continue with fallback
+        }
+        
+        // FALLBACK: Check old users collection if no user profile exists
         DocumentSnapshot userDoc;
         int retries = 0;
-        const maxRetries = 5; // Increased retries for login scenarios
+        const maxRetries = 5;
         
         do {
-          print('DEBUG: Attempting to fetch user doc (attempt ${retries + 1})');
           userDoc = await _firestore.collection('users').doc(user.uid).get();
           
           if (!userDoc.exists && retries < maxRetries) {
-            print('DEBUG: User doc not found, retrying in ${1000 * (retries + 1)}ms...');
-            // Exponential backoff for retries
             await Future.delayed(Duration(milliseconds: 1000 * (retries + 1)));
             retries++;
           } else {
@@ -73,46 +93,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final userData = userDoc.data()! as Map<String, dynamic>;
           final userType = userData['userType'] as String?;
           
-          print('DEBUG: User doc found, userType: $userType');
           
-          // Try to load user profile as well
-          UserProfile? userProfile;
-          try {
-            userProfile = await _userProfileService.getUserProfile(user.uid);
-            print('DEBUG: User profile loaded: ${userProfile?.userType}');
-          } catch (e) {
-            print('DEBUG: Failed to load user profile: $e');
-          }
-          
-          final effectiveUserType = userProfile?.userType ?? userType;
-          
-          if (effectiveUserType == null || effectiveUserType.isEmpty) {
-            print('WARNING: userType is null or empty in both docs');
+          if (userType != null && userType.isNotEmpty) {
+            emit(Authenticated(user: user, userType: userType, userProfile: null));
+            
+            // Migrate local favorites to user account for shoppers
+            if (userType == 'shopper' && await FavoritesMigrationService.hasLocalFavorites()) {
+              try {
+                await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
+                await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
+              } catch (e) {
+                // Handle migration error silently
+              }
+            }
+          } else {
             // For existing users with missing userType, check if they have vendor-specific data
             final hasVendorData = userData.containsKey('businessName') || 
                                 userData.containsKey('vendorProfile') ||
                                 userData.containsKey('popups');
             final inferredType = hasVendorData ? 'vendor' : 'shopper';
-            print('DEBUG: Inferred userType: $inferredType based on document structure');
-            emit(Authenticated(user: user, userType: inferredType, userProfile: userProfile));
-          } else {
-            emit(Authenticated(user: user, userType: effectiveUserType, userProfile: userProfile));
-          }
-          
-          // Migrate local favorites to user account for shoppers
-          if ((effectiveUserType == 'shopper' || (effectiveUserType == null && userProfile == null)) && 
-              await FavoritesMigrationService.hasLocalFavorites()) {
-            try {
-              print('DEBUG: Migrating local favorites to user account');
-              await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
-              await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
-              print('DEBUG: Favorites migration completed successfully');
-            } catch (e) {
-              print('DEBUG: Favorites migration failed: $e');
-            }
+            emit(Authenticated(user: user, userType: inferredType, userProfile: null));
           }
         } else {
-          print('ERROR: User doc still does not exist after ${retries + 1} attempts');
           
           // For returning users, try to check if they have any vendor collections
           try {
@@ -123,43 +125,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
                 .get();
             
             if (vendorPostsQuery.docs.isNotEmpty) {
-              print('DEBUG: Found vendor posts for user, setting userType to vendor');
               emit(Authenticated(user: user, userType: 'vendor', userProfile: null));
             } else {
-              print('DEBUG: No vendor posts found, defaulting to shopper');
               emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
               
               // Migrate local favorites for shopper users
               if (await FavoritesMigrationService.hasLocalFavorites()) {
                 try {
-                  print('DEBUG: Migrating local favorites to user account (shopper)');
                   await FavoritesMigrationService.migrateLocalFavoritesToUser(user.uid);
                   await FavoritesMigrationService.clearLocalFavoritesAfterMigration();
-                  print('DEBUG: Favorites migration completed successfully (shopper)');
                 } catch (e) {
-                  print('DEBUG: Favorites migration failed (shopper): $e');
+                  // Handle migration error silently
                 }
               }
             }
           } catch (e) {
-            print('ERROR: Failed to check vendor posts: $e');
-            // Last resort - check the user's email for vendor patterns if needed
             emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
           }
         }
       } catch (e) {
-        print('ERROR: Failed to get user profile: $e');
-        // If we can't get user profile, still authenticate but with default type
         emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
       }
     } else {
-      print('DEBUG: User is null, emitting Unauthenticated');
       emit(Unauthenticated());
     }
   }
 
   Future<void> _onLoginEvent(LoginEvent event, Emitter<AuthState> emit) async {
-    print('DEBUG: LoginEvent received in AuthBloc');
     emit(const AuthLoading(message: 'Signing in...'));
     
     try {
@@ -169,31 +161,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      if (!_isValidEmail(event.email.trim())) {
+      if (!ValidationUtils.isValidEmail(event.email.trim())) {
         emit(const AuthError(message: 'Please enter a valid email address'));
         return;
       }
 
-      print('DEBUG: Calling signInWithEmailAndPassword');
       final userCredential = await _authRepository.signInWithEmailAndPassword(
         event.email.trim(),
         event.password.trim(),
       );
-      print('DEBUG: signInWithEmailAndPassword completed');
       
       // Manually trigger auth state update immediately after login
       if (userCredential.user != null) {
-        print('DEBUG: Manually triggering AuthUserChanged event');
         add(AuthUserChanged(userCredential.user));
       }
     } catch (e) {
-      print('DEBUG: Login error caught: $e');
       emit(AuthError(message: e.toString()));
     }
   }
 
   Future<void> _onSignUpEvent(SignUpEvent event, Emitter<AuthState> emit) async {
-    print('DEBUG: SignUpEvent received in AuthBloc for userType: ${event.userType}');
     emit(const AuthLoading(message: 'Creating account...'));
     
     try {
@@ -205,13 +192,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      if (!_isValidEmail(event.email.trim())) {
+      if (!ValidationUtils.isValidEmail(event.email.trim())) {
         emit(const AuthError(message: 'Please enter a valid email address'));
         return;
       }
 
       if (event.password.trim().length < 6) {
-        
         emit(const AuthError(message: 'Password must be at least 6 characters'));
         return;
       }
@@ -222,16 +208,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
 
       // Create user account
-      print('DEBUG: Creating user account');
       final userCredential = await _authRepository.createUserWithEmailAndPassword(
         event.email.trim(),
         event.password.trim(),
       );
-      print('DEBUG: User account created successfully');
 
       if (userCredential.user != null) {
         // Create user profile in Firestore FIRST (following govvy pattern)
-        print('DEBUG: Creating user profile in Firestore');
         await (_authRepository as AuthRepository).createUserProfile(
           uid: userCredential.user!.uid,
           name: event.name.trim(),
@@ -240,7 +223,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
         
         // THEN update display name in Firebase Auth
-        print('DEBUG: Updating display name');
         await _authRepository.updateDisplayName(event.name.trim());
         
         // Reload user to ensure we have the latest data
@@ -251,15 +233,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         try {
           userProfile = await _userProfileService.getUserProfile(userCredential.user!.uid);  
         } catch (e) {
-          print('DEBUG: Failed to load user profile after creation: $e');
+          // Failed to load user profile after creation, continue without it
         }
         
-        print('DEBUG: Emitting Authenticated state for ${event.userType}');
         // Emit authenticated state directly to avoid race condition
         emit(Authenticated(user: userCredential.user!, userType: event.userType, userProfile: userProfile));
       }
     } catch (e) {
-      print('DEBUG: SignUp error caught: $e');
       emit(AuthError(message: e.toString()));
     }
   }
@@ -284,7 +264,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      if (!_isValidEmail(event.email.trim())) {
+      if (!ValidationUtils.isValidEmail(event.email.trim())) {
         emit(const AuthError(message: 'Please enter a valid email address'));
         return;
       }
@@ -318,9 +298,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
 
   @override
   Future<void> close() {

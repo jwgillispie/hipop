@@ -25,7 +25,10 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     LoadFavorites event,
     Emitter<FavoritesState> emit,
   ) async {
-    emit(state.copyWith(status: FavoritesStatus.loading));
+    // Only show loading for initial load or when switching users
+    if (state.status != FavoritesStatus.loaded) {
+      emit(state.copyWith(status: FavoritesStatus.loading));
+    }
     
     try {
       List<String> favoritePostIds = [];
@@ -33,12 +36,9 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
       List<String> favoriteMarketIds = [];
       
       if (event.userId != null) {
-        // Use Firestore service for authenticated users
-        final vendorFavorites = await FavoritesService.getUserFavoriteVendors(event.userId!);
-        final marketFavorites = await FavoritesService.getUserFavoriteMarkets(event.userId!);
-        
-        favoriteVendorIds = vendorFavorites.map((v) => v.id).toList();
-        favoriteMarketIds = marketFavorites.map((m) => m.id).toList();
+        // Use Firestore service for authenticated users - fetch IDs only for fast loading
+        favoriteVendorIds = await FavoritesService.getUserFavoriteVendorIds(event.userId!);
+        favoriteMarketIds = await FavoritesService.getUserFavoriteMarketIds(event.userId!);
         
         // Note: Posts are not supported in Firestore service yet, keep local for now
         favoritePostIds = await _favoritesRepository.getFavoritePostIds();
@@ -70,15 +70,35 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final updatedFavoritePostIds = List<String>.from(state.favoritePostIds);
       
-      if (updatedFavoritePostIds.contains(event.postId)) {
-        await _favoritesRepository.removeFavoritePost(event.postId);
+      // OPTIMISTIC UPDATE - Update UI immediately
+      final wasAlreadyFavorited = updatedFavoritePostIds.contains(event.postId);
+      if (wasAlreadyFavorited) {
         updatedFavoritePostIds.remove(event.postId);
       } else {
-        await _favoritesRepository.addFavoritePost(event.postId);
         updatedFavoritePostIds.add(event.postId);
       }
       
+      // Emit optimistic state immediately for instant UI feedback
       emit(state.copyWith(favoritePostIds: updatedFavoritePostIds));
+      
+      // Then perform the async database operation
+      try {
+        if (wasAlreadyFavorited) {
+          await _favoritesRepository.removeFavoritePost(event.postId);
+        } else {
+          await _favoritesRepository.addFavoritePost(event.postId);
+        }
+      } catch (dbError) {
+        // Revert optimistic update on database error
+        final revertedFavoritePostIds = List<String>.from(state.favoritePostIds);
+        if (wasAlreadyFavorited) {
+          revertedFavoritePostIds.add(event.postId);
+        } else {
+          revertedFavoritePostIds.remove(event.postId);
+        }
+        emit(state.copyWith(favoritePostIds: revertedFavoritePostIds));
+        rethrow;
+      }
     } catch (error) {
       emit(state.copyWith(
         status: FavoritesStatus.error,
@@ -94,33 +114,71 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final updatedFavoriteVendorIds = List<String>.from(state.favoriteVendorIds);
       
+      // OPTIMISTIC UPDATE - Update UI immediately
+      final wasAlreadyFavorited = updatedFavoriteVendorIds.contains(event.vendorId);
+      if (wasAlreadyFavorited) {
+        updatedFavoriteVendorIds.remove(event.vendorId);
+      } else {
+        updatedFavoriteVendorIds.add(event.vendorId);
+      }
+      
+      // Emit optimistic state immediately for instant UI feedback
+      emit(state.copyWith(favoriteVendorIds: updatedFavoriteVendorIds));
+      
+      // Then perform the async database operation
       if (event.userId != null) {
         // Use Firestore service for authenticated users
-        final newIsFavorited = await FavoritesService.toggleFavorite(
-          userId: event.userId!,
-          itemId: event.vendorId,
-          type: FavoriteType.vendor,
-        );
-        
-        if (newIsFavorited) {
-          if (!updatedFavoriteVendorIds.contains(event.vendorId)) {
-            updatedFavoriteVendorIds.add(event.vendorId);
+        try {
+          final newIsFavorited = await FavoritesService.toggleFavorite(
+            userId: event.userId!,
+            itemId: event.vendorId,
+            type: FavoriteType.vendor,
+          );
+          
+          // Verify the result matches our optimistic update
+          final finalFavoriteVendorIds = List<String>.from(updatedFavoriteVendorIds);
+          if (newIsFavorited && !finalFavoriteVendorIds.contains(event.vendorId)) {
+            finalFavoriteVendorIds.add(event.vendorId);
+          } else if (!newIsFavorited && finalFavoriteVendorIds.contains(event.vendorId)) {
+            finalFavoriteVendorIds.remove(event.vendorId);
           }
-        } else {
-          updatedFavoriteVendorIds.remove(event.vendorId);
+          
+          // Only emit again if the final state differs from optimistic state
+          if (finalFavoriteVendorIds.length != updatedFavoriteVendorIds.length ||
+              !finalFavoriteVendorIds.every((id) => updatedFavoriteVendorIds.contains(id))) {
+            emit(state.copyWith(favoriteVendorIds: finalFavoriteVendorIds));
+          }
+        } catch (dbError) {
+          // Revert optimistic update on database error
+          final revertedFavoriteVendorIds = List<String>.from(state.favoriteVendorIds);
+          if (wasAlreadyFavorited) {
+            revertedFavoriteVendorIds.add(event.vendorId);
+          } else {
+            revertedFavoriteVendorIds.remove(event.vendorId);
+          }
+          emit(state.copyWith(favoriteVendorIds: revertedFavoriteVendorIds));
+          rethrow;
         }
       } else {
         // Use local repository for anonymous users
-        if (updatedFavoriteVendorIds.contains(event.vendorId)) {
-          await _favoritesRepository.removeFavoriteVendor(event.vendorId);
-          updatedFavoriteVendorIds.remove(event.vendorId);
-        } else {
-          await _favoritesRepository.addFavoriteVendor(event.vendorId);
-          updatedFavoriteVendorIds.add(event.vendorId);
+        try {
+          if (wasAlreadyFavorited) {
+            await _favoritesRepository.removeFavoriteVendor(event.vendorId);
+          } else {
+            await _favoritesRepository.addFavoriteVendor(event.vendorId);
+          }
+        } catch (dbError) {
+          // Revert optimistic update on database error
+          final revertedFavoriteVendorIds = List<String>.from(state.favoriteVendorIds);
+          if (wasAlreadyFavorited) {
+            revertedFavoriteVendorIds.add(event.vendorId);
+          } else {
+            revertedFavoriteVendorIds.remove(event.vendorId);
+          }
+          emit(state.copyWith(favoriteVendorIds: revertedFavoriteVendorIds));
+          rethrow;
         }
       }
-      
-      emit(state.copyWith(favoriteVendorIds: updatedFavoriteVendorIds));
     } catch (error) {
       emit(state.copyWith(
         status: FavoritesStatus.error,
@@ -136,33 +194,71 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     try {
       final updatedFavoriteMarketIds = List<String>.from(state.favoriteMarketIds);
       
+      // OPTIMISTIC UPDATE - Update UI immediately
+      final wasAlreadyFavorited = updatedFavoriteMarketIds.contains(event.marketId);
+      if (wasAlreadyFavorited) {
+        updatedFavoriteMarketIds.remove(event.marketId);
+      } else {
+        updatedFavoriteMarketIds.add(event.marketId);
+      }
+      
+      // Emit optimistic state immediately for instant UI feedback
+      emit(state.copyWith(favoriteMarketIds: updatedFavoriteMarketIds));
+      
+      // Then perform the async database operation
       if (event.userId != null) {
         // Use Firestore service for authenticated users
-        final newIsFavorited = await FavoritesService.toggleFavorite(
-          userId: event.userId!,
-          itemId: event.marketId,
-          type: FavoriteType.market,
-        );
-        
-        if (newIsFavorited) {
-          if (!updatedFavoriteMarketIds.contains(event.marketId)) {
-            updatedFavoriteMarketIds.add(event.marketId);
+        try {
+          final newIsFavorited = await FavoritesService.toggleFavorite(
+            userId: event.userId!,
+            itemId: event.marketId,
+            type: FavoriteType.market,
+          );
+          
+          // Verify the result matches our optimistic update
+          final finalFavoriteMarketIds = List<String>.from(updatedFavoriteMarketIds);
+          if (newIsFavorited && !finalFavoriteMarketIds.contains(event.marketId)) {
+            finalFavoriteMarketIds.add(event.marketId);
+          } else if (!newIsFavorited && finalFavoriteMarketIds.contains(event.marketId)) {
+            finalFavoriteMarketIds.remove(event.marketId);
           }
-        } else {
-          updatedFavoriteMarketIds.remove(event.marketId);
+          
+          // Only emit again if the final state differs from optimistic state
+          if (finalFavoriteMarketIds.length != updatedFavoriteMarketIds.length ||
+              !finalFavoriteMarketIds.every((id) => updatedFavoriteMarketIds.contains(id))) {
+            emit(state.copyWith(favoriteMarketIds: finalFavoriteMarketIds));
+          }
+        } catch (dbError) {
+          // Revert optimistic update on database error
+          final revertedFavoriteMarketIds = List<String>.from(state.favoriteMarketIds);
+          if (wasAlreadyFavorited) {
+            revertedFavoriteMarketIds.add(event.marketId);
+          } else {
+            revertedFavoriteMarketIds.remove(event.marketId);
+          }
+          emit(state.copyWith(favoriteMarketIds: revertedFavoriteMarketIds));
+          rethrow;
         }
       } else {
         // Use local repository for anonymous users
-        if (updatedFavoriteMarketIds.contains(event.marketId)) {
-          await _favoritesRepository.removeFavoriteMarket(event.marketId);
-          updatedFavoriteMarketIds.remove(event.marketId);
-        } else {
-          await _favoritesRepository.addFavoriteMarket(event.marketId);
-          updatedFavoriteMarketIds.add(event.marketId);
+        try {
+          if (wasAlreadyFavorited) {
+            await _favoritesRepository.removeFavoriteMarket(event.marketId);
+          } else {
+            await _favoritesRepository.addFavoriteMarket(event.marketId);
+          }
+        } catch (dbError) {
+          // Revert optimistic update on database error
+          final revertedFavoriteMarketIds = List<String>.from(state.favoriteMarketIds);
+          if (wasAlreadyFavorited) {
+            revertedFavoriteMarketIds.add(event.marketId);
+          } else {
+            revertedFavoriteMarketIds.remove(event.marketId);
+          }
+          emit(state.copyWith(favoriteMarketIds: revertedFavoriteMarketIds));
+          rethrow;
         }
       }
-      
-      emit(state.copyWith(favoriteMarketIds: updatedFavoriteMarketIds));
     } catch (error) {
       emit(state.copyWith(
         status: FavoritesStatus.error,

@@ -70,8 +70,6 @@ class VendorPost extends Equatable {
         isActive: data['isActive'] ?? true,
       );
     } catch (e) {
-      print('Error parsing VendorPost from Firestore: $e');
-      print('Document data: $data');
       rethrow;
     }
   }

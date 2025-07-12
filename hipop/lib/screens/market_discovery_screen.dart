@@ -10,6 +10,7 @@ import '../widgets/common/error_widget.dart';
 import '../services/places_service.dart';
 import '../widgets/common/settings_dropdown.dart';
 import 'market_detail_screen.dart';
+import '../utils/place_utils.dart';
 
 class MarketDiscoveryScreen extends StatefulWidget {
   const MarketDiscoveryScreen({super.key});
@@ -36,7 +37,6 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   }
 
   Future<void> _loadMarketsForCity(String city) async {
-    debugPrint('Loading markets for city: "$city"');
     setState(() {
       _isLoading = true;
       _error = null;
@@ -45,17 +45,6 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
     try {
       // Load markets for the selected city
       final markets = await MarketService.getMarketsByCity(city);
-      debugPrint('Found ${markets.length} markets for city "$city"');
-      
-      // Debug: Log all markets to see what cities we have in the database
-      if (markets.isEmpty) {
-        debugPrint('No markets found. Checking what cities exist in the database...');
-        final allMarkets = await MarketService.getAllActiveMarkets();
-        debugPrint('All active markets in database (${allMarkets.length} total):');
-        for (final market in allMarkets) {
-          debugPrint('  - ${market.name} in ${market.city}, ${market.state}');
-        }
-      }
       
       // Load vendor counts for each market
       final Map<String, List<VendorMarket>> marketVendors = {};
@@ -77,7 +66,6 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
           final uniqueVendorIds = marketPosts.map((post) => post.vendorId).toSet();
           marketVendorCounts[market.id] = uniqueVendorIds.length;
         } catch (e) {
-          debugPrint('Error loading vendors for market ${market.name}: $e');
           marketVendors[market.id] = [];
           activeVendorsToday[market.id] = 0;
           marketVendorCounts[market.id] = 0;
@@ -100,11 +88,8 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
   }
 
   void _onCitySelected(PlaceDetails placeDetails) {
-    debugPrint('Place selected - Name: ${placeDetails.name}, FormattedAddress: ${placeDetails.formattedAddress}');
-    
     // Extract city name from the formatted address or name
-    String cityName = _extractCityFromPlace(placeDetails);
-    debugPrint('Extracted city name: $cityName');
+    String cityName = PlaceUtils.extractCityFromPlace(placeDetails);
     
     setState(() {
       _selectedCity = cityName;
@@ -112,58 +97,6 @@ class _MarketDiscoveryScreenState extends State<MarketDiscoveryScreen> {
     _loadMarketsForCity(cityName);
   }
   
-  String _extractCityFromPlace(PlaceDetails placeDetails) {
-    debugPrint('Extracting city from place: ${placeDetails.name} - ${placeDetails.formattedAddress}');
-    
-    // First try to extract city from the formatted address
-    final addressParts = placeDetails.formattedAddress.split(', ');
-    
-    // For US addresses, the format is usually:
-    // "Street Address, City, State ZIP" or "City, State" or "Neighborhood, City, State"
-    if (addressParts.length >= 2) {
-      // Look for the part that contains the city (before state)
-      for (int i = 0; i < addressParts.length - 1; i++) {
-        final part = addressParts[i].trim();
-        // Skip if it looks like a street address (contains numbers at start)
-        if (!RegExp(r'^\d').hasMatch(part)) {
-          // Check if next part looks like a state (2 letters) or state + ZIP
-          final nextPart = addressParts[i + 1].trim();
-          if (RegExp(r'^[A-Z]{2}(\s+\d{5})?$').hasMatch(nextPart) || 
-              RegExp(r'^(Georgia|Alabama|Florida|South Carolina|North Carolina|Tennessee)').hasMatch(nextPart)) {
-            debugPrint('Extracted city from address: $part');
-            return _cleanCityName(part);
-          }
-        }
-      }
-    }
-    
-    // Try using the place name if it looks like a city
-    String name = placeDetails.name;
-    
-    // If name is the same as formatted address, try to extract the first meaningful part
-    if (name == placeDetails.formattedAddress && addressParts.isNotEmpty) {
-      // Use the first part if it doesn't start with a number
-      final firstPart = addressParts[0].trim();
-      if (!RegExp(r'^\d').hasMatch(firstPart)) {
-        name = firstPart;
-      }
-    }
-    
-    debugPrint('Using place name as city: $name');
-    return _cleanCityName(name);
-  }
-  
-  String _cleanCityName(String cityName) {
-    // Remove common suffixes that aren't part of the city name
-    String cleaned = cityName
-        .replaceAll(RegExp(r',\s*(GA|Georgia|AL|Alabama|FL|Florida|SC|South Carolina|NC|North Carolina|TN|Tennessee)\s*$', caseSensitive: false), '')
-        .replaceAll(RegExp(r',\s*USA\s*$', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\s+(County|Metro|Metropolitan|Area)\s*$', caseSensitive: false), '')
-        .trim();
-        
-    debugPrint('Cleaned city name: "$cityName" -> "$cleaned"');
-    return cleaned;
-  }
 
   void _onMarketTapped(Market market) {
     Navigator.push(

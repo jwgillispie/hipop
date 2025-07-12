@@ -34,6 +34,7 @@ import '../screens/vendor_detail_screen.dart';
 import '../screens/shopper_calendar_screen.dart';
 import '../screens/organizer_onboarding_screen.dart';
 import '../screens/vendor_application_status_screen.dart';
+import '../screens/legal_documents_screen.dart';
 import '../models/market.dart';
 import '../models/vendor_post.dart';
 
@@ -51,6 +52,11 @@ class AppRouter {
           path: '/auth',
           name: 'auth',
           builder: (context, state) => const AuthLandingScreen(),
+        ),
+        GoRoute(
+          path: '/legal',
+          name: 'legal',
+          builder: (context, state) => const LegalDocumentsScreen(),
         ),
         GoRoute(
           path: '/login',
@@ -278,7 +284,7 @@ class AppRouter {
         
         // If unauthenticated and not on auth routes or public routes, go to auth landing
         if (authState is Unauthenticated) {
-          final publicRoutes = ['/auth', '/login', '/signup', '/onboarding'];
+          final publicRoutes = ['/auth', '/login', '/signup', '/onboarding', '/legal'];
           final isVendorApplication = state.matchedLocation.startsWith('/apply/');
           
           if (!publicRoutes.contains(state.matchedLocation) && !isVendorApplication) {

@@ -130,7 +130,6 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         _loadingMarkets = false;
       });
     } catch (e) {
-      debugPrint('Error loading markets: $e');
       setState(() => _loadingMarkets = false);
     }
   }
@@ -673,20 +672,23 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
                       ..._availableMarkets.map((market) {
                         return DropdownMenuItem<Market?>(
                           value: market,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                          child: Row(
                             children: [
-                              Text(
-                                market.name,
-                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              Expanded(
+                                child: Text(
+                                  market.name,
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Text(
-                                market.address.split(',').first,
+                                '• ${market.address.split(',').first}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),

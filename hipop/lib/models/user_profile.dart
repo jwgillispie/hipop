@@ -13,6 +13,8 @@ class UserProfile {
   final String? phoneNumber;
   final String? website;
   final List<String> categories; // For vendors - what they sell
+  final String? specificProducts; // For vendors - specific product details
+  final List<String> ccEmails; // For vendors - additional contact emails
   final Map<String, dynamic> preferences; // General user preferences
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -30,6 +32,8 @@ class UserProfile {
     this.phoneNumber,
     this.website,
     this.categories = const [],
+    this.specificProducts,
+    this.ccEmails = const [],
     this.preferences = const {},
     required this.createdAt,
     required this.updatedAt,
@@ -49,6 +53,8 @@ class UserProfile {
     String? phoneNumber,
     String? website,
     List<String>? categories,
+    String? specificProducts,
+    List<String>? ccEmails,
     Map<String, dynamic>? preferences,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -66,6 +72,8 @@ class UserProfile {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       website: website ?? this.website,
       categories: categories ?? this.categories,
+      specificProducts: specificProducts ?? this.specificProducts,
+      ccEmails: ccEmails ?? this.ccEmails,
       preferences: preferences ?? this.preferences,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -87,6 +95,8 @@ class UserProfile {
       'phoneNumber': phoneNumber,
       'website': website,
       'categories': categories,
+      'specificProducts': specificProducts,
+      'ccEmails': ccEmails,
       'preferences': preferences,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -110,6 +120,8 @@ class UserProfile {
       phoneNumber: data['phoneNumber'],
       website: data['website'],
       categories: List<String>.from(data['categories'] ?? []),
+      specificProducts: data['specificProducts'],
+      ccEmails: List<String>.from(data['ccEmails'] ?? []),
       preferences: Map<String, dynamic>.from(data['preferences'] ?? {}),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -131,6 +143,8 @@ class UserProfile {
       phoneNumber: data['phoneNumber'],
       website: data['website'],
       categories: List<String>.from(data['categories'] ?? []),
+      specificProducts: data['specificProducts'],
+      ccEmails: List<String>.from(data['ccEmails'] ?? []),
       preferences: Map<String, dynamic>.from(data['preferences'] ?? {}),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),

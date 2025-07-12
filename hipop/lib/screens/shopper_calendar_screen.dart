@@ -3,10 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
+import '../blocs/favorites/favorites_bloc.dart';
 import '../models/market.dart';
 import '../services/market_service.dart';
 import '../services/market_calendar_service.dart';
-import '../repositories/favorites_repository.dart';
+import '../services/favorites_service.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
 
@@ -41,6 +42,8 @@ class _ShopperCalendarScreenState extends State<ShopperCalendarScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadMarkets();
+    
+    // Favorites are now automatically loaded when auth state changes in main.dart
   }
 
   @override
@@ -66,16 +69,13 @@ class _ShopperCalendarScreenState extends State<ShopperCalendarScreen>
     });
 
     try {
-      // Load favorite markets
-      final favoriteRepository = FavoritesRepository();
-      final favoriteMarketIds = await favoriteRepository.getFavoriteMarketIds();
+      // Get current user from auth bloc
+      final authState = context.read<AuthBloc>().state;
       
-      final favoriteMarkets = <Market>[];
-      for (final marketId in favoriteMarketIds) {
-        final market = await MarketService.getMarket(marketId);
-        if (market != null) {
-          favoriteMarkets.add(market);
-        }
+      // Load favorite markets using cloud service for authenticated users
+      List<Market> favoriteMarkets = [];
+      if (authState is Authenticated) {
+        favoriteMarkets = await FavoritesService.getUserFavoriteMarkets(authState.user.uid);
       }
 
       // Load nearby markets (using Atlanta as default if no user city)
@@ -174,19 +174,26 @@ class _ShopperCalendarScreenState extends State<ShopperCalendarScreen>
           ],
         ),
       ),
-      body: Column(
-        children: [
-          if (_isLoading)
-            const Expanded(
-              child: LoadingWidget(message: 'Loading market schedules...'),
-            )
-          else if (_error != null)
-            Expanded(
-              child: ErrorDisplayWidget.network(
-                onRetry: _loadMarkets,
-              ),
-            )
-          else ...[
+      body: BlocListener<FavoritesBloc, FavoritesState>(
+        listener: (context, state) {
+          // Reload markets when favorites change
+          if (state.favoriteMarketIds.isNotEmpty || state.favoriteMarketIds.isEmpty) {
+            _loadMarkets();
+          }
+        },
+        child: Column(
+          children: [
+            if (_isLoading)
+              const Expanded(
+                child: LoadingWidget(message: 'Loading market schedules...'),
+              )
+            else if (_error != null)
+              Expanded(
+                child: ErrorDisplayWidget.network(
+                  onRetry: _loadMarkets,
+                ),
+              )
+            else ...[
             // Market summary
             Container(
               padding: const EdgeInsets.all(16),
@@ -267,8 +274,9 @@ class _ShopperCalendarScreenState extends State<ShopperCalendarScreen>
                 },
               ),
             ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

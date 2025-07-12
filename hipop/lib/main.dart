@@ -7,6 +7,7 @@ import 'repositories/vendor_posts_repository.dart';
 import 'repositories/favorites_repository.dart';
 import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
+import 'blocs/auth/auth_state.dart';
 import 'blocs/favorites/favorites_bloc.dart';
 import 'router/app_router.dart';
 import 'services/remote_config_service.dart';
@@ -53,20 +54,30 @@ class HiPopApp extends StatelessWidget {
           BlocProvider<FavoritesBloc>(
             create: (context) => FavoritesBloc(
               favoritesRepository: context.read<FavoritesRepository>(),
-            )..add(const LoadFavorites()),
+            ),
           ),
         ],
         child: Builder(
           builder: (context) {
             final authBloc = context.read<AuthBloc>();
-            return MaterialApp.router(
-              title: 'HiPop',
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
-                useMaterial3: true,
+            return BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                // Automatically reload favorites when auth state changes
+                if (state is Authenticated) {
+                  context.read<FavoritesBloc>().add(LoadFavorites(userId: state.user.uid));
+                } else if (state is Unauthenticated) {
+                  context.read<FavoritesBloc>().add(const LoadFavorites());
+                }
+              },
+              child: MaterialApp.router(
+                title: 'HiPop',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
+                  useMaterial3: true,
+                ),
+                routerConfig: AppRouter.createRouter(authBloc),
               ),
-              routerConfig: AppRouter.createRouter(authBloc),
             );
           },
         ),

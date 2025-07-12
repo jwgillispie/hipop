@@ -475,9 +475,7 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
         await ManagedVendorService.createVendor(vendor);
       }
 
-      debugPrint('Added ${sampleVendors.length} sample vendors to Tucker\'s market');
     } catch (e) {
-      debugPrint('Error adding sample vendors: $e');
       // Don't throw - we still want the market creation to succeed
     }
   }
@@ -583,9 +581,7 @@ class _AdminFixScreenState extends State<AdminFixScreen> {
         await ManagedVendorService.createVendor(vendor);
       }
 
-      debugPrint('Added ${afterDarkVendors.length} vendors to After Dark Bazaar');
     } catch (e) {
-      debugPrint('Error adding After Dark vendors: $e');
       // Don't throw - we still want the market creation to succeed
     }
   }

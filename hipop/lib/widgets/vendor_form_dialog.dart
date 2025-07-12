@@ -28,6 +28,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
   
   // Form controllers
   final _businessNameController = TextEditingController();
+  final _vendorNameController = TextEditingController();
   final _contactNameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _emailController = TextEditingController();
@@ -46,6 +47,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
   final _specialRequirementsController = TextEditingController();
   final _storyController = TextEditingController();
   final _sloganController = TextEditingController();
+  final _specificProductsController = TextEditingController();
   
   // Form state
   List<VendorCategory> _selectedCategories = [];
@@ -53,6 +55,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
   List<String> _specialties = [];
   List<String> _operatingDays = [];
   List<String> _tags = [];
+  List<String> _ccEmails = [];
   bool _canDeliver = false;
   bool _acceptsOrders = false;
   bool _isOrganic = false;
@@ -71,6 +74,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
   void _loadVendorData() {
     final vendor = widget.vendor!;
     _businessNameController.text = vendor.businessName;
+    _vendorNameController.text = vendor.vendorName ?? '';
     _contactNameController.text = vendor.contactName;
     _descriptionController.text = vendor.description;
     _emailController.text = vendor.email ?? '';
@@ -89,12 +93,14 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
     _specialRequirementsController.text = vendor.specialRequirements ?? '';
     _storyController.text = vendor.story ?? '';
     _sloganController.text = vendor.slogan ?? '';
+    _specificProductsController.text = vendor.specificProducts ?? '';
     
     _selectedCategories = List.from(vendor.categories);
     _products = List.from(vendor.products);
     _specialties = List.from(vendor.specialties);
     _operatingDays = List.from(vendor.operatingDays);
     _tags = List.from(vendor.tags);
+    _ccEmails = List.from(vendor.ccEmails);
     _canDeliver = vendor.canDeliver;
     _acceptsOrders = vendor.acceptsOrders;
     _isOrganic = vendor.isOrganic;
@@ -106,6 +112,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
   @override
   void dispose() {
     _businessNameController.dispose();
+    _vendorNameController.dispose();
     _contactNameController.dispose();
     _descriptionController.dispose();
     _emailController.dispose();
@@ -124,6 +131,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
     _specialRequirementsController.dispose();
     _storyController.dispose();
     _sloganController.dispose();
+    _specificProductsController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -192,7 +200,6 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
     return Row(
       children: List.generate(4, (index) {
         final isActive = index <= _currentPage;
-        final isCompleted = index < _currentPage;
         
         return Expanded(
           child: Container(
@@ -250,6 +257,15 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
               }
               return null;
             },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _vendorNameController,
+            decoration: const InputDecoration(
+              labelText: 'Vendor Name',
+              border: OutlineInputBorder(),
+              hintText: 'Individual vendor name (if different from business)',
+            ),
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -320,27 +336,60 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
           Row(
             children: [
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Active'),
-                  subtitle: const Text('Vendor is currently active'),
-                  value: _isActive,
-                  onChanged: (value) {
-                    setState(() {
-                      _isActive = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Active',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _isActive,
+                          onChanged: (value) {
+                            setState(() {
+                              _isActive = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Featured'),
-                  subtitle: const Text('Highlight this vendor'),
-                  value: _isFeatured,
-                  onChanged: (value) {
-                    setState(() {
-                      _isFeatured = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Featured',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _isFeatured,
+                          onChanged: (value) {
+                            setState(() {
+                              _isFeatured = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -363,7 +412,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
           TextFormField(
             controller: _emailController,
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: 'EMAIL',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.emailAddress,
@@ -372,10 +421,16 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
           TextFormField(
             controller: _phoneController,
             decoration: const InputDecoration(
-              labelText: 'Phone Number',
+              labelText: 'PHONE NUMBER',
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 16),
+          _buildStringListField(
+            'CONTACTS',
+            'If there are others that need to be cc\'d on your email communications regarding the event, please let us know their email',
+            _ccEmails,
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -481,6 +536,16 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
             _products,
           ),
           const SizedBox(height: 16),
+          TextFormField(
+            controller: _specificProductsController,
+            decoration: const InputDecoration(
+              labelText: 'PRODUCT SOLD, BE SPECIFIC',
+              border: OutlineInputBorder(),
+              hintText: 'This helps us ensure we don\'t have too much of the same product',
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
           _buildStringListField(
             'Specialties',
             'What are they known for?',
@@ -514,51 +579,124 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
           Row(
             children: [
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Organic'),
-                  value: _isOrganic,
-                  onChanged: (value) {
-                    setState(() {
-                      _isOrganic = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Organic',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _isOrganic,
+                          onChanged: (value) {
+                            setState(() {
+                              _isOrganic = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Locally Sourced'),
-                  value: _isLocallySourced,
-                  onChanged: (value) {
-                    setState(() {
-                      _isLocallySourced = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Locally\nSourced',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _isLocallySourced,
+                          onChanged: (value) {
+                            setState(() {
+                              _isLocallySourced = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Can Deliver'),
-                  value: _canDeliver,
-                  onChanged: (value) {
-                    setState(() {
-                      _canDeliver = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Can Deliver',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _canDeliver,
+                          onChanged: (value) {
+                            setState(() {
+                              _canDeliver = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: SwitchListTile(
-                  title: const Text('Accepts Orders'),
-                  value: _acceptsOrders,
-                  onChanged: (value) {
-                    setState(() {
-                      _acceptsOrders = value;
-                    });
-                  },
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Accepts\nOrders',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Switch(
+                          value: _acceptsOrders,
+                          onChanged: (value) {
+                            setState(() {
+                              _acceptsOrders = value;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -832,11 +970,13 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
         marketId: widget.marketId,
         organizerId: widget.organizerId,
         businessName: _businessNameController.text.trim(),
+        vendorName: _vendorNameController.text.trim().isEmpty ? null : _vendorNameController.text.trim(),
         contactName: _contactNameController.text.trim(),
         description: _descriptionController.text.trim(),
         categories: _selectedCategories,
         email: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
         phoneNumber: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+        ccEmails: _ccEmails,
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
         instagramHandle: _instagramController.text.trim().isEmpty ? null : _instagramController.text.trim(),
         facebookHandle: _facebookController.text.trim().isEmpty ? null : _facebookController.text.trim(),
@@ -848,6 +988,7 @@ class _VendorFormDialogState extends State<VendorFormDialog> {
         acceptsOrders: _acceptsOrders,
         deliveryNotes: _deliveryNotesController.text.trim().isEmpty ? null : _deliveryNotesController.text.trim(),
         products: _products,
+        specificProducts: _specificProductsController.text.trim().isEmpty ? null : _specificProductsController.text.trim(),
         specialties: _specialties,
         priceRange: _priceRangeController.text.trim().isEmpty ? null : _priceRangeController.text.trim(),
         isOrganic: _isOrganic,

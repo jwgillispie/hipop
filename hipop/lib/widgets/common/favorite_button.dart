@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/favorites/favorites_bloc.dart';
 import '../../blocs/auth/auth_bloc.dart';
@@ -57,6 +58,9 @@ class FavoriteButton extends StatelessWidget {
         
         return GestureDetector(
           onTap: () {
+            // Provide haptic feedback for better UX
+            HapticFeedback.lightImpact();
+            
             final authState = context.read<AuthBloc>().state;
             final userId = authState is Authenticated ? authState.user.uid : null;
             
@@ -182,6 +186,9 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
   }
 
   void _onTap() {
+    // Provide haptic feedback for better UX
+    HapticFeedback.lightImpact();
+    
     _animationController.forward().then((_) {
       _animationController.reverse();
     });

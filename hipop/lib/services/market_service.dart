@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/market.dart';
+import '../models/market_schedule.dart';
 import '../models/vendor_market.dart';
 
 class MarketService {
@@ -8,6 +9,7 @@ class MarketService {
   
   // Collection references
   static final CollectionReference _marketsCollection = _firestore.collection('markets');
+  static final CollectionReference _marketSchedulesCollection = _firestore.collection('market_schedules');
   static final CollectionReference _vendorMarketsCollection = _firestore.collection('vendor_markets');
 
   // Market CRUD operations
@@ -43,7 +45,6 @@ class MarketService {
       final querySnapshot = await _marketsCollection
           .where('city', isEqualTo: city)
           .where('isActive', isEqualTo: true)
-          .orderBy('name')
           .get();
       
       final markets = querySnapshot.docs
@@ -190,8 +191,6 @@ class MarketService {
     try {
       final querySnapshot = await _marketsCollection
           .where('isActive', isEqualTo: true)
-          .orderBy('city')
-          .orderBy('name')
           .get();
       
       return querySnapshot.docs
@@ -206,8 +205,6 @@ class MarketService {
   static Stream<List<Market>> getAllActiveMarketsStream() {
     return _marketsCollection
         .where('isActive', isEqualTo: true)
-        .orderBy('city')
-        .orderBy('name')
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => Market.fromFirestore(doc))
@@ -218,7 +215,6 @@ class MarketService {
     return _marketsCollection
         .where('city', isEqualTo: city)
         .where('isActive', isEqualTo: true)
-        .orderBy('name')
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => Market.fromFirestore(doc))
@@ -251,6 +247,46 @@ class MarketService {
       await _marketsCollection.doc(marketId).update({'isActive': false});
     } catch (e) {
       throw Exception('Failed to delete market: $e');
+    }
+  }
+
+  // Market Schedule operations
+  static Future<String> createMarketSchedule(MarketSchedule schedule) async {
+    try {
+      final docRef = await _marketSchedulesCollection.add(schedule.toFirestore());
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Failed to create market schedule: $e');
+    }
+  }
+
+  static Future<List<MarketSchedule>> getMarketSchedules(String marketId) async {
+    try {
+      final querySnapshot = await _marketSchedulesCollection
+          .where('marketId', isEqualTo: marketId)
+          .get();
+      
+      return querySnapshot.docs
+          .map((doc) => MarketSchedule.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get market schedules: $e');
+    }
+  }
+
+  static Future<void> updateMarketSchedule(String scheduleId, Map<String, dynamic> updates) async {
+    try {
+      await _marketSchedulesCollection.doc(scheduleId).update(updates);
+    } catch (e) {
+      throw Exception('Failed to update market schedule: $e');
+    }
+  }
+
+  static Future<void> deleteMarketSchedule(String scheduleId) async {
+    try {
+      await _marketSchedulesCollection.doc(scheduleId).delete();
+    } catch (e) {
+      throw Exception('Failed to delete market schedule: $e');
     }
   }
 

@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
-import '../models/vendor_application.dart';
 import '../models/market.dart';
+import '../models/user_profile.dart';
 import '../services/vendor_application_service.dart';
 import '../services/market_service.dart';
+import '../services/user_profile_service.dart';
+import '../widgets/date_selection_calendar.dart';
+import 'package:go_router/go_router.dart';
 
 class VendorApplicationForm extends StatefulWidget {
   final String marketId;
-  final Market? market; // For backward compatibility
+  final Market? market;
 
   const VendorApplicationForm({
     super.key,
@@ -17,140 +20,93 @@ class VendorApplicationForm extends StatefulWidget {
     this.market,
   });
 
-  // Backward compatibility constructor
-  VendorApplicationForm.withMarket({
-    super.key,
-    required Market market,
-  }) : marketId = market.id, market = market;
-
   @override
   State<VendorApplicationForm> createState() => _VendorApplicationFormState();
 }
 
 class _VendorApplicationFormState extends State<VendorApplicationForm> {
   final _formKey = GlobalKey<FormState>();
-  final _scrollController = ScrollController();
+  final _specialMessageController = TextEditingController();
+  final _howDidYouHearController = TextEditingController();
   
   bool _isLoading = false;
   bool _hasApplied = false;
   Market? _market;
-  bool _loadingMarket = true;
+  UserProfile? _vendorProfile;
+  bool _loadingData = true;
   
-  // Form controllers
-  final _vendorNameController = TextEditingController();
-  final _vendorEmailController = TextEditingController();
-  final _vendorPhoneController = TextEditingController();
-  final _businessNameController = TextEditingController();
-  final _businessDescriptionController = TextEditingController();
-  final _websiteController = TextEditingController();
-  final _instagramController = TextEditingController();
-  final _specialRequestsController = TextEditingController();
-  
-  final List<String> _selectedCategories = [];
-  
-  // Available product categories for Community Farmers Market
-  static const List<String> _productCategories = [
-    'Fresh Produce',
-    'Herbs & Spices',
-    'Baked Goods',
-    'Artisan Breads',
-    'Local Honey',
-    'Jams & Preserves',
-    'Pickled Vegetables',
-    'Artisan Cheese',
-    'Fresh Flowers',
-    'Plants & Seedlings',
-    'Handmade Crafts',
-    'Woodwork',
-    'Pottery & Ceramics',
-    'Textiles & Clothing',
-    'Jewelry',
-    'Soaps & Bath Products',
-    'Candles',
-    'Hot Food',
-    'Beverages',
-    'Other',
-  ];
+  // Date selection
+  List<DateTime> _selectedDates = [];
 
   @override
   void initState() {
     super.initState();
-    _loadMarketData();
-  }
-
-  Future<void> _loadMarketData() async {
-    setState(() => _loadingMarket = true);
-    
-    try {
-      Market? market = widget.market;
-      
-      // If market not provided, load it from the service
-      if (market == null) {
-        market = await MarketService.getMarket(widget.marketId);
-      }
-      
-      setState(() {
-        _market = market;
-        _loadingMarket = false;
-      });
-      
-      if (market != null) {
-        _checkIfAlreadyApplied();
-      }
-    } catch (e) {
-      setState(() => _loadingMarket = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading market data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    _loadData();
   }
 
   @override
   void dispose() {
-    _vendorNameController.dispose();
-    _vendorEmailController.dispose();
-    _vendorPhoneController.dispose();
-    _businessNameController.dispose();
-    _businessDescriptionController.dispose();
-    _websiteController.dispose();
-    _instagramController.dispose();
-    _specialRequestsController.dispose();
-    _scrollController.dispose();
+    _specialMessageController.dispose();
+    _howDidYouHearController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _loadingData = true);
+    
+    try {
+      // Load market data
+      if (widget.market != null) {
+        _market = widget.market;
+      } else {
+        _market = await MarketService.getMarket(widget.marketId);
+      }
+
+      // Load vendor profile
+      if (mounted) {
+        final authState = context.read<AuthBloc>().state;
+        if (authState is Authenticated) {
+          _vendorProfile = await UserProfileService().getUserProfile(authState.user.uid);
+          await _checkIfAlreadyApplied();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingData = false);
+      }
+    }
   }
 
   Future<void> _checkIfAlreadyApplied() async {
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated && _market != null) {
-      final hasApplied = await VendorApplicationService.hasVendorApplied(
-        authState.user.uid,
-        _market!.id,
-      );
-      setState(() {
-        _hasApplied = hasApplied;
-      });
-      
-      if (!hasApplied) {
-        _prefillUserData(authState);
+      try {
+        final hasApplied = await VendorApplicationService.hasVendorApplied(
+          authState.user.uid,
+          _market!.id,
+        );
+        setState(() => _hasApplied = hasApplied);
+      } catch (e) {
+        // Ignore error, assume not applied
       }
     }
   }
 
-  void _prefillUserData(Authenticated authState) {
-    _vendorNameController.text = authState.user.displayName ?? '';
-    _vendorEmailController.text = authState.user.email ?? '';
-  }
-
   Future<void> _submitApplication() async {
-    if (!_formKey.currentState!.validate() || _selectedCategories.isEmpty) {
+    // Check if at least one date is selected
+    if (_selectedDates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields and select at least one product category'),
+          content: Text('Please select at least one date'),
           backgroundColor: Colors.red,
         ),
       );
@@ -165,49 +121,33 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
         throw Exception('User not authenticated');
       }
 
-      final application = VendorApplication(
-        id: '', // Will be set by Firestore
-        marketId: _market!.id,
-        vendorId: authState.user.uid,
-        vendorName: _vendorNameController.text.trim(),
-        vendorEmail: _vendorEmailController.text.trim(),
-        vendorPhone: _vendorPhoneController.text.trim().isEmpty 
+      // Submit application using the new date-based approach
+      await VendorApplicationService.submitApplicationWithDates(
+        authState.user.uid,
+        _market!.id,
+        _selectedDates,
+        specialMessage: _specialMessageController.text.trim().isEmpty 
             ? null 
-            : _vendorPhoneController.text.trim(),
-        businessName: _businessNameController.text.trim(),
-        businessDescription: _businessDescriptionController.text.trim(),
-        productCategories: _selectedCategories,
-        websiteUrl: _websiteController.text.trim().isEmpty 
+            : _specialMessageController.text.trim(),
+        howDidYouHear: _howDidYouHearController.text.trim().isEmpty 
             ? null 
-            : _websiteController.text.trim(),
-        instagramHandle: _instagramController.text.trim().isEmpty 
-            ? null 
-            : _instagramController.text.trim(),
-        specialRequests: _specialRequestsController.text.trim().isEmpty 
-            ? null 
-            : _specialRequestsController.text.trim(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+            : _howDidYouHearController.text.trim(),
       );
-
-      await VendorApplicationService.submitApplication(application);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Application submitted successfully! You will receive an email when it\'s reviewed.'),
+            content: Text('Application submitted successfully!'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
           ),
         );
-        
-        Navigator.of(context).pop(true); // Return true to indicate success
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit application: ${e.toString()}'),
+            content: Text('Error submitting application: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -221,365 +161,447 @@ class _VendorApplicationFormState extends State<VendorApplicationForm> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingMarket) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Loading...'),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (_market == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Error'),
-          backgroundColor: Colors.red,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Text('Market not found'),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Apply to ${_market!.name}'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        title: const Text('Apply to Market'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
       ),
-      body: _hasApplied ? _buildAlreadyAppliedView() : _buildApplicationForm(),
+      body: _loadingData 
+          ? const Center(child: CircularProgressIndicator())
+          : _buildBody(),
     );
   }
 
-  Widget _buildAlreadyAppliedView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
+  Widget _buildBody() {
+    if (_market == null) {
+      return const Center(
+        child: Text('Market not found'),
+      );
+    }
+
+    // Check if user is a vendor
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated && authState.userType != 'vendor') {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.check_circle,
-              size: 80,
-              color: Colors.green,
+            const Icon(Icons.store_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              'Vendor Account Required',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Only vendor accounts can apply to markets. Please switch to a vendor account or create one.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Application Already Submitted',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'You have already submitted an application to ${_market!.name}. '
-              'The market organizer will review your application and contact you via email.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Return to Market'),
+              onPressed: () => context.go('/auth'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Go to Account'),
             ),
           ],
+        ),
+      );
+    }
+
+    if (_vendorProfile == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.person_outline, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              'Please complete your vendor profile first',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You need a complete profile to apply to markets',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go('/vendor/profile'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Complete Profile'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!_vendorProfile!.isProfileComplete) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.warning_amber, size: 64, color: Colors.orange),
+            const SizedBox(height: 16),
+            const Text(
+              'Profile Incomplete',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Please complete your vendor profile before applying to markets',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go('/vendor/profile'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Complete Profile'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_hasApplied) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle, size: 64, color: Colors.green),
+            const SizedBox(height: 16),
+            const Text(
+              'Already Applied',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You have already applied to ${_market!.name}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go('/vendor/applications'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('View Application Status'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.orange.shade50,
+            Colors.white,
+          ],
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMarketInfo(),
+              const SizedBox(height: 24),
+              _buildProfilePreview(),
+              const SizedBox(height: 24),
+              _buildDateSelection(),
+              const SizedBox(height: 24),
+              _buildSpecialMessageField(),
+              const SizedBox(height: 24),
+              _buildHowDidYouHearField(),
+              const SizedBox(height: 32),
+              _buildSubmitButton(),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildApplicationForm() {
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
+  Widget _buildMarketInfo() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Market Info Card
-            Card(
-              color: Colors.green.shade50,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.storefront, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _market!.name,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
+            Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _market!.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _market!.address,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.green.shade600,
-                      ),
-                    ),
-                    if (_market!.description != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        _market!.description!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.green.shade600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Vendor Information Section
-            _buildSectionHeader('Vendor Information'),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _vendorNameController,
-              decoration: const InputDecoration(
-                labelText: 'Your Full Name *',
-                hintText: 'Enter your full name',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Name is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _vendorEmailController,
-              decoration: const InputDecoration(
-                labelText: 'Email Address *',
-                hintText: 'Enter your email address',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Email is required';
-                }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                  return 'Enter a valid email address';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _vendorPhoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter your phone number',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 32),
-
-            // Business Information Section
-            _buildSectionHeader('Business Information'),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _businessNameController,
-              decoration: const InputDecoration(
-                labelText: 'Business Name *',
-                hintText: 'Enter your business name',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Business name is required';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _businessDescriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Business Description *',
-                hintText: 'Describe what you sell and what makes your business special',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 4,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Business description is required';
-                }
-                if (value.trim().length < 50) {
-                  return 'Please provide a more detailed description (at least 50 characters)';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _websiteController,
-              decoration: const InputDecoration(
-                labelText: 'Website URL',
-                hintText: 'https://your-website.com',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _instagramController,
-              decoration: const InputDecoration(
-                labelText: 'Instagram Handle',
-                hintText: '@yourbusiness',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Product Categories Section
-            _buildSectionHeader('Product Categories'),
-            const SizedBox(height: 8),
-            Text(
-              'Select all categories that apply to your products *',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildCategorySelection(),
-            const SizedBox(height: 32),
-
-            // Special Requests Section
-            _buildSectionHeader('Special Requests'),
-            const SizedBox(height: 8),
-            Text(
-              'Any special equipment, space requirements, or other needs?',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            TextFormField(
-              controller: _specialRequestsController,
-              decoration: const InputDecoration(
-                labelText: 'Special Requests',
-                hintText: 'e.g., Need electrical outlet, prefer corner spot, require refrigeration, etc.',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 32),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitApplication,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Submit Application',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-            
+            const SizedBox(height: 8),
             Text(
-              'By submitting this application, you agree to follow the market\'s vendor guidelines and policies. '
-              'The market organizer will review your application and contact you via email.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+              '${_market!.address}, ${_market!.city}, ${_market!.state}',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Colors.green.shade700,
+  Widget _buildProfilePreview() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.person, color: Colors.blue),
+                const SizedBox(width: 8),
+                const Text(
+                  'Your Vendor Profile',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => context.go('/vendor/profile'),
+                  child: const Text('Edit'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildProfileField('Business Name', _vendorProfile!.businessName),
+            _buildProfileField('Contact', _vendorProfile!.displayName),
+            _buildProfileField('Email', _vendorProfile!.email),
+            if (_vendorProfile!.phoneNumber?.isNotEmpty == true)
+              _buildProfileField('Phone', _vendorProfile!.phoneNumber),
+            if (_vendorProfile!.bio?.isNotEmpty == true)
+              _buildProfileField('Description', _vendorProfile!.bio),
+            if (_vendorProfile!.categories.isNotEmpty)
+              _buildProfileField('Categories', _vendorProfile!.categories.join(', ')),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCategorySelection() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _productCategories.map((category) {
-        final isSelected = _selectedCategories.contains(category);
-        return FilterChip(
-          label: Text(category),
-          selected: isSelected,
-          onSelected: (selected) {
-            setState(() {
-              if (selected) {
-                _selectedCategories.add(category);
-              } else {
-                _selectedCategories.remove(category);
-              }
-            });
-          },
-          selectedColor: Colors.green.withValues(alpha: 0.2),
-          checkmarkColor: Colors.green,
-          backgroundColor: Colors.grey.shade100,
-        );
-      }).toList(),
+  Widget _buildProfileField(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateSelection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, color: Colors.green),
+                const SizedBox(width: 8),
+                const Text(
+                  'Select Dates',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Choose the specific dates you want to operate at this market:',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            DateSelectionCalendar(
+              initialSelectedDates: _selectedDates,
+              onDatesChanged: (List<DateTime> selectedDates) {
+                setState(() {
+                  _selectedDates = selectedDates;
+                });
+              },
+              firstDay: DateTime.now(),
+              lastDay: DateTime.now().add(const Duration(days: 365)),
+              title: 'Select your operating dates',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpecialMessageField() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.message, color: Colors.purple),
+                const SizedBox(width: 8),
+                const Text(
+                  'Special Message (Optional)',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Any special requests or message for the market organizer:',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _specialMessageController,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                hintText: 'Special equipment needs, booth preferences, etc.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHowDidYouHearField() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.teal),
+                const SizedBox(width: 8),
+                const Text(
+                  'How did you hear about this market?',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Help us understand how vendors discover our markets:',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _howDidYouHearController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Social media, word of mouth, website, etc.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _submitApplication,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'Submit Application',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
     );
   }
 }

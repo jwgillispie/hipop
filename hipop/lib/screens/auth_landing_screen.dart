@@ -16,11 +16,32 @@ class AuthLandingScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          child: Stack(
+            children: [
+              // Info button in top-right corner
+              Positioned(
+                top: 16,
+                right: 16,
+                child: IconButton(
+                  onPressed: () => context.go('/legal'),
+                  icon: const Icon(
+                    Icons.info_outline,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  tooltip: 'Legal Documents',
+                ),
+              ),
+              // Main content
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                 const Spacer(),
                 const Text(
                   'HiPop',
@@ -135,9 +156,11 @@ class AuthLandingScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

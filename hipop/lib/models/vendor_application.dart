@@ -12,15 +12,10 @@ class VendorApplication extends Equatable {
   final String id;
   final String marketId;
   final String vendorId; // User ID of the vendor applicant
-  final String vendorName;
-  final String vendorEmail;
-  final String? vendorPhone;
-  final String businessName;
-  final String businessDescription;
-  final List<String> productCategories;
-  final String? websiteUrl;
-  final String? instagramHandle;
-  final String? specialRequests; // Special equipment, space needs, etc.
+  final List<String> operatingDays; // Legacy: Days they want to attend this market (kept for backward compatibility)
+  final List<DateTime> requestedDates; // Specific dates they want to attend this market
+  final String? specialMessage; // Optional message to market organizer
+  final String? howDidYouHear; // How they heard about the market
   final ApplicationStatus status;
   final String? reviewNotes; // Organizer notes
   final String? reviewedBy; // Market organizer who reviewed
@@ -33,15 +28,10 @@ class VendorApplication extends Equatable {
     required this.id,
     required this.marketId,
     required this.vendorId,
-    required this.vendorName,
-    required this.vendorEmail,
-    this.vendorPhone,
-    required this.businessName,
-    required this.businessDescription,
-    this.productCategories = const [],
-    this.websiteUrl,
-    this.instagramHandle,
-    this.specialRequests,
+    this.operatingDays = const [],
+    this.requestedDates = const [],
+    this.specialMessage,
+    this.howDidYouHear,
     this.status = ApplicationStatus.pending,
     this.reviewNotes,
     this.reviewedBy,
@@ -58,15 +48,10 @@ class VendorApplication extends Equatable {
       id: doc.id,
       marketId: data['marketId'] ?? '',
       vendorId: data['vendorId'] ?? '',
-      vendorName: data['vendorName'] ?? '',
-      vendorEmail: data['vendorEmail'] ?? '',
-      vendorPhone: data['vendorPhone'],
-      businessName: data['businessName'] ?? '',
-      businessDescription: data['businessDescription'] ?? '',
-      productCategories: List<String>.from(data['productCategories'] ?? []),
-      websiteUrl: data['websiteUrl'],
-      instagramHandle: data['instagramHandle'],
-      specialRequests: data['specialRequests'],
+      operatingDays: List<String>.from(data['operatingDays'] ?? []),
+      requestedDates: (data['requestedDates'] as List<dynamic>?)?.map((e) => (e as Timestamp).toDate()).toList() ?? [],
+      specialMessage: data['specialMessage'],
+      howDidYouHear: data['howDidYouHear'],
       status: ApplicationStatus.values.firstWhere(
         (status) => status.name == data['status'],
         orElse: () => ApplicationStatus.pending,
@@ -84,15 +69,10 @@ class VendorApplication extends Equatable {
     return {
       'marketId': marketId,
       'vendorId': vendorId,
-      'vendorName': vendorName,
-      'vendorEmail': vendorEmail,
-      'vendorPhone': vendorPhone,
-      'businessName': businessName,
-      'businessDescription': businessDescription,
-      'productCategories': productCategories,
-      'websiteUrl': websiteUrl,
-      'instagramHandle': instagramHandle,
-      'specialRequests': specialRequests,
+      'operatingDays': operatingDays,
+      'requestedDates': requestedDates.map((date) => Timestamp.fromDate(date)).toList(),
+      'specialMessage': specialMessage,
+      'howDidYouHear': howDidYouHear,
       'status': status.name,
       'reviewNotes': reviewNotes,
       'reviewedBy': reviewedBy,
@@ -107,15 +87,10 @@ class VendorApplication extends Equatable {
     String? id,
     String? marketId,
     String? vendorId,
-    String? vendorName,
-    String? vendorEmail,
-    String? vendorPhone,
-    String? businessName,
-    String? businessDescription,
-    List<String>? productCategories,
-    String? websiteUrl,
-    String? instagramHandle,
-    String? specialRequests,
+    List<String>? operatingDays,
+    List<DateTime>? requestedDates,
+    String? specialMessage,
+    String? howDidYouHear,
     ApplicationStatus? status,
     String? reviewNotes,
     String? reviewedBy,
@@ -128,15 +103,10 @@ class VendorApplication extends Equatable {
       id: id ?? this.id,
       marketId: marketId ?? this.marketId,
       vendorId: vendorId ?? this.vendorId,
-      vendorName: vendorName ?? this.vendorName,
-      vendorEmail: vendorEmail ?? this.vendorEmail,
-      vendorPhone: vendorPhone ?? this.vendorPhone,
-      businessName: businessName ?? this.businessName,
-      businessDescription: businessDescription ?? this.businessDescription,
-      productCategories: productCategories ?? this.productCategories,
-      websiteUrl: websiteUrl ?? this.websiteUrl,
-      instagramHandle: instagramHandle ?? this.instagramHandle,
-      specialRequests: specialRequests ?? this.specialRequests,
+      operatingDays: operatingDays ?? this.operatingDays,
+      requestedDates: requestedDates ?? this.requestedDates,
+      specialMessage: specialMessage ?? this.specialMessage,
+      howDidYouHear: howDidYouHear ?? this.howDidYouHear,
       status: status ?? this.status,
       reviewNotes: reviewNotes ?? this.reviewNotes,
       reviewedBy: reviewedBy ?? this.reviewedBy,
@@ -165,6 +135,43 @@ class VendorApplication extends Equatable {
       case ApplicationStatus.waitlisted:
         return 'Waitlisted';
     }
+  }
+
+  // Get vendor business name from metadata or fallback
+  String get vendorBusinessName {
+    final profileSnapshot = metadata['profileSnapshot'] as Map<String, dynamic>?;
+    if (profileSnapshot != null) {
+      return profileSnapshot['businessName'] as String? ?? 
+             profileSnapshot['displayName'] as String? ?? 
+             'Unknown Business';
+    }
+    return 'Unknown Business';
+  }
+
+  // Get vendor display name from metadata or fallback
+  String get vendorDisplayName {
+    final profileSnapshot = metadata['profileSnapshot'] as Map<String, dynamic>?;
+    if (profileSnapshot != null) {
+      return profileSnapshot['displayName'] as String? ?? 
+             profileSnapshot['email'] as String? ?? 
+             'Unknown Vendor';
+    }
+    return 'Unknown Vendor';
+  }
+
+  // Get vendor email from metadata
+  String? get vendorEmail {
+    final profileSnapshot = metadata['profileSnapshot'] as Map<String, dynamic>?;
+    return profileSnapshot?['email'] as String?;
+  }
+
+  // Get vendor categories from metadata
+  List<String> get vendorCategories {
+    final profileSnapshot = metadata['profileSnapshot'] as Map<String, dynamic>?;
+    if (profileSnapshot != null && profileSnapshot['categories'] != null) {
+      return List<String>.from(profileSnapshot['categories'] as List? ?? []);
+    }
+    return [];
   }
 
   // Approve the application
@@ -205,15 +212,10 @@ class VendorApplication extends Equatable {
         id,
         marketId,
         vendorId,
-        vendorName,
-        vendorEmail,
-        vendorPhone,
-        businessName,
-        businessDescription,
-        productCategories,
-        websiteUrl,
-        instagramHandle,
-        specialRequests,
+        operatingDays,
+        requestedDates,
+        specialMessage,
+        howDidYouHear,
         status,
         reviewNotes,
         reviewedBy,
@@ -223,8 +225,30 @@ class VendorApplication extends Equatable {
         metadata,
       ];
 
+  // Helper methods for requested dates
+  bool get hasRequestedDates => requestedDates.isNotEmpty;
+  
+  List<DateTime> get sortedRequestedDates {
+    final dates = List<DateTime>.from(requestedDates);
+    dates.sort();
+    return dates;
+  }
+  
+  String get requestedDatesDisplayString {
+    if (requestedDates.isEmpty) return 'No dates selected';
+    
+    final sortedDates = sortedRequestedDates;
+    if (sortedDates.length == 1) {
+      return '${sortedDates.first.month}/${sortedDates.first.day}/${sortedDates.first.year}';
+    } else if (sortedDates.length <= 3) {
+      return sortedDates.map((date) => '${date.month}/${date.day}').join(', ');
+    } else {
+      return '${sortedDates.first.month}/${sortedDates.first.day} - ${sortedDates.last.month}/${sortedDates.last.day} (${sortedDates.length} dates)';
+    }
+  }
+
   @override
   String toString() {
-    return 'VendorApplication(id: $id, marketId: $marketId, vendorName: $vendorName, businessName: $businessName, status: $status)';
+    return 'VendorApplication(id: $id, marketId: $marketId, vendorId: $vendorId, requestedDates: ${requestedDates.length}, status: $status)';
   }
 }

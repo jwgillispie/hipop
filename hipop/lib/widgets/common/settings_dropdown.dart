@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../screens/change_password_screen.dart';
+import '../../services/onboarding_service.dart';
 
 class SettingsDropdown extends StatefulWidget {
   const SettingsDropdown({super.key});
@@ -225,6 +227,29 @@ class _SettingsDropdownState extends State<SettingsDropdown> {
     return error.toString();
   }
 
+  Future<void> _resetOnboarding() async {
+    try {
+      await OnboardingService.resetShopperOnboarding();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tutorial reset! It will show again next time you restart the app.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error resetting tutorial: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showChangePasswordDialog() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -242,6 +267,9 @@ class _SettingsDropdownState extends State<SettingsDropdown> {
         switch (value) {
           case 'change-password':
             _showChangePasswordDialog();
+            break;
+          case 'reset-onboarding':
+            _resetOnboarding();
             break;
           case 'logout':
             context.read<AuthBloc>().add(LogoutEvent());
@@ -262,6 +290,19 @@ class _SettingsDropdownState extends State<SettingsDropdown> {
             ],
           ),
         ),
+        if (kDebugMode) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem<String>(
+            value: 'reset-onboarding',
+            child: Row(
+              children: [
+                Icon(Icons.refresh, color: Colors.grey),
+                SizedBox(width: 12),
+                Text('Reset Tutorial'),
+              ],
+            ),
+          ),
+        ],
         const PopupMenuDivider(),
         const PopupMenuItem<String>(
           value: 'logout',

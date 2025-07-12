@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +6,10 @@ import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
 import '../models/vendor_post.dart';
 import '../repositories/vendor_posts_repository.dart';
-import '../widgets/common/photo_upload_widget.dart';
 import '../widgets/vendor/vendor_calendar_widget.dart';
 import '../widgets/common/loading_widget.dart';
 import '../widgets/common/error_widget.dart';
+import '../widgets/debug_account_switcher.dart';
 
 class VendorDashboard extends StatefulWidget {
   const VendorDashboard({super.key});
@@ -90,6 +89,8 @@ class _VendorDashboardState extends State<VendorDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Debug Account Switcher
+          const DebugAccountSwitcher(),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -176,8 +177,8 @@ class _VendorDashboardState extends State<VendorDashboard>
                   'Upload Photos',
                   'Add photos to your gallery',
                   Icons.add_a_photo,
-                  Colors.teal,
-                  () => _showPhotoUploadDialog(context),
+                  Colors.grey,
+                  () => _showComingSoon(context),
                 ),
                 _buildActionCard(
                   context,
@@ -331,34 +332,6 @@ class _VendorDashboardState extends State<VendorDashboard>
     );
   }
 
-  void _showPhotoUploadDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Upload Photo'),
-        content: SizedBox(
-          width: 300,
-          child: PhotoUploadWidget(
-            onPhotoSelected: (File photo) {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Photo saved to: ${photo.path}'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showComingSoon(BuildContext context) {
     showDialog(

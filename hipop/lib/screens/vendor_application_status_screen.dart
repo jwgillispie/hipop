@@ -45,7 +45,6 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
       }
       return market;
     } catch (e) {
-      debugPrint('Error fetching market: $e');
       return null;
     }
   }
@@ -199,7 +198,7 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        application.businessName,
+                        'Days: ${application.operatingDays.join(', ')}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[600],
@@ -238,10 +237,10 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
             
             const SizedBox(height: 12),
             
-            // Product Categories
-            if (application.productCategories.isNotEmpty) ...[
+            // Special Message
+            if (application.specialMessage?.isNotEmpty == true) ...[
               Text(
-                'Product Categories:',
+                'Special Message:',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[700],
@@ -249,37 +248,21 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                 ),
               ),
               const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: application.productCategories.take(5).map((category) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    category,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.blue[800],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )).toList(),
-              ),
-              if (application.productCategories.length > 5)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '+ ${application.productCategories.length - 5} more categories',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  application.specialMessage!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue[800],
                   ),
                 ),
+              ),
             ],
             
             const SizedBox(height: 16),
@@ -475,22 +458,17 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                 ),
               ),
               const SizedBox(height: 16),
-              _buildDetailRow('Business Name', application.businessName),
-              _buildDetailRow('Email', application.vendorEmail),
-              if (application.vendorPhone != null)
-                _buildDetailRow('Phone', application.vendorPhone!),
-              if (application.websiteUrl != null)
-                _buildDetailRow('Website', application.websiteUrl!),
-              if (application.instagramHandle != null)
-                _buildDetailRow('Instagram', '@${application.instagramHandle!}'),
+              _buildDetailRow('Operating Days', application.operatingDays.join(', ')),
+              if (application.specialMessage?.isNotEmpty == true)
+                _buildDetailRow('Special Message', application.specialMessage!),
               _buildDetailRow('Status', application.statusDisplayName),
               _buildDetailRow('Applied', _formatDate(application.createdAt)),
               if (application.hasBeenReviewed)
                 _buildDetailRow('Reviewed', _formatDate(application.reviewedAt!)),
               const SizedBox(height: 16),
-              if (application.businessDescription.isNotEmpty) ...[
+              if (application.reviewNotes?.isNotEmpty == true) ...[
                 Text(
-                  'Business Description:',
+                  'Review Notes:',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -499,23 +477,7 @@ class _VendorApplicationStatusScreenState extends State<VendorApplicationStatusS
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  application.businessDescription,
-                  style: const TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-              ],
-              if (application.specialRequests != null && application.specialRequests!.isNotEmpty) ...[
-                Text(
-                  'Special Requests:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  application.specialRequests!,
+                  application.reviewNotes!,
                   style: const TextStyle(fontSize: 12),
                 ),
                 const SizedBox(height: 16),

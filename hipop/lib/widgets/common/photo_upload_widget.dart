@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+// import 'package:image_picker/image_picker.dart'; // Disabled for now
 
 class PhotoUploadWidget extends StatefulWidget {
   final Function(File) onPhotoSelected;
@@ -18,7 +18,7 @@ class PhotoUploadWidget extends StatefulWidget {
 
 class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   File? _selectedImage;
-  final ImagePicker _picker = ImagePicker();
+  // final ImagePicker _picker = ImagePicker(); // Disabled for now
 
   @override
   void initState() {
@@ -28,71 +28,22 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
     }
   }
 
-  Future<void> _showImageSourceDialog() async {
+  void _showDisabledDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Select Photo Source'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
+          title: const Text('Photo Upload Disabled'),
+          content: const Text('Photo upload functionality is temporarily disabled and will be available in a future update.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
         );
       },
     );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final XFile? pickedFile = await _picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 80,
-      );
-
-      if (pickedFile != null) {
-        final File imageFile = File(pickedFile.path);
-        
-        // Save to assets/vendor/photos directory
-        final String fileName = 'vendor_photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final String assetsPath = 'assets/vendor/photos/$fileName';
-        final File savedFile = await imageFile.copy(assetsPath);
-
-        setState(() {
-          _selectedImage = savedFile;
-        });
-        
-        widget.onPhotoSelected(savedFile);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking image: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   @override
@@ -131,14 +82,14 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: _showImageSourceDialog,
+                      onPressed: _showDisabledDialog,
                     ),
                   ),
                 ),
               ],
             )
           : InkWell(
-              onTap: _showImageSourceDialog,
+              onTap: _showDisabledDialog,
               borderRadius: BorderRadius.circular(12),
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -150,7 +101,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Add Photo',
+                    'Photo Upload Disabled',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
@@ -159,7 +110,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Tap to take a photo or choose from gallery',
+                    'Photo upload feature temporarily disabled',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey,

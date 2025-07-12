@@ -133,7 +133,7 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error associating market with user: $e');
+      // Error associating market with user
     }
   }
 

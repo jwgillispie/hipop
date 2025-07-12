@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/vendor_application.dart';
+import '../models/managed_vendor.dart';
+import 'managed_vendor_service.dart';
+import 'user_profile_service.dart';
 
 class VendorApplicationService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,13 +13,158 @@ class VendorApplicationService {
   /// Submit a new vendor application
   static Future<String> submitApplication(VendorApplication application) async {
     try {
+      debugPrint('DEBUG: Submitting application to Firestore...');
+      debugPrint('DEBUG: Market ID: ${application.marketId}');
+      debugPrint('DEBUG: Vendor ID: ${application.vendorId}');
+      debugPrint('DEBUG: Status: ${application.status.name}');
+      debugPrint('DEBUG: Requested dates: ${application.requestedDates.map((d) => d.toIso8601String()).join(', ')}');
+      
       final docRef = await _applicationsCollection.add(application.toFirestore());
-      debugPrint('Vendor application submitted with ID: ${docRef.id}');
+      debugPrint('✅ Vendor application submitted with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('Error submitting vendor application: $e');
+      debugPrint('❌ Error submitting vendor application: $e');
       throw Exception('Failed to submit application: $e');
     }
+  }
+
+  /// Submit a new vendor application with profile validation (legacy method)
+  static Future<String> submitApplicationWithProfile(
+    String vendorId,
+    String marketId,
+    List<String> operatingDays, {
+    String? specialMessage,
+  }) async {
+    try {
+      // Validate vendor profile exists and is complete
+      final vendorProfile = await UserProfileService().getUserProfile(vendorId);
+      if (vendorProfile == null) {
+        throw Exception('Vendor profile not found. Please complete your profile first.');
+      }
+
+      if (vendorProfile.userType != 'vendor') {
+        throw Exception('User must be registered as a vendor to apply.');
+      }
+
+      if (!vendorProfile.isProfileComplete) {
+        throw Exception('Please complete your vendor profile before applying to markets.');
+      }
+
+      // Check if vendor has already applied to this market
+      final hasApplied = await hasVendorApplied(vendorId, marketId);
+      if (hasApplied) {
+        throw Exception('You have already applied to this market.');
+      }
+
+      // Create the application
+      final application = VendorApplication(
+        id: '', // Will be set by Firestore
+        marketId: marketId,
+        vendorId: vendorId,
+        operatingDays: operatingDays,
+        specialMessage: specialMessage,
+        status: ApplicationStatus.pending,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        metadata: {
+          'profileSnapshot': {
+            'businessName': vendorProfile.businessName,
+            'displayName': vendorProfile.displayName,
+            'email': vendorProfile.email,
+            'categories': vendorProfile.categories,
+            'submittedAt': DateTime.now().toIso8601String(),
+          },
+        },
+      );
+
+      debugPrint('DEBUG: Submitting application for vendor: ${vendorProfile.businessName ?? vendorProfile.displayName}');
+      debugPrint('DEBUG: Application market ID: $marketId');
+      debugPrint('DEBUG: Profile metadata: ${application.metadata}');
+
+      return await submitApplication(application);
+    } catch (e) {
+      debugPrint('Error submitting application with profile: $e');
+      rethrow;
+    }
+  }
+
+  /// Submit a new vendor application with specific dates
+  static Future<String> submitApplicationWithDates(
+    String vendorId,
+    String marketId,
+    List<DateTime> requestedDates, {
+    String? specialMessage,
+    String? howDidYouHear,
+  }) async {
+    try {
+      // Validate vendor profile exists and is complete
+      final vendorProfile = await UserProfileService().getUserProfile(vendorId);
+      if (vendorProfile == null) {
+        throw Exception('Vendor profile not found. Please complete your profile first.');
+      }
+
+      if (vendorProfile.userType != 'vendor') {
+        throw Exception('User must be registered as a vendor to apply.');
+      }
+
+      if (!vendorProfile.isProfileComplete) {
+        throw Exception('Please complete your vendor profile before applying to markets.');
+      }
+
+      // Check if vendor has already applied to this market
+      final hasApplied = await hasVendorApplied(vendorId, marketId);
+      if (hasApplied) {
+        throw Exception('You have already applied to this market.');
+      }
+
+      // Generate legacy operating days from requested dates for backward compatibility
+      final legacyOperatingDays = _generateLegacyOperatingDays(requestedDates);
+
+      // Create the application with both legacy and new date fields
+      final application = VendorApplication(
+        id: '', // Will be set by Firestore
+        marketId: marketId,
+        vendorId: vendorId,
+        operatingDays: legacyOperatingDays, // Legacy field for backward compatibility
+        requestedDates: requestedDates, // New field with actual dates
+        specialMessage: specialMessage,
+        howDidYouHear: howDidYouHear,
+        status: ApplicationStatus.pending,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        metadata: {
+          'profileSnapshot': {
+            'businessName': vendorProfile.businessName,
+            'displayName': vendorProfile.displayName,
+            'email': vendorProfile.email,
+            'categories': vendorProfile.categories,
+            'submittedAt': DateTime.now().toIso8601String(),
+          },
+        },
+      );
+
+      debugPrint('DEBUG: Submitting application for vendor: ${vendorProfile.businessName ?? vendorProfile.displayName}');
+      debugPrint('DEBUG: Application market ID: $marketId');
+      debugPrint('DEBUG: Requested dates: ${requestedDates.map((d) => d.toIso8601String()).join(', ')}');
+      debugPrint('DEBUG: Profile metadata: ${application.metadata}');
+
+      return await submitApplication(application);
+    } catch (e) {
+      debugPrint('Error submitting application with dates: $e');
+      rethrow;
+    }
+  }
+
+  /// Helper method to generate legacy operating days from requested dates
+  static List<String> _generateLegacyOperatingDays(List<DateTime> requestedDates) {
+    final dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final Set<String> uniqueDays = {};
+    
+    for (final date in requestedDates) {
+      uniqueDays.add(dayNames[date.weekday % 7]);
+    }
+    
+    return uniqueDays.toList();
   }
 
   /// Get all applications for a specific market
@@ -78,18 +226,35 @@ class VendorApplicationService {
     }
   }
 
-  /// Approve an application
+  /// Approve an application and create a ManagedVendor record
   static Future<void> approveApplication(
     String applicationId,
     String reviewerId, {
     String? notes,
   }) async {
-    await updateApplicationStatus(
-      applicationId,
-      ApplicationStatus.approved,
-      reviewerId,
-      reviewNotes: notes,
-    );
+    try {
+      // Get the application details
+      final application = await getApplication(applicationId);
+      if (application == null) {
+        throw Exception('Application not found');
+      }
+
+      // Update application status first
+      await updateApplicationStatus(
+        applicationId,
+        ApplicationStatus.approved,
+        reviewerId,
+        reviewNotes: notes,
+      );
+
+      // Create ManagedVendor record from application data
+      await _createManagedVendorFromApplication(application, reviewerId);
+      
+      debugPrint('Application $applicationId approved and ManagedVendor created');
+    } catch (e) {
+      debugPrint('Error approving application: $e');
+      throw Exception('Failed to approve application: $e');
+    }
   }
 
   /// Reject an application
@@ -221,6 +386,147 @@ class VendorApplicationService {
     }
   }
 
+  /// Create a ManagedVendor record from an approved application
+  static Future<void> _createManagedVendorFromApplication(
+    VendorApplication application, 
+    String reviewerId,
+  ) async {
+    try {
+      // Check if ManagedVendor already exists for this application
+      final existingVendor = await _findManagedVendorByApplication(application.id);
+      if (existingVendor != null) {
+        debugPrint('ManagedVendor already exists for application: ${application.id}');
+        return;
+      }
+
+      // Get the vendor's profile data
+      final vendorProfile = await UserProfileService().getUserProfile(application.vendorId);
+      if (vendorProfile == null) {
+        throw Exception('Vendor profile not found for user: ${application.vendorId}');
+      }
+
+      // Convert profile categories to VendorCategory enum
+      final vendorCategories = vendorProfile.categories
+          .map((categoryName) {
+            try {
+              return VendorCategory.values.firstWhere(
+                (category) => category.name == categoryName,
+              );
+            } catch (e) {
+              debugPrint('Unknown category: $categoryName');
+              return VendorCategory.other;
+            }
+          })
+          .toList();
+
+      // Create ManagedVendor from vendor profile data
+      final managedVendor = ManagedVendor(
+        id: '', // Will be set by Firestore
+        marketId: application.marketId,
+        organizerId: reviewerId,
+        businessName: vendorProfile.businessName ?? vendorProfile.displayName ?? 'Unknown Business',
+        contactName: vendorProfile.displayName ?? vendorProfile.email.split('@').first,
+        email: vendorProfile.email,
+        phoneNumber: vendorProfile.phoneNumber ?? '',
+        description: vendorProfile.bio ?? '',
+        categories: vendorCategories,
+        website: vendorProfile.website ?? '',
+        instagramHandle: vendorProfile.instagramHandle ?? '',
+        facebookHandle: '', // Not in profile, leave empty
+        address: '', // Not in profile, leave empty for now
+        city: '', // Not in profile, leave empty for now
+        state: '', // Not in profile, leave empty for now
+        zipCode: '', // Not in profile, leave empty for now
+        imageUrl: '', // Not in profile, leave empty for now
+        imageUrls: [], // Not in profile, leave empty for now
+        logoUrl: '', // Not in profile, leave empty for now
+        products: [], // Not in profile, leave empty for now
+        specialties: [], // Not in profile, leave empty for now
+        priceRange: '', // Not in profile, leave empty for now
+        certifications: '', // Not in profile, leave empty for now
+        operatingDays: application.operatingDays, // Use the selected operating days
+        boothPreferences: application.specialMessage ?? '',
+        specialRequirements: application.specialMessage ?? '',
+        canDeliver: false, // Default to false
+        acceptsOrders: false, // Default to false
+        deliveryNotes: '', // Not in profile, leave empty for now
+        isActive: true, // Default to active since they were approved
+        isFeatured: false, // Default to not featured
+        isOrganic: false, // Default to false
+        isLocallySourced: false, // Default to false
+        story: '', // Not in profile, leave empty for now
+        tags: [], // Not in profile, leave empty for now
+        slogan: '', // Not in profile, leave empty for now
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        metadata: {
+          'createdFromApplication': true,
+          'applicationId': application.id,
+          'vendorUserId': application.vendorId,
+        },
+      );
+
+      // Create the ManagedVendor record
+      await ManagedVendorService.createVendor(managedVendor);
+      
+      debugPrint('ManagedVendor created from application: ${application.id}');
+    } catch (e) {
+      debugPrint('Error creating ManagedVendor from application: $e');
+      throw Exception('Failed to create vendor profile: $e');
+    }
+  }
+
+  /// Find existing ManagedVendor created from an application
+  static Future<ManagedVendor?> _findManagedVendorByApplication(String applicationId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('managed_vendors')
+          .where('metadata.applicationId', isEqualTo: applicationId)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        return ManagedVendor.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error finding ManagedVendor by application: $e');
+      return null;
+    }
+  }
+
+  /// Get the ManagedVendor created from an approved application
+  static Future<ManagedVendor?> getManagedVendorFromApplication(String applicationId) async {
+    return await _findManagedVendorByApplication(applicationId);
+  }
+
+  /// Get application with vendor profile data for display
+  static Future<Map<String, dynamic>?> getApplicationWithProfile(String applicationId) async {
+    try {
+      final application = await getApplication(applicationId);
+      if (application == null) return null;
+
+      final vendorProfile = await UserProfileService().getUserProfile(application.vendorId);
+      if (vendorProfile == null) return null;
+
+      return {
+        'application': application,
+        'vendorProfile': vendorProfile,
+        'businessName': vendorProfile.businessName ?? vendorProfile.displayName ?? 'Unknown Business',
+        'contactName': vendorProfile.displayName ?? vendorProfile.email.split('@').first,
+        'email': vendorProfile.email,
+        'phoneNumber': vendorProfile.phoneNumber,
+        'description': vendorProfile.bio ?? 'No description provided',
+        'categories': vendorProfile.categories,
+        'website': vendorProfile.website,
+        'instagramHandle': vendorProfile.instagramHandle,
+      };
+    } catch (e) {
+      debugPrint('Error getting application with profile: $e');
+      return null;
+    }
+  }
+
   /// Get pending applications count for a market (for dashboard)
   static Future<int> getPendingApplicationsCount(String marketId) async {
     try {
@@ -232,6 +538,95 @@ class VendorApplicationService {
       return snapshot.docs.length;
     } catch (e) {
       debugPrint('Error getting pending applications count: $e');
+      return 0;
+    }
+  }
+
+  /// Auto-reject applications with requested dates before today
+  static Future<int> autoRejectExpiredApplications(String marketId) async {
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      int rejectedCount = 0;
+
+      // Get all pending applications for this market
+      final snapshot = await _applicationsCollection
+          .where('marketId', isEqualTo: marketId)
+          .where('status', isEqualTo: ApplicationStatus.pending.name)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final application = VendorApplication.fromFirestore(doc);
+        
+        // Check if application has requested dates
+        if (application.hasRequestedDates) {
+          // Check if all requested dates are in the past
+          final allDatesInPast = application.requestedDates.every((date) {
+            final dateOnly = DateTime(date.year, date.month, date.day);
+            return dateOnly.isBefore(today);
+          });
+
+          if (allDatesInPast) {
+            // Auto-reject this application
+            await updateApplicationStatus(
+              application.id,
+              ApplicationStatus.rejected,
+              'system', // System rejection
+              reviewNotes: 'Automatically rejected: All requested dates are in the past.',
+            );
+            rejectedCount++;
+            debugPrint('Auto-rejected application ${application.id} for ${application.vendorBusinessName} - past dates');
+          }
+        }
+      }
+
+      return rejectedCount;
+    } catch (e) {
+      debugPrint('Error auto-rejecting expired applications: $e');
+      return 0;
+    }
+  }
+
+  /// Auto-reject applications with requested dates before today for all markets
+  static Future<int> autoRejectAllExpiredApplications() async {
+    try {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      int rejectedCount = 0;
+
+      // Get all pending applications
+      final snapshot = await _applicationsCollection
+          .where('status', isEqualTo: ApplicationStatus.pending.name)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final application = VendorApplication.fromFirestore(doc);
+        
+        // Check if application has requested dates
+        if (application.hasRequestedDates) {
+          // Check if all requested dates are in the past
+          final allDatesInPast = application.requestedDates.every((date) {
+            final dateOnly = DateTime(date.year, date.month, date.day);
+            return dateOnly.isBefore(today);
+          });
+
+          if (allDatesInPast) {
+            // Auto-reject this application
+            await updateApplicationStatus(
+              application.id,
+              ApplicationStatus.rejected,
+              'system', // System rejection
+              reviewNotes: 'Automatically rejected: All requested dates are in the past.',
+            );
+            rejectedCount++;
+            debugPrint('Auto-rejected application ${application.id} for ${application.vendorBusinessName} - past dates');
+          }
+        }
+      }
+
+      return rejectedCount;
+    } catch (e) {
+      debugPrint('Error auto-rejecting all expired applications: $e');
       return 0;
     }
   }

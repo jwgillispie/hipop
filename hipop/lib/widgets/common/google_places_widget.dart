@@ -97,7 +97,6 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
         });
       }
     } catch (e) {
-      debugPrint('Error searching places: $e');
       if (_lastQuery == query) {
         setState(() {
           _predictions = [];
@@ -113,16 +112,13 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
   }
 
   Future<void> _getPlaceDetails(String placeId) async {
-    print('BROWSER LOG: _getPlaceDetails called with $placeId');
     setState(() {
       _isLoading = true;
       _selectedPlaceId = placeId;
     });
 
     try {
-      print('BROWSER LOG: Calling PlacesService.getPlaceDetails');
       final placeDetails = await PlacesService.getPlaceDetails(placeId);
-      print('BROWSER LOG: Received place details: ${placeDetails?.formattedAddress}');
       
       if (placeDetails != null) {
         setState(() {
@@ -132,21 +128,14 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
           _selectedPlaceId = null;
         });
         
-        print('BROWSER LOG: Updated controller text to: ${_controller.text}');
         _focusNode.unfocus();
         
-        print('BROWSER LOG: Calling widget.onPlaceSelected callback');
         widget.onPlaceSelected(placeDetails);
-      } else {
-        print('BROWSER LOG: Place details was null!');
       }
     } catch (e) {
-      print('BROWSER LOG: Error getting place details: $e');
-      debugPrint('Error getting place details: $e');
       setState(() => _selectedPlaceId = null);
     } finally {
       setState(() => _isLoading = false);
-      print('BROWSER LOG: _getPlaceDetails finished');
     }
   }
 
@@ -196,8 +185,6 @@ class _GooglePlacesWidgetState extends State<GooglePlacesWidget> {
         'isDirect': false,
         'isSelected': isSelected,
         'onTap': isSelected ? null : () {
-          debugPrint('GooglePlacesWidget: InkWell tapped for ${prediction.placeId}');
-          debugPrint('BROWSER LOG: Place clicked - ${prediction.mainText}');
           _getPlaceDetails(prediction.placeId);
         },
       });

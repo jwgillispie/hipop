@@ -10,7 +10,8 @@ class Market extends Equatable {
   final double latitude;
   final double longitude;
   final String? placeId;
-  final Map<String, String> operatingDays; // {"saturday": "9AM-2PM", "sunday": "11AM-4PM"}
+  final Map<String, String> operatingDays; // {"saturday": "9AM-2PM", "sunday": "11AM-4PM"} - Legacy format
+  final List<String>? scheduleIds; // References to MarketSchedule documents
   final String? description;
   final String? imageUrl;
   final bool isActive;
@@ -26,6 +27,7 @@ class Market extends Equatable {
     required this.longitude,
     this.placeId,
     this.operatingDays = const {},
+    this.scheduleIds,
     this.description,
     this.imageUrl,
     this.isActive = true,
@@ -48,14 +50,16 @@ class Market extends Equatable {
         operatingDays: data['operatingDays'] != null 
             ? Map<String, String>.from(data['operatingDays']) 
             : {},
+        scheduleIds: data['scheduleIds'] != null
+            ? List<String>.from(data['scheduleIds'])
+            : null,
         description: data['description'],
         imageUrl: data['imageUrl'],
         isActive: data['isActive'] ?? true,
         createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
     } catch (e) {
-      print('Error parsing Market from Firestore: $e');
-      print('Document data: $data');
+      // Error parsing Market from Firestore
       rethrow;
     }
   }
@@ -70,6 +74,7 @@ class Market extends Equatable {
       'longitude': longitude,
       'placeId': placeId,
       'operatingDays': operatingDays,
+      if (scheduleIds != null) 'scheduleIds': scheduleIds,
       'description': description,
       'imageUrl': imageUrl,
       'isActive': isActive,
@@ -87,6 +92,7 @@ class Market extends Equatable {
     double? longitude,
     String? placeId,
     Map<String, String>? operatingDays,
+    List<String>? scheduleIds,
     String? description,
     String? imageUrl,
     bool? isActive,
@@ -102,6 +108,7 @@ class Market extends Equatable {
       longitude: longitude ?? this.longitude,
       placeId: placeId ?? this.placeId,
       operatingDays: operatingDays ?? this.operatingDays,
+      scheduleIds: scheduleIds ?? this.scheduleIds,
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       isActive: isActive ?? this.isActive,
@@ -128,6 +135,25 @@ class Market extends Equatable {
     return operatingDays.keys.toList();
   }
   
+  DateTime? get nextOperatingDate {
+    if (operatingDays.isEmpty) return null;
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // Check the next 7 days to find the next operating date
+    for (int i = 0; i < 7; i++) {
+      final checkDate = today.add(Duration(days: i));
+      final dayName = _getDayName(checkDate.weekday);
+      
+      if (operatingDays.containsKey(dayName)) {
+        return checkDate;
+      }
+    }
+    
+    return null;
+  }
+  
   String _getDayName(int weekday) {
     switch (weekday) {
       case 1: return 'monday';
@@ -152,6 +178,7 @@ class Market extends Equatable {
         longitude,
         placeId,
         operatingDays,
+        scheduleIds,
         description,
         imageUrl,
         isActive,
