@@ -193,6 +193,24 @@ class VendorApplicationService {
             .toList());
   }
 
+  /// Get approved applications for a specific market (async method for form usage)
+  static Future<List<VendorApplication>> getApprovedApplicationsForMarket(String marketId) async {
+    try {
+      final snapshot = await _applicationsCollection
+          .where('marketId', isEqualTo: marketId)
+          .where('status', isEqualTo: ApplicationStatus.approved.name)
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => VendorApplication.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting approved applications for market: $e');
+      return [];
+    }
+  }
+
   /// Get applications for a specific vendor
   static Stream<List<VendorApplication>> getApplicationsForVendor(String vendorId) {
     return _applicationsCollection

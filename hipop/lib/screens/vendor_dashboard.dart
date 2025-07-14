@@ -138,11 +138,11 @@ class _VendorDashboardState extends State<VendorDashboard>
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 1.1,
+              childAspectRatio: 0.9,
               children: [
                 _buildActionCard(
                   context,
-                  'Market Pop-up',
+                  'Market',
                   'Join an existing market',
                   Icons.store_mall_directory,
                   Colors.orange,
@@ -150,7 +150,7 @@ class _VendorDashboardState extends State<VendorDashboard>
                 ),
                 _buildActionCard(
                   context,
-                  'Independent Pop-up',
+                  'Independent',
                   'Create your own location',
                   Icons.location_on,
                   Colors.deepOrange,
@@ -170,14 +170,6 @@ class _VendorDashboardState extends State<VendorDashboard>
                   'View your performance',
                   Icons.analytics,
                   Colors.green,
-                  () => _showComingSoon(context),
-                ),
-                _buildActionCard(
-                  context,
-                  'Upload Photos',
-                  'Add photos to your gallery',
-                  Icons.add_a_photo,
-                  Colors.grey,
                   () => _showComingSoon(context),
                 ),
                 _buildActionCard(
@@ -307,23 +299,31 @@ class _VendorDashboardState extends State<VendorDashboard>
                   color: color,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(height: 8),
+              Flexible(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+              Flexible(
+                child: Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),

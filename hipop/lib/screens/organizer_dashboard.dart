@@ -193,7 +193,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 1.0,
+                  childAspectRatio: 1.1,
                   children: [
                     _buildActionCard(
                       'Market Management',
@@ -210,18 +210,18 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       () => context.pushNamed('vendorManagement'),
                     ),
                     _buildActionCard(
+                      'Event Management',
+                      'Create special events',
+                      Icons.event,
+                      Colors.red,
+                      () => context.pushNamed('eventManagement'),
+                    ),
+                    _buildActionCard(
                       'Vendor Applications',
                       'Review new applications',
                       Icons.assignment_turned_in,
                       Colors.orange,
                       () => context.pushNamed('vendorApplications'),
-                    ),
-                    _buildActionCard(
-                      'Custom Items',
-                      'Manage recipes and content',
-                      Icons.tune,
-                      Colors.purple,
-                      () => context.pushNamed('customItems'),
                     ),
                     _buildActionCard(
                       'Analytics',
@@ -236,6 +236,13 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       Icons.calendar_today,
                       Colors.teal,
                       () => context.pushNamed('organizerCalendar'),
+                    ),
+                    _buildActionCard(
+                      'Custom Items',
+                      'Manage recipes and content',
+                      Icons.tune,
+                      Colors.purple,
+                      () => context.pushNamed('customItems'),
                     ),
                   ],
                 ),

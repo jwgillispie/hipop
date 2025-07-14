@@ -46,6 +46,16 @@ class ToggleMarketFavorite extends FavoritesEvent {
   List<Object?> get props => [marketId, userId];
 }
 
+class ToggleEventFavorite extends FavoritesEvent {
+  final String eventId;
+  final String? userId;
+
+  const ToggleEventFavorite({required this.eventId, this.userId});
+
+  @override
+  List<Object?> get props => [eventId, userId];
+}
+
 class ClearAllFavorites extends FavoritesEvent {
   final String? userId;
   

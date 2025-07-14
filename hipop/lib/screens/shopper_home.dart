@@ -15,9 +15,11 @@ import '../models/market.dart';
 import '../repositories/vendor_posts_repository.dart';
 import '../utils/place_utils.dart';
 import '../models/vendor_post.dart';
+import '../models/event.dart';
+import '../services/event_service.dart';
 import '../widgets/debug_account_switcher.dart';
 
-enum FeedFilter { markets, vendors, all }
+enum FeedFilter { markets, vendors, events, all }
 
 class ShopperHome extends StatefulWidget {
   const ShopperHome({super.key});
@@ -69,8 +71,10 @@ class _ShopperHomeState extends State<ShopperHome> {
         return 'Find Markets Near You';
       case FeedFilter.vendors:
         return 'Find Vendor Pop-ups Near You';
+      case FeedFilter.events:
+        return 'Find Events Near You';
       case FeedFilter.all:
-        return 'Find Markets & Vendors Near You';
+        return 'Find Markets, Vendors & Events Near You';
     }
   }
 
@@ -81,8 +85,10 @@ class _ShopperHomeState extends State<ShopperHome> {
           return 'All Markets';
         case FeedFilter.vendors:
           return 'All Vendor Pop-ups';
+        case FeedFilter.events:
+          return 'All Events';
         case FeedFilter.all:
-          return 'All Markets & Vendors';
+          return 'All Markets, Vendors & Events';
       }
     } else {
       switch (_selectedFilter) {
@@ -90,8 +96,10 @@ class _ShopperHomeState extends State<ShopperHome> {
           return 'Markets in $_searchLocation';
         case FeedFilter.vendors:
           return 'Vendor Pop-ups in $_searchLocation';
+        case FeedFilter.events:
+          return 'Events in $_searchLocation';
         case FeedFilter.all:
-          return 'Markets & Vendors in $_searchLocation';
+          return 'Markets, Vendors & Events in $_searchLocation';
       }
     }
   }
@@ -120,7 +128,7 @@ class _ShopperHomeState extends State<ShopperHome> {
                     Colors.green,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildFilterOption(
                     FeedFilter.vendors,
@@ -129,7 +137,16 @@ class _ShopperHomeState extends State<ShopperHome> {
                     Colors.blue,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: _buildFilterOption(
+                    FeedFilter.events,
+                    'Events',
+                    Icons.event,
+                    Colors.purple,
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: _buildFilterOption(
                     FeedFilter.all,
@@ -390,6 +407,8 @@ class _ShopperHomeState extends State<ShopperHome> {
       return _buildMarketsOnlyStream();
     } else if (_selectedFilter == FeedFilter.vendors) {
       return _buildVendorPostsOnlyStream();
+    } else if (_selectedFilter == FeedFilter.events) {
+      return _buildEventsOnlyStream();
     } else {
       return _buildMixedContentStream();
     }
@@ -486,6 +505,52 @@ class _ShopperHomeState extends State<ShopperHome> {
     );
   }
 
+  Widget _buildEventsOnlyStream() {
+    return StreamBuilder<List<Event>>(
+      stream: _selectedCity.isEmpty 
+          ? EventService.getAllActiveEventsStream()
+          : EventService.getEventsByCityStream(_selectedCity),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LoadingWidget(message: 'Loading events...');
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorMessage('Error loading events', snapshot.error.toString());
+        }
+
+        final allEvents = snapshot.data ?? [];
+        final events = EventService.filterCurrentAndUpcomingEvents(allEvents);
+
+        if (events.isEmpty) {
+          return _buildNoResultsMessage();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${events.length} found',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return _buildEventCard(event);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildMixedContentStream() {
     return StreamBuilder<List<Market>>(
       stream: _selectedCity.isEmpty 
@@ -497,57 +562,69 @@ class _ShopperHomeState extends State<ShopperHome> {
               ? _vendorPostsRepository.getAllActivePosts()
               : _vendorPostsRepository.searchPostsByLocation(_selectedCity),
           builder: (context, vendorSnapshot) {
-            if (marketSnapshot.connectionState == ConnectionState.waiting ||
-                vendorSnapshot.connectionState == ConnectionState.waiting) {
-              return const LoadingWidget(message: 'Loading markets and vendors...');
-            }
+            return StreamBuilder<List<Event>>(
+              stream: _selectedCity.isEmpty 
+                  ? EventService.getAllActiveEventsStream()
+                  : EventService.getEventsByCityStream(_selectedCity),
+              builder: (context, eventSnapshot) {
+                if (marketSnapshot.connectionState == ConnectionState.waiting ||
+                    vendorSnapshot.connectionState == ConnectionState.waiting ||
+                    eventSnapshot.connectionState == ConnectionState.waiting) {
+                  return const LoadingWidget(message: 'Loading markets, vendors, and events...');
+                }
 
-            if (marketSnapshot.hasError || vendorSnapshot.hasError) {
-              return _buildErrorMessage(
-                'Error loading content', 
-                '${marketSnapshot.error ?? ''} ${vendorSnapshot.error ?? ''}'.trim()
-              );
-            }
+                if (marketSnapshot.hasError || vendorSnapshot.hasError || eventSnapshot.hasError) {
+                  return _buildErrorMessage(
+                    'Error loading content', 
+                    '${marketSnapshot.error ?? ''} ${vendorSnapshot.error ?? ''} ${eventSnapshot.error ?? ''}'.trim()
+                  );
+                }
 
-            final markets = marketSnapshot.data ?? [];
-            final allPosts = vendorSnapshot.data ?? [];
-            final posts = _filterCurrentAndFuturePosts(allPosts);
-            
-            // Sort markets by next operating date (earliest first)
-            final sortedMarkets = List<Market>.from(markets);
-            sortedMarkets.sort((a, b) {
-              final aNext = a.nextOperatingDate;
-              final bNext = b.nextOperatingDate;
-              
-              // Markets without operating dates go to the end
-              if (aNext == null && bNext == null) return 0;
-              if (aNext == null) return 1;
-              if (bNext == null) return -1;
-              
-              return aNext.compareTo(bNext);
-            });
-            
-            final totalCount = sortedMarkets.length + posts.length;
+                final markets = marketSnapshot.data ?? [];
+                final allPosts = vendorSnapshot.data ?? [];
+                final posts = _filterCurrentAndFuturePosts(allPosts);
+                final allEvents = eventSnapshot.data ?? [];
+                final events = EventService.filterCurrentAndUpcomingEvents(allEvents);
+                
+                // Sort markets by next operating date (earliest first)
+                final sortedMarkets = List<Market>.from(markets);
+                sortedMarkets.sort((a, b) {
+                  final aNext = a.nextOperatingDate;
+                  final bNext = b.nextOperatingDate;
+                  
+                  // Markets without operating dates go to the end
+                  if (aNext == null && bNext == null) return 0;
+                  if (aNext == null) return 1;
+                  if (bNext == null) return -1;
+                  
+                  return aNext.compareTo(bNext);
+                });
+                
+                final totalCount = sortedMarkets.length + posts.length + events.length;
 
-            if (totalCount == 0) {
-              return _buildNoResultsMessage();
-            }
+                if (totalCount == 0) {
+                  return _buildNoResultsMessage();
+                }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$totalCount found (${sortedMarkets.length} markets, ${posts.length} vendor pop-ups)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Show markets first, sorted by earliest date
-                ...sortedMarkets.map((market) => _buildMarketCard(market)),
-                // Then show vendor posts
-                ...posts.map((post) => _buildVendorPostCard(post)),
-              ],
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$totalCount found (${sortedMarkets.length} markets, ${posts.length} vendor pop-ups, ${events.length} events)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Show markets first, sorted by earliest date
+                    ...sortedMarkets.map((market) => _buildMarketCard(market)),
+                    // Then show events, sorted by start date
+                    ...events.map((event) => _buildEventCard(event)),
+                    // Then show vendor posts
+                    ...posts.map((post) => _buildVendorPostCard(post)),
+                  ],
+                );
+              },
             );
           },
         );
@@ -712,6 +789,139 @@ class _ShopperHomeState extends State<ShopperHome> {
     final now = DateTime.now();
     return posts.where((post) => post.popUpEndDateTime.isAfter(now)).toList();
   }
+
+  Widget _buildEventCard(Event event) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _handleEventTap(event),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.event,
+                      color: Colors.purple,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Event • ${event.formattedDateTime}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FavoriteButton(
+                    itemId: event.id,
+                    type: FavoriteType.event,
+                    size: 20,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Colors.grey[500],
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => _launchMaps(event.location),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          event.location,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue[700],
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                event.description,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (event.tags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: event.tags.take(3).map((tag) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.purple[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleEventTap(Event event) {
+    // TODO: Navigate to event detail screen when implemented
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Event details coming soon: ${event.name}'),
+        backgroundColor: Colors.purple,
+      ),
+    );
+  }
   
   Widget _buildMarketCard(Market market) {
     return Card(
@@ -839,12 +1049,20 @@ class _ShopperHomeState extends State<ShopperHome> {
             : 'No vendor pop-ups found in $_searchLocation\n\nTry searching for nearby areas or check back later for new pop-ups';
         buttonText = 'Show All Vendors';
         break;
+      case FeedFilter.events:
+        icon = Icons.event;
+        title = 'No events found';
+        subtitle = _searchLocation.isEmpty
+            ? 'Events will appear here as they are created'
+            : 'No events found in $_searchLocation\n\nTry searching for nearby areas or check back later for new events';
+        buttonText = 'Show All Events';
+        break;
       case FeedFilter.all:
         icon = Icons.explore;
-        title = 'No markets or vendors found';
+        title = 'No markets, vendors, or events found';
         subtitle = _searchLocation.isEmpty
-            ? 'Markets and vendor pop-ups will appear here as they join'
-            : 'No markets or vendor pop-ups found in $_searchLocation\n\nTry searching for nearby areas or check back later';
+            ? 'Markets, vendor pop-ups, and events will appear here as they join'
+            : 'No markets, vendor pop-ups, or events found in $_searchLocation\n\nTry searching for nearby areas or check back later';
         buttonText = 'Show All';
         break;
     }

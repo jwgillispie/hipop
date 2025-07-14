@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../models/user_favorite.dart';
 import '../models/market.dart';
 import '../models/managed_vendor.dart';
+import '../models/event.dart';
 import 'market_service.dart';
 import 'managed_vendor_service.dart';
+import 'event_service.dart';
 
 class FavoritesService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -261,6 +263,77 @@ class FavoritesService {
     });
   }
 
+  // Get user's favorite event IDs only (fast for BLoC state)
+  static Future<List<String>> getUserFavoriteEventIds(String userId) async {
+    try {
+      final favoritesSnapshot = await _favoritesCollection
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: FavoriteType.event.name)
+          .get();
+
+      return favoritesSnapshot.docs
+          .map((doc) => UserFavorite.fromFirestore(doc).itemId)
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get favorite event IDs: $e');
+    }
+  }
+
+  // Get user's favorite events with full event data
+  static Future<List<Event>> getUserFavoriteEvents(String userId) async {
+    try {
+      final favoritesSnapshot = await _favoritesCollection
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: FavoriteType.event.name)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final events = <Event>[];
+      
+      for (final doc in favoritesSnapshot.docs) {
+        final favorite = UserFavorite.fromFirestore(doc);
+        try {
+          final event = await EventService.getEvent(favorite.itemId);
+          if (event != null) {
+            events.add(event);
+          }
+        } catch (e) {
+          debugPrint('Error fetching event ${favorite.itemId}: $e');
+        }
+      }
+
+      return events;
+    } catch (e) {
+      throw Exception('Failed to get favorite events: $e');
+    }
+  }
+
+  // Stream user's favorite events
+  static Stream<List<Event>> streamUserFavoriteEvents(String userId) {
+    return _favoritesCollection
+        .where('userId', isEqualTo: userId)
+        .where('type', isEqualTo: FavoriteType.event.name)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final events = <Event>[];
+      
+      for (final doc in snapshot.docs) {
+        final favorite = UserFavorite.fromFirestore(doc);
+        try {
+          final event = await EventService.getEvent(favorite.itemId);
+          if (event != null) {
+            events.add(event);
+          }
+        } catch (e) {
+          debugPrint('Error fetching event ${favorite.itemId}: $e');
+        }
+      }
+      
+      return events;
+    });
+  }
+
   // Get favorite counts for a user
   static Future<Map<String, int>> getFavoriteCounts(String userId) async {
     try {
@@ -270,6 +343,7 @@ class FavoritesService {
 
       int vendorCount = 0;
       int marketCount = 0;
+      int eventCount = 0;
 
       for (final doc in snapshot.docs) {
         final favorite = UserFavorite.fromFirestore(doc);
@@ -277,16 +351,19 @@ class FavoritesService {
           vendorCount++;
         } else if (favorite.type == FavoriteType.market) {
           marketCount++;
+        } else if (favorite.type == FavoriteType.event) {
+          eventCount++;
         }
       }
 
       return {
         'vendors': vendorCount,
         'markets': marketCount,
+        'events': eventCount,
       };
     } catch (e) {
       debugPrint('Error getting favorite counts: $e');
-      return {'vendors': 0, 'markets': 0};
+      return {'vendors': 0, 'markets': 0, 'events': 0};
     }
   }
 

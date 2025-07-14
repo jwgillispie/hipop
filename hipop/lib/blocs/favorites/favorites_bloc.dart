@@ -18,6 +18,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     on<TogglePostFavorite>(_onTogglePostFavorite);
     on<ToggleVendorFavorite>(_onToggleVendorFavorite);
     on<ToggleMarketFavorite>(_onToggleMarketFavorite);
+    on<ToggleEventFavorite>(_onToggleEventFavorite);
     on<ClearAllFavorites>(_onClearAllFavorites);
   }
 
@@ -34,11 +35,13 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
       List<String> favoritePostIds = [];
       List<String> favoriteVendorIds = [];
       List<String> favoriteMarketIds = [];
+      List<String> favoriteEventIds = [];
       
       if (event.userId != null) {
         // Use Firestore service for authenticated users - fetch IDs only for fast loading
         favoriteVendorIds = await FavoritesService.getUserFavoriteVendorIds(event.userId!);
         favoriteMarketIds = await FavoritesService.getUserFavoriteMarketIds(event.userId!);
+        favoriteEventIds = await FavoritesService.getUserFavoriteEventIds(event.userId!);
         
         // Note: Posts are not supported in Firestore service yet, keep local for now
         favoritePostIds = await _favoritesRepository.getFavoritePostIds();
@@ -47,6 +50,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
         favoritePostIds = await _favoritesRepository.getFavoritePostIds();
         favoriteVendorIds = await _favoritesRepository.getFavoriteVendorIds();
         favoriteMarketIds = await _favoritesRepository.getFavoriteMarketIds();
+        // Events are not supported in local repository yet
       }
       
       emit(state.copyWith(
@@ -54,6 +58,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
         favoritePostIds: favoritePostIds,
         favoriteVendorIds: favoriteVendorIds,
         favoriteMarketIds: favoriteMarketIds,
+        favoriteEventIds: favoriteEventIds,
       ));
     } catch (error) {
       emit(state.copyWith(
@@ -267,6 +272,71 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
     }
   }
 
+  Future<void> _onToggleEventFavorite(
+    ToggleEventFavorite event,
+    Emitter<FavoritesState> emit,
+  ) async {
+    try {
+      final updatedFavoriteEventIds = List<String>.from(state.favoriteEventIds);
+      
+      // OPTIMISTIC UPDATE - Update UI immediately
+      final wasAlreadyFavorited = updatedFavoriteEventIds.contains(event.eventId);
+      if (wasAlreadyFavorited) {
+        updatedFavoriteEventIds.remove(event.eventId);
+      } else {
+        updatedFavoriteEventIds.add(event.eventId);
+      }
+      
+      // Emit optimistic state immediately for instant UI feedback
+      emit(state.copyWith(favoriteEventIds: updatedFavoriteEventIds));
+      
+      // Then perform the async database operation
+      if (event.userId != null) {
+        // Use Firestore service for authenticated users
+        try {
+          final newIsFavorited = await FavoritesService.toggleFavorite(
+            userId: event.userId!,
+            itemId: event.eventId,
+            type: FavoriteType.event,
+          );
+          
+          // Verify the result matches our optimistic update
+          final finalFavoriteEventIds = List<String>.from(updatedFavoriteEventIds);
+          if (newIsFavorited && !finalFavoriteEventIds.contains(event.eventId)) {
+            finalFavoriteEventIds.add(event.eventId);
+          } else if (!newIsFavorited && finalFavoriteEventIds.contains(event.eventId)) {
+            finalFavoriteEventIds.remove(event.eventId);
+          }
+          
+          // Only emit again if the final state differs from optimistic state
+          if (finalFavoriteEventIds.length != updatedFavoriteEventIds.length ||
+              !finalFavoriteEventIds.every((id) => updatedFavoriteEventIds.contains(id))) {
+            emit(state.copyWith(favoriteEventIds: finalFavoriteEventIds));
+          }
+        } catch (dbError) {
+          // Revert optimistic update on database error
+          final revertedFavoriteEventIds = List<String>.from(state.favoriteEventIds);
+          if (wasAlreadyFavorited) {
+            revertedFavoriteEventIds.add(event.eventId);
+          } else {
+            revertedFavoriteEventIds.remove(event.eventId);
+          }
+          emit(state.copyWith(favoriteEventIds: revertedFavoriteEventIds));
+          rethrow;
+        }
+      } else {
+        // For now, events are not supported in local repository
+        // This would need to be implemented if anonymous users need to favorite events
+        emit(state.copyWith(favoriteEventIds: updatedFavoriteEventIds));
+      }
+    } catch (error) {
+      emit(state.copyWith(
+        status: FavoritesStatus.error,
+        errorMessage: error.toString(),
+      ));
+    }
+  }
+
   Future<void> _onClearAllFavorites(
     ClearAllFavorites event,
     Emitter<FavoritesState> emit,
@@ -284,6 +354,7 @@ class FavoritesBloc extends Bloc<FavoritesEvent, FavoritesState> {
         favoritePostIds: [],
         favoriteVendorIds: [],
         favoriteMarketIds: [],
+        favoriteEventIds: [],
       ));
     } catch (error) {
       emit(state.copyWith(

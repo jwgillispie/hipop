@@ -30,6 +30,23 @@ class ManagedVendorService {
             .toList());
   }
 
+  /// Get all vendors for a specific market (async method for form usage)
+  static Future<List<ManagedVendor>> getVendorsForMarketAsync(String marketId) async {
+    try {
+      final snapshot = await _vendorsCollection
+          .where('marketId', isEqualTo: marketId)
+          .orderBy('businessName', descending: false)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => ManagedVendor.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting vendors for market: $e');
+      return [];
+    }
+  }
+
   /// Get vendors by organizer
   static Stream<List<ManagedVendor>> getVendorsByOrganizer(String organizerId) {
     return _vendorsCollection

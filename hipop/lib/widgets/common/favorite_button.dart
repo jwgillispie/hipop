@@ -5,10 +5,10 @@ import '../../blocs/favorites/favorites_bloc.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
 
-enum FavoriteType { post, vendor, market }
+enum FavoriteType { post, vendor, market, event }
 
 class FavoriteButton extends StatelessWidget {
-  final String itemId; // Can be postId, vendorId, or marketId
+  final String itemId; // Can be postId, vendorId, marketId, or eventId
   final FavoriteType type;
   final double size;
   final Color? favoriteColor;
@@ -54,6 +54,9 @@ class FavoriteButton extends StatelessWidget {
           case FavoriteType.market:
             isFavorited = state.isMarketFavorite(itemId);
             break;
+          case FavoriteType.event:
+            isFavorited = state.isEventFavorite(itemId);
+            break;
         }
         
         return GestureDetector(
@@ -73,6 +76,9 @@ class FavoriteButton extends StatelessWidget {
                 break;
               case FavoriteType.market:
                 context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: itemId, userId: userId));
+                break;
+              case FavoriteType.event:
+                context.read<FavoritesBloc>().add(ToggleEventFavorite(eventId: itemId, userId: userId));
                 break;
             }
           },
@@ -206,6 +212,9 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
       case FavoriteType.market:
         context.read<FavoritesBloc>().add(ToggleMarketFavorite(marketId: widget.itemId, userId: userId));
         break;
+      case FavoriteType.event:
+        context.read<FavoritesBloc>().add(ToggleEventFavorite(eventId: widget.itemId, userId: userId));
+        break;
     }
   }
 
@@ -223,6 +232,9 @@ class _AnimatedFavoriteButtonState extends State<AnimatedFavoriteButton>
             break;
           case FavoriteType.market:
             isFavorited = state.isMarketFavorite(widget.itemId);
+            break;
+          case FavoriteType.event:
+            isFavorited = state.isEventFavorite(widget.itemId);
             break;
         }
         

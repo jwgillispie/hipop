@@ -15,6 +15,7 @@ class Market extends Equatable {
   final String? description;
   final String? imageUrl;
   final bool isActive;
+  final List<String> associatedVendorIds; // IDs of vendors associated with this market
   final DateTime createdAt;
 
   const Market({
@@ -31,6 +32,7 @@ class Market extends Equatable {
     this.description,
     this.imageUrl,
     this.isActive = true,
+    this.associatedVendorIds = const [],
     required this.createdAt,
   });
 
@@ -56,6 +58,9 @@ class Market extends Equatable {
         description: data['description'],
         imageUrl: data['imageUrl'],
         isActive: data['isActive'] ?? true,
+        associatedVendorIds: data['associatedVendorIds'] != null
+            ? List<String>.from(data['associatedVendorIds'])
+            : [],
         createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
     } catch (e) {
@@ -78,6 +83,7 @@ class Market extends Equatable {
       'description': description,
       'imageUrl': imageUrl,
       'isActive': isActive,
+      'associatedVendorIds': associatedVendorIds,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -96,6 +102,7 @@ class Market extends Equatable {
     String? description,
     String? imageUrl,
     bool? isActive,
+    List<String>? associatedVendorIds,
     DateTime? createdAt,
   }) {
     return Market(
@@ -112,6 +119,7 @@ class Market extends Equatable {
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       isActive: isActive ?? this.isActive,
+      associatedVendorIds: associatedVendorIds ?? this.associatedVendorIds,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -182,6 +190,7 @@ class Market extends Equatable {
         description,
         imageUrl,
         isActive,
+        associatedVendorIds,
         createdAt,
       ];
 }

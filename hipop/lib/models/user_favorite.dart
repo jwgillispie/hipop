@@ -4,12 +4,13 @@ import 'package:equatable/equatable.dart';
 enum FavoriteType {
   vendor,
   market,
+  event,
 }
 
 class UserFavorite extends Equatable {
   final String id;
   final String userId;
-  final String itemId; // vendor ID or market ID
+  final String itemId; // vendor ID, market ID, or event ID
   final FavoriteType type;
   final DateTime createdAt;
   final Map<String, dynamic> metadata; // Store additional info if needed
