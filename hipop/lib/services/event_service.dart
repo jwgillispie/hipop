@@ -5,11 +5,9 @@ class EventService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _collection = 'events';
 
+
   /// Get all active events
   static Stream<List<Event>> getAllActiveEventsStream() {
-    print('🔥 EventService: Querying active events with composite index requirement');
-    print('🔥 Query: isActive == true AND endDateTime > now() ORDER BY endDateTime, startDateTime');
-    
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
@@ -17,13 +15,6 @@ class EventService {
         .orderBy('endDateTime')
         .orderBy('startDateTime')
         .snapshots()
-        .handleError((error) {
-          print('🚨 FIRESTORE INDEX ERROR:');
-          print('🚨 Error: $error');
-          if (error.toString().contains('index')) {
-            print('🚨 ⬆️ COPY THE LINK ABOVE TO CREATE THE INDEX ⬆️');
-          }
-        })
         .map((snapshot) => snapshot.docs
             .map((doc) => Event.fromFirestore(doc))
             .toList());
@@ -31,9 +22,6 @@ class EventService {
 
   /// Get events by city
   static Stream<List<Event>> getEventsByCityStream(String city) {
-    print('🔥 EventService: Querying events by city with composite index requirement');
-    print('🔥 Query: isActive == true AND city == $city AND endDateTime > now() ORDER BY endDateTime, startDateTime');
-    
     return _firestore
         .collection(_collection)
         .where('isActive', isEqualTo: true)
@@ -42,13 +30,6 @@ class EventService {
         .orderBy('endDateTime')
         .orderBy('startDateTime')
         .snapshots()
-        .handleError((error) {
-          print('🚨 FIRESTORE INDEX ERROR (City Query):');
-          print('🚨 Error: $error');
-          if (error.toString().contains('index')) {
-            print('🚨 ⬆️ COPY THE LINK ABOVE TO CREATE THE INDEX ⬆️');
-          }
-        })
         .map((snapshot) => snapshot.docs
             .map((doc) => Event.fromFirestore(doc))
             .toList());

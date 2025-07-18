@@ -14,8 +14,10 @@ app.use(cors({
     'http://127.0.0.1:3000',
     'http://127.0.0.1:8080',
     'http://127.0.0.1:5000',
-    'https://hipop-markets.web.app',
-    'https://hipop-markets.firebaseapp.com',
+    'https://hipop-markets-staging.web.app',
+    'https://hipop-markets-staging.firebaseapp.com',
+    'https://hipop-markets-website.web.app',
+    'https://hipop-markets-website.firebaseapp.com',
     /^http:\/\/localhost:\d+$/,
     /^http:\/\/127\.0\.0\.1:\d+$/
   ],

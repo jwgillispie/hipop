@@ -13,10 +13,10 @@ import '../services/market_service.dart';
 import '../services/url_launcher_service.dart';
 import '../models/market.dart';
 import '../repositories/vendor_posts_repository.dart';
+import '../services/event_service.dart';
 import '../utils/place_utils.dart';
 import '../models/vendor_post.dart';
 import '../models/event.dart';
-import '../services/event_service.dart';
 import '../widgets/debug_account_switcher.dart';
 
 enum FeedFilter { markets, vendors, events, all }
