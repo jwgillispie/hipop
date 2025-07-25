@@ -84,19 +84,6 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
   }
 
   Future<void> _showCreateMarketDialog() async {
-    // Check market limit
-    if (_markets.length >= 3) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You can only manage up to 3 markets. Delete an existing market to create a new one.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
     final result = await showDialog<Market>(
       context: context,
       barrierDismissible: false,

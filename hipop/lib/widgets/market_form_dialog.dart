@@ -3,6 +3,7 @@ import '../models/market.dart';
 import '../models/market_schedule.dart';
 import '../models/vendor_application.dart';
 import '../models/managed_vendor.dart';
+import '../models/unified_vendor.dart';
 import '../services/market_service.dart';
 import '../services/places_service.dart';
 import '../services/vendor_application_service.dart';
@@ -36,6 +37,7 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
   // Vendor management
   List<VendorApplication> _approvedApplications = [];
   List<ManagedVendor> _existingManagedVendors = [];
+  List<UnifiedVendor> _unifiedVendors = [];
   List<String> _selectedVendorIds = [];
   bool _isLoadingVendors = false;
   
@@ -175,12 +177,37 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
       // Load existing managed vendors for the current market if editing
       if (_isEditing) {
         _existingManagedVendors = await ManagedVendorService.getVendorsForMarketAsync(widget.market!.id);
+        
+        // Create unified, deduplicated list
+        _unifiedVendors = _createUnifiedVendorList(_approvedApplications, _existingManagedVendors);
       }
     } catch (e) {
       debugPrint('Error loading vendor data: $e');
     } finally {
       setState(() => _isLoadingVendors = false);
     }
+  }
+
+  List<UnifiedVendor> _createUnifiedVendorList(
+    List<VendorApplication> applications,
+    List<ManagedVendor> managedVendors,
+  ) {
+    final Map<String, UnifiedVendor> vendorMap = {};
+    
+    // Add managed vendors first (they're the "canonical" record)
+    for (final vendor in managedVendors) {
+      final vendorUserId = vendor.metadata['vendorUserId'] as String? ?? vendor.id;
+      vendorMap[vendorUserId] = UnifiedVendor.fromManagedVendor(vendor);
+    }
+    
+    // Add applications that don't already exist as managed vendors
+    for (final application in applications) {
+      if (!vendorMap.containsKey(application.vendorId)) {
+        vendorMap[application.vendorId] = UnifiedVendor.fromApplication(application);
+      }
+    }
+    
+    return vendorMap.values.toList();
   }
 
   @override

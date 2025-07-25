@@ -8,6 +8,7 @@ import '../widgets/common/hipop_text_field.dart';
 import '../widgets/common/simple_places_widget.dart';
 import '../services/places_service.dart';
 import '../services/market_service.dart';
+import '../services/vendor_market_relationship_service.dart';
 
 class CreatePopUpScreen extends StatefulWidget {
   final IVendorPostsRepository postsRepository;
@@ -36,9 +37,13 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
   PlaceDetails? _selectedPlace;
   
   List<Market> _availableMarkets = [];
+  List<Market> _approvedMarkets = [];
   Market? _selectedMarket;
   bool _loadingMarkets = false;
+  bool _loadingApprovedMarkets = false;
   String? _popupType;
+  bool _isIndependent = false;
+  bool _canAccessMarkets = false;
 
   @override
   void initState() {
@@ -112,9 +117,21 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
       final user = FirebaseAuth.instance.currentUser;
       _vendorNameController.text = user?.displayName ?? '';
       
-      // If type is 'independent', pre-select no market
+      // Set type based on URL parameter
       if (_popupType == 'independent') {
-        setState(() => _selectedMarket = null);
+        setState(() {
+          _isIndependent = true;
+          _selectedMarket = null;
+        });
+      } else if (_popupType == 'market') {
+        setState(() {
+          _isIndependent = false;
+        });
+      } else {
+        // Default to independent unless user has approved markets
+        setState(() {
+          _isIndependent = !_canAccessMarkets;
+        });
       }
     }
   }
@@ -129,8 +146,37 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
         _availableMarkets = markets;
         _loadingMarkets = false;
       });
+      
+      // Load approved markets after all markets are loaded
+      _loadApprovedMarkets();
     } catch (e) {
       setState(() => _loadingMarkets = false);
+    }
+  }
+  
+  Future<void> _loadApprovedMarkets() async {
+    setState(() => _loadingApprovedMarkets = true);
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Get markets the vendor has permission for
+        final approvedMarketIds = await VendorMarketRelationshipService.getApprovedMarketsForVendor(user.uid);
+        
+        // Filter the available markets to only show approved ones
+        final approvedMarkets = _availableMarkets.where((market) => 
+          approvedMarketIds.contains(market.id)
+        ).toList();
+        
+        setState(() {
+          _approvedMarkets = approvedMarkets;
+          _canAccessMarkets = approvedMarkets.isNotEmpty;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading approved markets: $e');
+    } finally {
+      setState(() => _loadingApprovedMarkets = false);
     }
   }
   
@@ -236,14 +282,16 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
-        Text(
-          'You can optionally associate with a market or go completely independent!',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey[600],
+        if (_popupType != 'independent') ...[
+          const SizedBox(height: 8),
+          Text(
+            'You can optionally associate with a market or go completely independent!',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
+        ],
       ],
     );
   }
@@ -300,8 +348,10 @@ class _CreatePopUpScreenState extends State<CreatePopUpScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _buildMarketPicker(),
-        const SizedBox(height: 16),
+        if (_popupType != 'independent') ...[
+          _buildMarketPicker(),
+          const SizedBox(height: 16),
+        ],
         _buildDateTimePicker(),
         const SizedBox(height: 16),
         HiPopTextField(

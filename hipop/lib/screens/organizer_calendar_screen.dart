@@ -288,7 +288,7 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
       margin: const EdgeInsets.only(right: 12),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,14 +300,14 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
                       market.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: isOpen ? Colors.green : Colors.grey,
                       borderRadius: BorderRadius.circular(8),
