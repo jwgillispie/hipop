@@ -275,10 +275,10 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
           ),
           floatingActionButton: FloatingActionButton.extended(
             onPressed: _showCreateMarketDialog,
-            backgroundColor: _markets.length >= 3 ? Colors.grey : Colors.teal,
+            backgroundColor: Colors.teal,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add),
-            label: Text(_markets.length >= 3 ? 'Limit Reached (3/3)' : 'Create Market (${_markets.length}/3)'),
+            label: const Text('Create Market'),
           ),
         );
       },
