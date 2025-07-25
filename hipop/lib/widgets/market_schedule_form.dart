@@ -98,6 +98,7 @@ class _MarketScheduleFormState extends State<MarketScheduleForm> {
     final endTimeStr = _formatTimeOfDay(_endTime);
 
     if (_scheduleType == ScheduleType.specificDates && _selectedDates.isNotEmpty) {
+      debugPrint('Generating specific dates schedule with ${_selectedDates.length} dates: $_selectedDates');
       schedules.add(MarketSchedule.specificDates(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         marketId: '', // Will be set when market is created
@@ -529,7 +530,10 @@ class _MarketScheduleFormState extends State<MarketScheduleForm> {
               style: TextStyle(color: Colors.green[700]),
             ),
           ] else if (_scheduleType == ScheduleType.recurring) ...[
-            Text(_getRecurrenceDescription()),
+            Text(
+              _getRecurrenceDescription(),
+              style: TextStyle(color: Colors.green[700]),
+            ),
           ],
         ],
       ),

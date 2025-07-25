@@ -172,10 +172,6 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
       // Load approved vendor applications for the current market if editing
       if (_isEditing) {
         _approvedApplications = await VendorApplicationService.getApprovedApplicationsForMarket(widget.market!.id);
-      }
-      
-      // Load existing managed vendors for the current market if editing
-      if (_isEditing) {
         _existingManagedVendors = await ManagedVendorService.getVendorsForMarketAsync(widget.market!.id);
         
         // Create unified, deduplicated list
@@ -288,13 +284,17 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
     
     // Then create the schedules and link them to the market
     final scheduleIds = <String>[];
+    debugPrint('Creating ${_marketSchedules.length} schedules for market $createdMarketId');
     for (final schedule in _marketSchedules) {
+      debugPrint('Creating schedule: ${schedule.type} with ${schedule.specificDates?.length ?? 0} specific dates');
       final scheduleWithMarketId = schedule.copyWith(marketId: createdMarketId);
       final scheduleId = await MarketService.createMarketSchedule(scheduleWithMarketId);
       scheduleIds.add(scheduleId);
+      debugPrint('Created schedule $scheduleId');
     }
     
     // Update the market with schedule IDs
+    debugPrint('Updating market $createdMarketId with ${scheduleIds.length} schedule IDs: $scheduleIds');
     final updatedMarket = market.copyWith(
       id: createdMarketId,
       scheduleIds: scheduleIds,
@@ -347,12 +347,40 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
             operatingDays[dayName.toLowerCase()] = '${schedule.startTime}-${schedule.endTime}';
           }
         }
+      } else if (schedule.type == ScheduleType.specificDates && schedule.specificDates != null) {
+        // For specific dates, add each date as a formatted string
+        for (final date in schedule.specificDates!) {
+          final dayName = _getDayNameFromIndex(date.weekday);
+          if (dayName != null) {
+            final dateKey = '${dayName.toLowerCase()}_${date.year}_${date.month}_${date.day}';
+            final dateLabel = '${_getMonthName(date.month)} ${date.day}, ${date.year}';
+            operatingDays[dateKey] = '${schedule.startTime}-${schedule.endTime} ($dateLabel)';
+          }
+        }
       }
     }
     
     return operatingDays;
   }
   
+  String _getMonthName(int month) {
+    switch (month) {
+      case 1: return 'Jan';
+      case 2: return 'Feb';
+      case 3: return 'Mar';
+      case 4: return 'Apr';
+      case 5: return 'May';
+      case 6: return 'Jun';
+      case 7: return 'Jul';
+      case 8: return 'Aug';
+      case 9: return 'Sep';
+      case 10: return 'Oct';
+      case 11: return 'Nov';
+      case 12: return 'Dec';
+      default: return 'Unknown';
+    }
+  }
+
   String? _getDayNameFromIndex(int dayIndex) {
     switch (dayIndex) {
       case 1: return 'Monday';
@@ -405,7 +433,7 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Select approved vendors and managed vendors to associate with this market',
+          'Select vendors to associate with this market',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Colors.grey[600],
           ),
@@ -419,42 +447,19 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
             ),
           )
         else ...[
-          // Approved vendor applications
-          if (_approvedApplications.isNotEmpty) ...[
+          // Unified vendor list
+          if (_unifiedVendors.isNotEmpty) ...[
             Text(
-              'Approved Vendor Applications',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Colors.green[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...(_approvedApplications.map((application) => _buildVendorApplicationTile(application))),
-            const SizedBox(height: 16),
-          ],
-          // Existing managed vendors
-          if (_existingManagedVendors.isNotEmpty) ...[
-            Text(
-              'Managed Vendors',
+              'Associated Vendors',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: Colors.blue[700],
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
-            ...(_existingManagedVendors.map((vendor) => _buildManagedVendorTile(vendor))),
+            ...(_unifiedVendors.map((vendor) => _buildUnifiedVendorTile(vendor))),
             const SizedBox(height: 16),
           ],
-          // Create new vendor button
-          OutlinedButton.icon(
-            onPressed: () => _showCreateVendorDialog(),
-            icon: const Icon(Icons.add),
-            label: const Text('Create New Vendor'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.teal,
-              side: BorderSide(color: Colors.teal),
-            ),
-          ),
         ],
       ],
     );
@@ -550,9 +555,88 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
     );
   }
 
-  void _showCreateVendorDialog() {
-    // TODO: Implement vendor creation dialog
-    UIUtils.showInfoSnackBar(context, 'Vendor creation dialog not implemented yet');
+  Widget _buildUnifiedVendorTile(UnifiedVendor vendor) {
+    final isSelected = _selectedVendorIds.contains(vendor.id);
+    
+    return Card(
+      elevation: isSelected ? 3 : 1,
+      color: isSelected ? Colors.blue[50] : null,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: CheckboxListTile(
+        title: Text(vendor.businessName),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(vendor.email),
+            const SizedBox(height: 4),
+            // Show source with appropriate icon/color
+            Row(
+              children: [
+                _getSourceIcon(vendor.source),
+                const SizedBox(width: 4),
+                Text(
+                  _getSourceLabel(vendor.source),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _getSourceColor(vendor.source),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        value: isSelected,
+        onChanged: (bool? value) {
+          setState(() {
+            if (value == true) {
+              _selectedVendorIds.add(vendor.id);
+            } else {
+              _selectedVendorIds.remove(vendor.id);
+            }
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _getSourceIcon(VendorSource source) {
+    switch (source) {
+      case VendorSource.permissionRequest:
+        return Icon(Icons.verified_user, size: 16, color: Colors.green);
+      case VendorSource.eventApplication:
+        return Icon(Icons.event, size: 16, color: Colors.orange);
+      case VendorSource.manuallyCreated:
+        return Icon(Icons.person_add, size: 16, color: Colors.blue);
+      case VendorSource.marketInvitation:
+        return Icon(Icons.mail, size: 16, color: Colors.purple);
+    }
+  }
+
+  String _getSourceLabel(VendorSource source) {
+    switch (source) {
+      case VendorSource.permissionRequest:
+        return 'Permission-Based';
+      case VendorSource.eventApplication:
+        return 'Event Application';
+      case VendorSource.manuallyCreated:
+        return 'Manually Added';
+      case VendorSource.marketInvitation:
+        return 'Market Invitation';
+    }
+  }
+
+  Color _getSourceColor(VendorSource source) {
+    switch (source) {
+      case VendorSource.permissionRequest:
+        return Colors.green;
+      case VendorSource.eventApplication:
+        return Colors.orange;
+      case VendorSource.manuallyCreated:
+        return Colors.blue;
+      case VendorSource.marketInvitation:
+        return Colors.purple;
+    }
   }
 
   @override

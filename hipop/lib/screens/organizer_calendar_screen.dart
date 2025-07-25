@@ -72,7 +72,7 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
       final startDate = DateTime.now().subtract(const Duration(days: 30));
       final endDate = DateTime.now().add(const Duration(days: 90));
       
-      final events = MarketCalendarService.getMarketEventsForDateRange(
+      final events = await MarketCalendarService.getMarketEventsForDateRange(
         markets,
         startDate,
         endDate,
@@ -310,38 +310,39 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: isOpen ? Colors.green : Colors.grey,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       isOpen ? 'OPEN' : 'CLOSED',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 8,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 '${market.operatingDays.length} operating days',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 2),
-              if (market.operatingDays.isNotEmpty)
+              if (market.operatingDays.isNotEmpty) ...[
+                const SizedBox(height: 1),
                 Text(
-                  market.operatingDays.keys.join(', ').toUpperCase(),
+                  _formatOperatingDaysDisplay(market.operatingDays),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     color: Colors.grey[500],
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+              ],
             ],
           ),
         ),
@@ -464,5 +465,55 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
         ),
       ),
     );
+  }
+
+  String _formatOperatingDaysDisplay(Map<String, String> operatingDays) {
+    final formatted = <String>[];
+    
+    for (final key in operatingDays.keys) {
+      // Check if this is a specific date format (contains underscores and numbers)
+      if (key.contains('_') && RegExp(r'_\d{4}_\d{1,2}_\d{1,2}$').hasMatch(key)) {
+        // Parse specific date format: "sunday_2025_7_27"
+        final parts = key.split('_');
+        if (parts.length == 4) {
+          final dayName = parts[0];
+          final year = int.tryParse(parts[1]);
+          final month = int.tryParse(parts[2]);
+          final day = int.tryParse(parts[3]);
+          
+          if (year != null && month != null && day != null) {
+            final monthName = _getMonthName(month);
+            formatted.add('$monthName $day, $year');
+          } else {
+            formatted.add(dayName.toUpperCase());
+          }
+        } else {
+          formatted.add(key.toUpperCase());
+        }
+      } else {
+        // Regular recurring day format
+        formatted.add(key.toUpperCase());
+      }
+    }
+    
+    return formatted.join(', ');
+  }
+
+  String _getMonthName(int month) {
+    switch (month) {
+      case 1: return 'Jan';
+      case 2: return 'Feb';
+      case 3: return 'Mar';
+      case 4: return 'Apr';
+      case 5: return 'May';
+      case 6: return 'Jun';
+      case 7: return 'Jul';
+      case 8: return 'Aug';
+      case 9: return 'Sep';
+      case 10: return 'Oct';
+      case 11: return 'Nov';
+      case 12: return 'Dec';
+      default: return 'Month';
+    }
   }
 }
