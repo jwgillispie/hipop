@@ -528,7 +528,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              application.isMarketPermission ? 'Permission Request' : 'Event Application',
+                              application.isMarketPermission ? 'Permission' : 'Event Application',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
@@ -702,7 +702,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${newStatus.name.toUpperCase()} ${application.isMarketPermission ? 'Permission Request' : 'Application'}'),
+        title: Text('${newStatus.name.toUpperCase()} ${application.isMarketPermission ? 'Request' : 'Application'}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
