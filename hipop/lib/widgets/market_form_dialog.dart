@@ -81,10 +81,8 @@ class _MarketFormDialogState extends State<MarketFormDialog> {
       });
       
       try {
-        print('Loading schedules for market ${widget.market!.id}, scheduleIds: ${widget.market!.scheduleIds}');
         // Load existing schedules from the database
         final schedules = await MarketService.getMarketSchedules(widget.market!.id);
-        print('Loaded ${schedules.length} schedules: ${schedules.map((s) => 'Type: ${s.type}, SpecificDates: ${s.specificDates?.length}')}');
         if (schedules.isNotEmpty) {
           setState(() {
             _marketSchedules = schedules;
