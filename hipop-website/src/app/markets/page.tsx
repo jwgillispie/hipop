@@ -21,12 +21,12 @@ export default async function Markets() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-              Farmers Markets
-              <span className="text-orange-600"> Directory</span>
+              Atlanta-Area
+              <span className="text-orange-600"> Farmers Markets</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Discover fresh, local produce and artisanal foods at farmers markets in your area. 
-              Connect with local vendors and support your community.
+              Discover unique vendors and artisan goods at Atlanta-area farmers markets, vintage fairs, artisan markets, and pop-up events. 
+              HiPop connects you with market organizers, approved vendors, and special events.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link
@@ -90,6 +90,78 @@ export default async function Markets() {
           </div>
         </div>
       )}
+
+      {/* Market Management Section */}
+      <div className="py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-orange-600">For Market Organizers</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Comprehensive Market Management
+            </p>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
+              HiPop provides market organizers with powerful tools to manage vendors, process applications, and build community.
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16">
+              <div className="relative pl-16">
+                <dt className="text-base font-semibold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  Unlimited Market Creation
+                </dt>
+                <dd className="mt-2 text-base leading-7 text-gray-600">
+                  Create and manage unlimited markets with no restrictions. Perfect for seasonal markets, special events, or expanding operations.
+                </dd>
+              </div>
+              <div className="relative pl-16">
+                <dt className="text-base font-semibold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                  </div>
+                  Unified Vendor Management
+                </dt>
+                <dd className="mt-2 text-base leading-7 text-gray-600">
+                  See all your vendors in one place - whether they came from permission requests, applications, or manual additions. No duplicates.
+                </dd>
+              </div>
+              <div className="relative pl-16">
+                <dt className="text-base font-semibold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3-8.25h3M12 4.5c.39 0 .775.008 1.158.023l1.64-.09a5.256 5.256 0 015.256 5.256c0 1.108-.108 2.185-.32 3.226A19.5 19.5 0 0112 21c-7.54 0-13.5-4.47-13.5-10 0-4.84 4.455-8.747 10.247-9.425L12 4.5z" />
+                    </svg>
+                  </div>
+                  Permission-Based Applications
+                </dt>
+                <dd className="mt-2 text-base leading-7 text-gray-600">
+                  Review vendor permission requests once, granting ongoing access to create pop-ups. Builds lasting vendor relationships.
+                </dd>
+              </div>
+              <div className="relative pl-16">
+                <dt className="text-base font-semibold leading-7 text-gray-900">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                    <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                    </svg>
+                  </div>
+                  Smart Vendor Display
+                </dt>
+                <dd className="mt-2 text-base leading-7 text-gray-600">
+                  Vendors appear with clear source attribution - whether they're permission-based, from applications, or manually added.
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
 
       {/* Markets Grid */}
       <div className="bg-gray-50 py-16 sm:py-24">
@@ -189,12 +261,12 @@ export default async function Markets() {
       <div className="py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-orange-600">Why Choose Farmers Markets?</h2>
+            <h2 className="text-base font-semibold leading-7 text-orange-600">Why Choose Local Markets?</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Fresh, Local, Community-Driven
+              Unique, Local, Community-Driven
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Farmers markets offer more than just fresh produce - they're community hubs that connect you directly with local growers and artisans.
+              Local markets offer more than just products - they're community hubs that connect you directly with local creators, artisans, and vendors.
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
@@ -206,10 +278,10 @@ export default async function Markets() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                     </svg>
                   </div>
-                  Fresh & Seasonal
+                  Unique & Handcrafted
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Produce is picked at peak ripeness and sold within days, ensuring maximum flavor and nutrition.
+                  Discover one-of-a-kind items made by local artisans, from handcrafted goods to vintage finds and original art.
                 </dd>
               </div>
               <div className="relative pl-16">

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { UserGroupIcon, ChartBarIcon, MegaphoneIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { getPublicVendors } from '@/lib/data';
+import PricingSection from '@/components/PricingSection';
 
 export const metadata = {
   title: 'For Vendors - Grow Your Business with HiPop Markets',
@@ -20,12 +21,12 @@ export default async function Vendors() {
             <div className="mx-auto max-w-2xl">
               <div className="max-w-lg">
                 <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                  Grow Your
-                  <span className="text-orange-600"> Local Business</span>
+                  Join Atlanta's
+                  <span className="text-orange-600"> Local Market Network</span>
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Join thousands of vendors using HiPop Markets to connect with customers, 
-                  manage their market presence, and grow their local food business.
+                  Connect with Atlanta-area farmers markets, artisan fairs, vintage markets, and pop-up communities. HiPop's permission system, 
+                  pop-up event tools, and unified vendor management help grow your local business.
                 </p>
                 <div className="mt-10 flex items-center gap-x-6">
                   <Link
@@ -103,10 +104,10 @@ export default async function Vendors() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <UserGroupIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Customer Discovery
+                  Market Permission System
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Help customers find you with detailed profiles, product listings, and real-time availability updates.
+                  Request permission to join markets once, then create unlimited pop-ups for approved markets. No more individual event applications.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -114,10 +115,10 @@ export default async function Vendors() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <ChartBarIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Analytics & Insights
+                  Central Pop-up Creation
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Track customer favorites, market performance, and business growth with detailed analytics.
+                  Create both independent pop-ups and market-associated events from one unified dashboard. Toggle between market types seamlessly.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -125,10 +126,10 @@ export default async function Vendors() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <MegaphoneIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Customer Communication
+                  Vendor-Market Relationships
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Send updates about special products, market attendance, and seasonal offerings directly to interested customers.
+                  Build lasting relationships with market organizers through HiPop's permission-based system. Get recognized as a trusted market vendor.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -136,16 +137,19 @@ export default async function Vendors() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <CurrencyDollarIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Business Growth
+                  Profile Unification
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Expand to new markets, understand customer preferences, and build a loyal following.
+                  When markets approve your permission request, your profile information automatically populates their vendor directory. No duplicate data entry.
                 </dd>
               </div>
             </dl>
           </div>
         </div>
       </div>
+
+      {/* Pricing Section - Commented out until market validation */}
+      {/* <PricingSection userType="vendor" /> */}
 
       {/* Success Stories */}
       <div className="bg-gray-50 py-24 sm:py-32">
@@ -163,15 +167,15 @@ export default async function Vendors() {
                   <UserGroupIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Fresh Valley Farms</h3>
-                  <p className="text-sm text-gray-600">Organic vegetables & herbs</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Atlanta Artisan Collective</h3>
+                  <p className="text-sm text-gray-600">Handcrafted goods & art</p>
                 </div>
               </div>
               <blockquote className="mt-6 text-gray-600">
-                "HiPop Markets helped us connect with 50% more customers. The analytics showed us which products were most popular, so we could plan better for each market."
+                "HiPop's permission system changed everything. Instead of applying to each event, I requested permission once and now create pop-ups whenever I have new pieces ready."
               </blockquote>
               <div className="mt-4 text-sm text-orange-600 font-medium">
-                +50% customer reach
+                Streamlined market access
               </div>
             </div>
             
@@ -181,15 +185,15 @@ export default async function Vendors() {
                   <ChartBarIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Artisan Breads Co.</h3>
-                  <p className="text-sm text-gray-600">Handcrafted breads & pastries</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Vintage Peach Boutique</h3>
+                  <p className="text-sm text-gray-600">Curated vintage clothing</p>
                 </div>
               </div>
               <blockquote className="mt-6 text-gray-600">
-                "The customer favorites feature is amazing. We know exactly what to bring to each market, and our waste has decreased by 30%."
+                "The unified vendor profile means when markets approve me, my vintage collection automatically appears in their directory. No more filling out forms repeatedly."
               </blockquote>
               <div className="mt-4 text-sm text-orange-600 font-medium">
-                -30% food waste
+                Eliminated duplicate data entry
               </div>
             </div>
             
@@ -199,15 +203,15 @@ export default async function Vendors() {
                   <MegaphoneIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Honey Hill Apiaries</h3>
-                  <p className="text-sm text-gray-600">Raw honey & bee products</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Southern Craft Studios</h3>
+                  <p className="text-sm text-gray-600">Pottery & handmade crafts</p>
                 </div>
               </div>
               <blockquote className="mt-6 text-gray-600">
-                "Being able to notify customers when we have seasonal honey varieties available has built such a loyal community around our products."
+                "I can create independent pop-ups for art shows and also participate in my approved craft markets. HiPop gives me complete flexibility."
               </blockquote>
               <div className="mt-4 text-sm text-orange-600 font-medium">
-                Built loyal customer base
+                Maximum scheduling flexibility
               </div>
             </div>
           </div>
@@ -258,7 +262,7 @@ export default async function Vendors() {
               Ready to get started?
             </h2>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Join HiPop Markets today and start connecting with more customers in your local community.
+              Join HiPop today and start connecting with more customers in your local creative community.
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
@@ -303,7 +307,7 @@ export default async function Vendors() {
               Start growing your business today
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
-              Join thousands of vendors who are already using HiPop Markets to connect with customers and grow their local food business.
+              Join thousands of vendors who are already using HiPop to connect with customers and grow their local creative business.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link

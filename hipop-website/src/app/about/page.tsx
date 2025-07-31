@@ -16,12 +16,11 @@ export default function About() {
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
               About
-              <span className="text-orange-600"> HiPop Markets</span>
+              <span className="text-orange-600"> HiPop</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              We believe that everyone should have access to fresh, local food and the opportunity 
-              to connect with the people who grow it. HiPop Markets bridges the gap between 
-              communities and their local food systems.
+              HiPop connects Atlanta's local creative community through innovative market and vendor management technology. 
+              Our platform streamlines the relationship between market organizers, vendors, and shoppers across all types of local markets.
             </p>
           </div>
         </div>
@@ -33,12 +32,12 @@ export default function About() {
           <div className="mx-auto max-w-2xl lg:text-center">
             <h2 className="text-base font-semibold leading-7 text-orange-600">Our Mission</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Connecting communities with local food
+              Atlanta's premier local market network
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              HiPop Markets was born from a simple idea: technology can make it easier for people 
-              to discover, connect with, and support their local food community. We're building 
-              the bridge between farmers markets and the digital age.
+              HiPop was born from Atlanta's vibrant creative community. We've built sophisticated 
+              permission-based systems, unified vendor management, and pop-up event tools that 
+              revolutionize how all types of markets and vendors work together.
             </p>
           </div>
           <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
@@ -109,21 +108,20 @@ export default function About() {
           </div>
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-2">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">The Problem We Saw</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">The Atlanta Innovation</h3>
               <p className="text-gray-600 leading-7">
-                Farmers markets are vital community hubs, but information about them was scattered, 
-                outdated, or hard to find. Vendors struggled to reach customers, shoppers couldn't 
-                find what they were looking for, and market organizers lacked tools to manage and 
-                promote their markets effectively.
+                Traditional market systems required vendors to apply for each event individually. 
+                Market organizers struggled with duplicate vendor data and complex application processes. 
+                Atlanta's growing creative market scene needed something better.
               </p>
             </div>
             <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Our Solution</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">HiPop's Breakthrough</h3>
               <p className="text-gray-600 leading-7">
-                We built a platform that brings together all the stakeholders in the farmers market 
-                ecosystem. Shoppers can easily find markets and vendors, vendors can manage their 
-                presence and connect with customers, and organizers can efficiently run their markets 
-                with real-time insights.
+                We pioneered a permission-based system where vendors request market access once, 
+                then create unlimited pop-ups. Unified vendor management eliminates duplicates. 
+                Market organizers can create unlimited markets with comprehensive tools. 
+                Atlanta's creative community now has the sophisticated platform it deserves.
               </p>
             </div>
           </div>
@@ -197,24 +195,24 @@ export default function About() {
           </div>
           <div className="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">1000+</div>
-              <div className="mt-2 text-sm font-medium text-gray-900">Markets Connected</div>
-              <div className="mt-1 text-sm text-gray-600">Farmers markets using our platform</div>
+              <div className="text-3xl font-bold text-orange-600">Unlimited</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">Market Creation</div>
+              <div className="mt-1 text-sm text-gray-600">No restrictions for organizers</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">5000+</div>
-              <div className="mt-2 text-sm font-medium text-gray-900">Active Vendors</div>
-              <div className="mt-1 text-sm text-gray-600">Local businesses growing with us</div>
+              <div className="text-3xl font-bold text-orange-600">Unified</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">Vendor Management</div>
+              <div className="mt-1 text-sm text-gray-600">No duplicate data entry</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">50,000+</div>
-              <div className="mt-2 text-sm font-medium text-gray-900">Community Members</div>
-              <div className="mt-1 text-sm text-gray-600">Shoppers discovering local food</div>
+              <div className="text-3xl font-bold text-orange-600">Permission</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">Based System</div>
+              <div className="mt-1 text-sm text-gray-600">Apply once, create unlimited pop-ups</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">200+</div>
-              <div className="mt-2 text-sm font-medium text-gray-900">Cities Served</div>
-              <div className="mt-1 text-sm text-gray-600">Communities across the country</div>
+              <div className="text-3xl font-bold text-orange-600">Atlanta</div>
+              <div className="mt-2 text-sm font-medium text-gray-900">Focused Network</div>
+              <div className="mt-1 text-sm text-gray-600">Built for our creative community</div>
             </div>
           </div>
         </div>
@@ -234,16 +232,17 @@ export default function About() {
           </div>
           <div className="mx-auto mt-16 max-w-2xl lg:mx-0 lg:max-w-none">
             <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">A Diverse Team United by Purpose</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Built by Atlanta's Creative Community</h3>
               <p className="text-gray-600 leading-7 mb-4">
-                Our team includes software engineers, designers, farmers market organizers, 
-                and local food advocates. This diversity of perspectives ensures that we build 
-                solutions that truly serve the needs of the entire farmers market ecosystem.
+                HiPop was created by people deeply embedded in Atlanta's diverse market scene. 
+                Our team includes regular market shoppers, vendor advocates, and organizers who 
+                understand the unique dynamics of Atlanta's farmers markets, artisan fairs, vintage markets, and pop-up community.
               </p>
               <p className="text-gray-600 leading-7">
-                We're distributed across the country, which keeps us connected to local food 
-                communities from coast to coast. Many of us are regular farmers market shoppers 
-                ourselves, so we understand firsthand the challenges and opportunities we're working to address.
+                We've witnessed firsthand the challenges of traditional market management systems. 
+                That's why we built sophisticated solutions like permission-based vendor relationships, 
+                unified management tools, and flexible pop-up systems that reflect how Atlanta's 
+                diverse creative community actually works.
               </p>
             </div>
           </div>

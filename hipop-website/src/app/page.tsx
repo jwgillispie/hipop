@@ -14,12 +14,12 @@ export default async function Home() {
             <div className="mx-auto max-w-2xl">
               <div className="max-w-lg">
                 <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                  Discover Local
-                  <span className="text-orange-600"> Farmers Markets</span>
+                  Atlanta's Premier
+                  <span className="text-orange-600"> Local Market Network</span>
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Find the freshest local produce, artisanal foods, and connect with vendors in your community. 
-                  HiPop makes discovering farmers markets simple and delicious.
+                  Connect Atlanta's creative community through farmers markets, artisan fairs, vintage markets, and pop-up events. 
+                  HiPop brings together market organizers, vendors, and shoppers in one seamless platform.
                 </p>
                 <div className="mt-10 flex items-center gap-x-6">
                   <Link
@@ -84,7 +84,7 @@ export default async function Home() {
           <div className="mx-auto max-w-2xl lg:text-center">
             <h2 className="text-base font-semibold leading-7 text-orange-600">Everything you need</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Connect with your local food community
+              Connect with your local creative community
             </p>
             <p className="mt-6 text-lg leading-8 text-gray-600">
               HiPop brings together shoppers, vendors, and market organizers in one seamless platform.
@@ -97,10 +97,10 @@ export default async function Home() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <MapPinIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Market Discovery
+                  Smart Market Discovery
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Find farmers markets near you with detailed information about vendors, hours, and specialties.
+                  Find Atlanta-area farmers markets, artisan fairs, vintage markets, and pop-up events with detailed vendor info, schedules, and real-time updates.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -108,10 +108,10 @@ export default async function Home() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <ShoppingBagIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Fresh Local Produce
+                  Vendor-Market Connections
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Connect directly with local farmers and artisans for the freshest seasonal ingredients.
+                  HiPop's permission system lets vendors request access to markets, while organizers can manage their vendor community seamlessly.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -119,10 +119,10 @@ export default async function Home() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <HeartIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Favorites & Recipes
+                  Pop-up Event System
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Save your favorite vendors and discover recipes using fresh market ingredients.
+                  Vendors can create independent pop-ups or associate with approved markets. Shoppers discover both regular market days and special events.
                 </dd>
               </div>
               <div className="relative pl-16">
@@ -130,10 +130,10 @@ export default async function Home() {
                   <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
                     <ArrowRightIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
-                  Vendor Connections
+                  Unified Management
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Get real-time updates about vendor availability and special offerings at your local markets.
+                  Market organizers get unlimited market creation, unified vendor lists, and comprehensive application management tools.
                 </dd>
               </div>
             </dl>

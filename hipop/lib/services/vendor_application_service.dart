@@ -4,6 +4,7 @@ import '../models/vendor_application.dart';
 import '../models/managed_vendor.dart';
 import 'managed_vendor_service.dart';
 import 'user_profile_service.dart';
+import 'vendor_market_relationship_service.dart';
 
 class VendorApplicationService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -26,6 +27,21 @@ class VendorApplicationService {
       debugPrint('❌ Error submitting vendor application: $e');
       throw Exception('Failed to submit application: $e');
     }
+  }
+
+  /// Submit a market permission request
+  static Future<String> submitMarketPermissionRequest({
+    required String vendorId,
+    required String marketId,
+    String? specialMessage,
+    String? howDidYouHear,
+  }) async {
+    return await VendorMarketRelationshipService.submitMarketPermissionRequest(
+      vendorId: vendorId,
+      marketId: marketId,
+      specialMessage: specialMessage,
+      howDidYouHear: howDidYouHear,
+    );
   }
 
   /// Submit a new vendor application with profile validation (legacy method)
@@ -244,7 +260,7 @@ class VendorApplicationService {
     }
   }
 
-  /// Approve an application and create a ManagedVendor record
+  /// Approve an application and create appropriate records
   static Future<void> approveApplication(
     String applicationId,
     String reviewerId, {
@@ -265,10 +281,33 @@ class VendorApplicationService {
         reviewNotes: notes,
       );
 
-      // Create ManagedVendor record from application data
-      await _createManagedVendorFromApplication(application, reviewerId);
-      
-      debugPrint('Application $applicationId approved and ManagedVendor created');
+      if (application.isMarketPermission) {
+        // Get updated application with approved status
+        final updatedApplication = await getApplication(applicationId);
+        if (updatedApplication == null) {
+          throw Exception('Could not fetch updated application');
+        }
+        
+        debugPrint('DEBUG: Original application status: ${application.status.name}');
+        debugPrint('DEBUG: Updated application status: ${updatedApplication.status.name}');
+        debugPrint('DEBUG: Updated application isApproved: ${updatedApplication.isApproved}');
+        debugPrint('DEBUG: Updated application isMarketPermission: ${updatedApplication.isMarketPermission}');
+        
+        // Create vendor-market relationship for permission requests
+        await VendorMarketRelationshipService.createRelationshipFromApplication(
+          updatedApplication,
+          reviewerId,
+        );
+        
+        // Also create ManagedVendor record so vendor appears in vendor management
+        debugPrint('🔄 Starting ManagedVendor creation for permission application: ${application.id}');
+        await _createManagedVendorFromApplication(application, reviewerId);
+        debugPrint('✅ Application $applicationId approved - VendorMarketRelationship and ManagedVendor created');
+      } else {
+        // Create ManagedVendor record for event applications
+        await _createManagedVendorFromApplication(application, reviewerId);
+        debugPrint('Application $applicationId approved and ManagedVendor created');
+      }
     } catch (e) {
       debugPrint('Error approving application: $e');
       throw Exception('Failed to approve application: $e');
@@ -481,13 +520,18 @@ class VendorApplicationService {
           'createdFromApplication': true,
           'applicationId': application.id,
           'vendorUserId': application.vendorId,
+          'applicationType': application.applicationType.name,
+          'isPermissionBased': application.isMarketPermission,
         },
       );
 
       // Create the ManagedVendor record
-      await ManagedVendorService.createVendor(managedVendor);
-      
-      debugPrint('ManagedVendor created from application: ${application.id}');
+      debugPrint('🔄 Calling ManagedVendorService.createVendor for: ${managedVendor.businessName}');
+      debugPrint('📊 ManagedVendor data: marketId=${managedVendor.marketId}, isPermissionBased=${managedVendor.metadata['isPermissionBased']}');
+
+      final createdVendorId = await ManagedVendorService.createVendor(managedVendor);
+
+      debugPrint('✅ ManagedVendor created from application: ${application.id} with ID: $createdVendorId');
     } catch (e) {
       debugPrint('Error creating ManagedVendor from application: $e');
       throw Exception('Failed to create vendor profile: $e');

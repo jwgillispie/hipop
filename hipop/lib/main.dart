@@ -16,14 +16,26 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await _initializeFirebase();
     // Initialize Remote Config in background - don't block app startup
     RemoteConfigService.instance.catchError((e) => null);
     runApp(const HiPopApp());
   } catch (e) {
     runApp(ErrorApp(error: e.toString()));
+  }
+}
+
+Future<void> _initializeFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      // Firebase already initialized, which is fine
+      return;
+    }
+    rethrow;
   }
 }
 

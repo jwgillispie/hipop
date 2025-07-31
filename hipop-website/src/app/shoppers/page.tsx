@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MapPinIcon, MagnifyingGlassIcon, HeartIcon, BellIcon, ClockIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import PricingSection from '@/components/PricingSection';
 
 export const metadata = {
   title: 'For Shoppers - Discover Local Markets & Artisan Goods | HiPop Markets',
@@ -143,6 +144,9 @@ export default function Shoppers() {
           </div>
         </div>
       </div>
+
+      {/* Pricing Section - Commented out until market validation */}
+      {/* <PricingSection userType="shopper" /> */}
 
       {/* Benefits Section */}
       <div className="bg-gray-50 py-24 sm:py-32">
