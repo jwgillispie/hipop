@@ -37,3 +37,18 @@ build/
 **/build/
 .dart_tool/
 **/.dart_tool/
+
+# Repository Organization
+temp/
+*.tmp
+*.bak
+*~
+
+# Analysis Reports (keep local only)
+repo-analysis-report-*.md
+repo-analysis-backup-*/
+
+# Development temp files
+.vscode/
+.idea/
+
