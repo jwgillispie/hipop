@@ -1,1 +1,39 @@
+# Firebase Configuration Files (Sensitive)
 google-services.json
+GoogleService-Info.plist
+firebase-adminsdk-*.json
+service-account-*.json
+
+# Android Firebase Configuration
+**/android/**/google-services.json
+android/app/google-services.json
+hipop/android/app/google-services.json
+
+# iOS Firebase Configuration  
+**/ios/**/GoogleService-Info.plist
+ios/Runner/GoogleService-Info.plist
+hipop/ios/Runner/GoogleService-Info.plist
+
+# Environment Files
+.env
+.env.local
+.env.production
+.env.staging
+**/.env*
+
+# API Keys and Secrets
+api-keys.json
+secrets.json
+config/keys.json
+**/*key*.json
+**/*secret*.json
+
+# Firebase Hosting Cache
+.firebase/hosting.*
+**/.firebase/
+
+# Build artifacts
+build/
+**/build/
+.dart_tool/
+**/.dart_tool/

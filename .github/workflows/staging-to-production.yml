@@ -1,0 +1,93 @@
+name: Deploy Staging to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: 'Type "DEPLOY" to confirm production deployment'
+        required: true
+        default: ''
+  
+  # Optional: Auto-trigger when staging is updated (uncomment if desired)
+  # push:
+  #   branches: [ staging ]
+
+jobs:
+  deploy-to-production:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_deploy == 'DEPLOY'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+    - name: Checkout production branch
+      run: git checkout production
+
+    - name: Merge staging into production
+      run: |
+        git merge origin/staging --no-ff -m "Deploy staging to production
+
+        🤖 Automated deployment via GitHub Actions
+        
+        Merging latest changes from staging branch to production.
+        "
+
+    - name: Push to production
+      run: git push origin production
+
+    - name: Create deployment summary
+      run: |
+        echo "## 🚀 Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** staging → production" >> $GITHUB_STEP_SUMMARY
+        echo "**Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** $(git rev-parse HEAD)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Changes Deployed:" >> $GITHUB_STEP_SUMMARY
+        git log --oneline production^..production >> $GITHUB_STEP_SUMMARY
+
+  validate-deployment:
+    runs-on: ubuntu-latest
+    needs: deploy-to-production
+    if: always() && needs.deploy-to-production.result == 'success'
+    
+    steps:
+    - name: Checkout production branch
+      uses: actions/checkout@v4
+      with:
+        ref: production
+
+    - name: Validate Flutter project
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: 'stable'
+    
+    - name: Get dependencies
+      run: |
+        cd hipop
+        flutter pub get
+
+    - name: Run Flutter analysis
+      run: |
+        cd hipop
+        flutter analyze --no-fatal-infos
+
+    - name: Validate website build
+      run: |
+        cd hipop-website
+        npm install
+        npm run build
+
+    - name: Deployment validation complete
+      run: |
+        echo "## ✅ Deployment Validation Complete" >> $GITHUB_STEP_SUMMARY
+        echo "Both Flutter app and website validated successfully." >> $GITHUB_STEP_SUMMARY
