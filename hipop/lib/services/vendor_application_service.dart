@@ -467,7 +467,7 @@ class VendorApplicationService {
           .map((categoryName) {
             try {
               return VendorCategory.values.firstWhere(
-                (category) => category.name == categoryName,
+                (category) => category.displayName == categoryName,
               );
             } catch (e) {
               debugPrint('Unknown category: $categoryName');
