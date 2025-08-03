@@ -347,7 +347,7 @@ class _MarketManagementScreenState extends State<MarketManagementScreen> {
           Text(
             _searchQuery.isNotEmpty
                 ? 'Try adjusting your search'
-                : 'Create your first market to get started (up to 3 markets allowed)',
+                : 'Create your first market to get started',
             style: TextStyle(color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
