@@ -269,11 +269,6 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
       _result = '';
     });
 
-    print('\n========================================');
-    print('🗑️ STARTING DATABASE CLEANUP');
-    print('========================================');
-    print('Protected emails: ${_protectedEmails.join(", ")}');
-    print('========================================\n');
 
     try {
       String log = '🗑️ STARTING DATABASE CLEANUP\n\n';
@@ -284,7 +279,6 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
       
       // Get all user profiles to identify protected users
       final userProfilesSnapshot = await _firestore.collection('user_profiles').get();
-      print('Found ${userProfilesSnapshot.docs.length} total user profiles');
       
       for (final doc in userProfilesSnapshot.docs) {
         final data = doc.data();
@@ -293,7 +287,6 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         if (_protectedEmails.contains(email)) {
           protectedUserIds.add(doc.id);
           log += '✅ Protected user: $email (ID: ${doc.id})\n';
-          print('✅ Protecting user: $email');
         }
       }
       
@@ -312,7 +305,6 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
           .where((doc) => !protectedUserIds.contains(doc.id))
           .toList();
       
-      print('Deleting ${userProfilesToDelete.length} user profiles...');
       for (final doc in userProfilesToDelete) {
         final data = doc.data();
         final email = data['email'] ?? 'unknown';
@@ -320,7 +312,6 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         log += '❌ Deleted user profile: $email\n';
       }
       log += 'Deleted ${userProfilesToDelete.length} user profiles\n\n';
-      print('✅ Deleted ${userProfilesToDelete.length} user profiles');
       
       setState(() {
         _result = log;
@@ -594,7 +585,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${analyticsReportsSnapshot.docs.length} analytics reports\n\n';
-      print('Deleted ${analyticsReportsSnapshot.docs.length} analytics reports');
+      // print('Deleted ${analyticsReportsSnapshot.docs.length} analytics reports');
       
       setState(() {
         _result = log;
@@ -607,7 +598,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${debugLogsSnapshot.docs.length} debug logs\n\n';
-      print('Deleted ${debugLogsSnapshot.docs.length} debug logs');
+      // print('Deleted ${debugLogsSnapshot.docs.length} debug logs');
       
       setState(() {
         _result = log;
@@ -620,7 +611,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${eventsSnapshot.docs.length} events\n\n';
-      print('Deleted ${eventsSnapshot.docs.length} events');
+      // print('Deleted ${eventsSnapshot.docs.length} events');
       
       setState(() {
         _result = log;
@@ -633,7 +624,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${performanceMetricsSnapshot.docs.length} performance metrics\n\n';
-      print('Deleted ${performanceMetricsSnapshot.docs.length} performance metrics');
+      // print('Deleted ${performanceMetricsSnapshot.docs.length} performance metrics');
       
       setState(() {
         _result = log;
@@ -646,7 +637,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${premiumLogsSnapshot.docs.length} premium logs\n\n';
-      print('Deleted ${premiumLogsSnapshot.docs.length} premium logs');
+      // print('Deleted ${premiumLogsSnapshot.docs.length} premium logs');
       
       setState(() {
         _result = log;
@@ -659,7 +650,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${systemAlertsSnapshot.docs.length} system alerts\n\n';
-      print('Deleted ${systemAlertsSnapshot.docs.length} system alerts');
+      // print('Deleted ${systemAlertsSnapshot.docs.length} system alerts');
       
       setState(() {
         _result = log;
@@ -672,7 +663,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${systemHealthReportsSnapshot.docs.length} system health reports\n\n';
-      print('Deleted ${systemHealthReportsSnapshot.docs.length} system health reports');
+      // print('Deleted ${systemHealthReportsSnapshot.docs.length} system health reports');
       
       setState(() {
         _result = log;
@@ -685,7 +676,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${userEventsSnapshot.docs.length} user events\n\n';
-      print('Deleted ${userEventsSnapshot.docs.length} user events');
+      // print('Deleted ${userEventsSnapshot.docs.length} user events');
       
       setState(() {
         _result = log;
@@ -698,7 +689,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${userFeedbackSnapshot.docs.length} user feedback\n\n';
-      print('Deleted ${userFeedbackSnapshot.docs.length} user feedback');
+      // print('Deleted ${userFeedbackSnapshot.docs.length} user feedback');
       
       setState(() {
         _result = log;
@@ -711,7 +702,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${userSessionsSnapshot.docs.length} user sessions\n\n';
-      print('Deleted ${userSessionsSnapshot.docs.length} user sessions');
+      // print('Deleted ${userSessionsSnapshot.docs.length} user sessions');
       
       setState(() {
         _result = log;
@@ -724,7 +715,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${userStatsSnapshot.docs.length} user stats\n\n';
-      print('Deleted ${userStatsSnapshot.docs.length} user stats');
+      // print('Deleted ${userStatsSnapshot.docs.length} user stats');
       
       setState(() {
         _result = log;
@@ -737,7 +728,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${vendorProductListsSnapshot.docs.length} vendor product lists\n\n';
-      print('Deleted ${vendorProductListsSnapshot.docs.length} vendor product lists');
+      // print('Deleted ${vendorProductListsSnapshot.docs.length} vendor product lists');
       
       setState(() {
         _result = log;
@@ -750,7 +741,7 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
         await doc.reference.delete();
       }
       log += 'Deleted ${vendorStatsSnapshot.docs.length} vendor stats\n\n';
-      print('Deleted ${vendorStatsSnapshot.docs.length} vendor stats');
+      // print('Deleted ${vendorStatsSnapshot.docs.length} vendor stats');
       
       setState(() {
         _result = log;
@@ -797,11 +788,11 @@ class _DebugDatabaseCleanerState extends State<DebugDatabaseCleaner> {
       log += '🎉 Database is now clean and ready for fresh data!\n';
       log += '🔒 All protected users remain intact.';
       
-      print('\n========================================');
-      print('✅ DATABASE CLEANUP COMPLETED');
-      print('========================================');
-      print('Protected ${protectedUserIds.length} users');
-      print('========================================\n');
+      // print('\n========================================');
+      // print('✅ DATABASE CLEANUP COMPLETED');
+      // print('========================================');
+      // print('Protected ${protectedUserIds.length} users');
+      // print('========================================\n');
       
       setState(() {
         _result = log;

@@ -22,7 +22,6 @@ class EventService {
           developer.log('Error loading all active events: $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService getAllActiveEventsStream Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs
@@ -45,7 +44,6 @@ class EventService {
           developer.log('Error loading events by city ($city): $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService getEventsByCityStream Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs
@@ -115,7 +113,6 @@ class EventService {
           developer.log('Error loading current and upcoming events: $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService getCurrentAndUpcomingEventsStream Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs
@@ -138,7 +135,6 @@ class EventService {
           developer.log('Error loading events for market ($marketId): $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService getEventsForMarketStream Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs
@@ -158,7 +154,6 @@ class EventService {
           developer.log('Error loading events by organizer ($organizerId): $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService getEventsByOrganizerStream Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs
@@ -192,7 +187,6 @@ class EventService {
           developer.log('Error searching events by text ($searchText): $error', name: 'EventService');
           if (kIsWeb) {
             // ignore: avoid_print
-            print('🔴 EventService searchEventsByText Error: $error');
           }
         })
         .map((snapshot) => snapshot.docs

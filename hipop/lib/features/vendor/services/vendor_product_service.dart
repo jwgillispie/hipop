@@ -315,15 +315,12 @@ class VendorProductService {
       final currentProducts = await getVendorProducts(vendorId);
       final productCount = currentProducts.length;
       
-      debugPrint('🔍 DEBUG: Checking product limit - Current: $productCount products for vendor: $vendorId');
       
       // Check subscription limits - current usage should be within limit
       final canCreate = await SubscriptionService.isWithinLimit(vendorId, 'global_products', productCount);
-      debugPrint('🔍 DEBUG: Can create product? $canCreate');
       
       return canCreate;
     } catch (e) {
-      debugPrint('❌ Error checking product limit: $e');
       return false; // Err on the side of caution
     }
   }
@@ -430,7 +427,6 @@ class VendorProductService {
           .collection(_listsCollection)
           .add(list.toFirestore());
 
-      debugPrint('✅ Product list created: ${list.name}');
       return list.copyWith(id: docRef.id);
     } catch (e) {
       debugPrint('Error creating product list: $e');
@@ -458,7 +454,6 @@ class VendorProductService {
           .doc(list.id)
           .update(updatedList.toFirestore());
 
-      debugPrint('✅ Product list updated: ${list.name}');
       return updatedList;
     } catch (e) {
       debugPrint('Error updating product list: $e');
@@ -474,7 +469,6 @@ class VendorProductService {
           .doc(listId)
           .delete();
 
-      debugPrint('✅ Product list deleted: $listId');
     } catch (e) {
       debugPrint('Error deleting product list: $e');
       rethrow;
@@ -592,7 +586,6 @@ class VendorProductService {
         }
       }
 
-      debugPrint('✅ Assigned ${assignments.length}/${list.productIds.length} products from list "${list.name}" to market');
       return assignments;
     } catch (e) {
       debugPrint('Error assigning product list to market: $e');

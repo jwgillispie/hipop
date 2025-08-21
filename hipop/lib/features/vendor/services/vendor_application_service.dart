@@ -14,17 +14,10 @@ class VendorApplicationService {
   /// Submit a new vendor application
   static Future<String> submitApplication(VendorApplication application) async {
     try {
-      debugPrint('DEBUG: Submitting application to Firestore...');
-      debugPrint('DEBUG: Market ID: ${application.marketId}');
-      debugPrint('DEBUG: Vendor ID: ${application.vendorId}');
-      debugPrint('DEBUG: Status: ${application.status.name}');
-      debugPrint('DEBUG: Application Type: ${application.applicationType.name}');
       
       final docRef = await _applicationsCollection.add(application.toFirestore());
-      debugPrint('SUCCESS: Vendor application submitted with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('ERROR: Error submitting vendor application: $e');
       throw Exception('Failed to submit application: $e');
     }
   }
@@ -91,13 +84,9 @@ class VendorApplicationService {
         },
       );
 
-      debugPrint('DEBUG: Submitting application for vendor: ${vendorProfile.businessName ?? vendorProfile.displayName}');
-      debugPrint('DEBUG: Application market ID: $marketId');
-      debugPrint('DEBUG: Profile metadata: ${application.metadata}');
 
       return await submitApplication(application);
     } catch (e) {
-      debugPrint('Error submitting application with profile: $e');
       rethrow;
     }
   }
@@ -151,14 +140,9 @@ class VendorApplicationService {
         },
       );
 
-      debugPrint('DEBUG: Submitting application for vendor: ${vendorProfile.businessName ?? vendorProfile.displayName}');
-      debugPrint('DEBUG: Application market ID: $marketId');
-      debugPrint('DEBUG: Application type: ${application.applicationType.name}');
-      debugPrint('DEBUG: Profile metadata: ${application.metadata}');
 
       return await submitApplication(application);
     } catch (e) {
-      debugPrint('Error submitting application with dates: $e');
       rethrow;
     }
   }
@@ -214,7 +198,6 @@ class VendorApplicationService {
           .map((doc) => VendorApplication.fromFirestore(doc))
           .toList();
     } catch (e) {
-      debugPrint('Error getting approved applications for market: $e');
       return [];
     }
   }
@@ -245,9 +228,7 @@ class VendorApplicationService {
         'reviewNotes': reviewNotes,
         'updatedAt': Timestamp.now(),
       });
-      debugPrint('Application $applicationId updated to status: ${newStatus.name}');
     } catch (e) {
-      debugPrint('Error updating application status: $e');
       throw Exception('Failed to update application: $e');
     }
   }
@@ -280,10 +261,6 @@ class VendorApplicationService {
           throw Exception('Could not fetch updated application');
         }
         
-        debugPrint('DEBUG: Original application status: ${application.status.name}');
-        debugPrint('DEBUG: Updated application status: ${updatedApplication.status.name}');
-        debugPrint('DEBUG: Updated application isApproved: ${updatedApplication.isApproved}');
-        debugPrint('DEBUG: Updated application isMarketPermission: ${updatedApplication.isMarketPermission}');
         
         // Create vendor-market relationship for permission requests
         await VendorMarketRelationshipService.createRelationshipFromApplication(
@@ -292,16 +269,12 @@ class VendorApplicationService {
         );
         
         // Also create ManagedVendor record so vendor appears in vendor management
-        debugPrint('🔄 Starting ManagedVendor creation for permission application: ${application.id}');
         await _createManagedVendorFromApplication(application, reviewerId);
-        debugPrint('SUCCESS: Application $applicationId approved - VendorMarketRelationship and ManagedVendor created');
       } else {
         // Create ManagedVendor record for event applications
         await _createManagedVendorFromApplication(application, reviewerId);
-        debugPrint('Application $applicationId approved and ManagedVendor created');
       }
     } catch (e) {
-      debugPrint('Error approving application: $e');
       throw Exception('Failed to approve application: $e');
     }
   }
@@ -372,7 +345,6 @@ class VendorApplicationService {
       
       return stats;
     } catch (e) {
-      debugPrint('Error getting application stats: $e');
       throw Exception('Failed to get application statistics: $e');
     }
   }
@@ -386,7 +358,6 @@ class VendorApplicationService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting application: $e');
       throw Exception('Failed to get application: $e');
     }
   }
@@ -401,9 +372,7 @@ class VendorApplicationService {
         ...updates,
         'updatedAt': Timestamp.now(),
       });
-      debugPrint('Application $applicationId updated');
     } catch (e) {
-      debugPrint('Error updating application: $e');
       throw Exception('Failed to update application: $e');
     }
   }
@@ -412,9 +381,7 @@ class VendorApplicationService {
   static Future<void> deleteApplication(String applicationId) async {
     try {
       await _applicationsCollection.doc(applicationId).delete();
-      debugPrint('Application $applicationId deleted');
     } catch (e) {
-      debugPrint('Error deleting application: $e');
       throw Exception('Failed to delete application: $e');
     }
   }
@@ -430,7 +397,6 @@ class VendorApplicationService {
       
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      debugPrint('Error checking vendor application: $e');
       return false;
     }
   }
@@ -444,7 +410,6 @@ class VendorApplicationService {
       // Check if ManagedVendor already exists for this application
       final existingVendor = await _findManagedVendorByApplication(application.id);
       if (existingVendor != null) {
-        debugPrint('ManagedVendor already exists for application: ${application.id}');
         return;
       }
 
@@ -462,7 +427,6 @@ class VendorApplicationService {
                 (category) => category.name == categoryName,
               );
             } catch (e) {
-              debugPrint('Unknown category: $categoryName');
               return VendorCategory.other;
             }
           })
@@ -518,14 +482,10 @@ class VendorApplicationService {
       );
 
       // Create the ManagedVendor record
-      debugPrint('🔄 Calling ManagedVendorService.createVendor for: ${managedVendor.businessName}');
-      debugPrint('INFO: ManagedVendor data: marketId=${managedVendor.marketId}, isPermissionBased=${managedVendor.metadata['isPermissionBased']}');
 
       final createdVendorId = await ManagedVendorService.createVendor(managedVendor);
 
-      debugPrint('SUCCESS: ManagedVendor created from application: ${application.id} with ID: $createdVendorId');
     } catch (e) {
-      debugPrint('Error creating ManagedVendor from application: $e');
       throw Exception('Failed to create vendor profile: $e');
     }
   }
@@ -544,7 +504,6 @@ class VendorApplicationService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error finding ManagedVendor by application: $e');
       return null;
     }
   }
@@ -576,7 +535,6 @@ class VendorApplicationService {
         'instagramHandle': vendorProfile.instagramHandle,
       };
     } catch (e) {
-      debugPrint('Error getting application with profile: $e');
       return null;
     }
   }
@@ -591,7 +549,6 @@ class VendorApplicationService {
       
       return snapshot.docs.length;
     } catch (e) {
-      debugPrint('Error getting pending applications count: $e');
       return 0;
     }
   }
@@ -624,13 +581,11 @@ class VendorApplicationService {
             reviewNotes: 'Automatically rejected: Market event date is in the past.',
           );
           rejectedCount++;
-          debugPrint('Auto-rejected application ${application.id} for ${application.vendorBusinessName} - past dates');
         }
       }
 
       return rejectedCount;
     } catch (e) {
-      debugPrint('Error auto-rejecting expired applications: $e');
       return 0;
     }
   }
@@ -662,13 +617,11 @@ class VendorApplicationService {
             reviewNotes: 'Automatically rejected: Market event date is in the past.',
           );
           rejectedCount++;
-          debugPrint('Auto-rejected application ${application.id} for ${application.vendorBusinessName} - past dates');
         }
       }
 
       return rejectedCount;
     } catch (e) {
-      debugPrint('Error auto-rejecting all expired applications: $e');
       return 0;
     }
   }

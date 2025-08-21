@@ -147,7 +147,7 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading initial search data: $e');
+      // Silent error handling
     }
   }
 
@@ -188,7 +188,6 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
         _updateOverlay();
       }
     } catch (e) {
-      debugPrint('Error fetching suggestions: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

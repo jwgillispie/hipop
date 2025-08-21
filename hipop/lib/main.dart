@@ -41,14 +41,12 @@ Future<void> _initializeApp() async {
     // This ensures config values are available for Stripe initialization
     try {
       await RemoteConfigService.instance;
-      debugPrint('✅ Remote Config initialized successfully during app startup');
       
       // In debug mode, run configuration test
       if (kDebugMode) {
         await RemoteConfigService.debugConfiguration();
       }
     } catch (e) {
-      debugPrint('⚠️ Remote Config initialization failed during startup: $e');
       // Continue with app startup, fallback to .env values will be used
     }
     
@@ -58,7 +56,6 @@ Future<void> _initializeApp() async {
     // Initialize Analytics with consent
     await _initializeAnalytics();
   } catch (e) {
-    debugPrint('WARNING: Initialization warning: $e');
     // Continue with app startup even if some services fail
   }
 }
@@ -74,14 +71,11 @@ Future<void> _initializeStripe() async {
         // Fallback for web - only if Remote Config fails
         // This is your live publishable key - safe to expose
         publishableKey = 'pk_live_51RsQNrC8FCSHt0iKEEfaV2Kd98wwFHAw0d6rcvLR7kxGzvfWuOxhaOvYOD2GRvODOR5eAQnFC7p622ech7BDGddy00IP3xtXun';
-        debugPrint('⚠️ Using hardcoded fallback key for web (Remote Config failed)');
       } else {
         // For mobile, try to load from .env
         publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
-        debugPrint('⚠️ Using .env fallback key for mobile (Remote Config failed)');
       }
     } else {
-      debugPrint('✅ Using Stripe key from Remote Config');
     }
     
     if (publishableKey.isNotEmpty) {
@@ -93,12 +87,9 @@ Future<void> _initializeStripe() async {
         // Return URL will be set in Payment Sheet parameters
       }
       
-      debugPrint('SUCCESS: Stripe initialized successfully for ${kIsWeb ? 'web' : 'mobile'}');
     } else {
-      debugPrint('WARNING: Stripe publishable key not found');
     }
   } catch (e) {
-    debugPrint('ERROR: Failed to initialize Stripe: $e');
     // Continue without Stripe rather than crash the app
   }
 }
@@ -122,9 +113,7 @@ Future<void> _initializeAnalytics() async {
     // Initialize analytics service and request consent
     await RealTimeAnalyticsService.initialize();
     await RealTimeAnalyticsService.requestTrackingConsent();
-    debugPrint('SUCCESS: Analytics initialized with consent');
   } catch (e) {
-    debugPrint('WARNING: Analytics initialization failed: $e');
     // Continue without analytics rather than crash the app
   }
 }

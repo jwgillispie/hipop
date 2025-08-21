@@ -57,7 +57,6 @@ class _MarketDetailScreenState extends State<MarketDetailScreen>
       );
     } catch (e) {
       // Don't disrupt UI if analytics fails
-      debugPrint('Failed to track market view: $e');
     }
   }
 

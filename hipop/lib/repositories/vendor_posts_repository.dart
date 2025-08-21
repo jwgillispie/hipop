@@ -66,7 +66,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
               // All active posts are included - market posts are auto-approved
               posts.add(post);
             } catch (e) {
-              debugPrint('Failed to parse vendor post ${doc.id}: $e');
             }
           }
           
@@ -92,7 +91,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
               final post = VendorPost.fromFirestore(doc);
               posts.add(post);
             } catch (e) {
-              debugPrint('Failed to parse post ${doc.id}: $e');
             }
           }
           
@@ -110,7 +108,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
     }
 
     final searchKeyword = location.toLowerCase().trim();
-    debugPrint('VendorPostsRepository: Searching for location: "$location" -> "$searchKeyword"');
     
     return _firestore
         .collection(_collection)
@@ -121,7 +118,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
               .map((doc) => VendorPost.fromFirestore(doc))
               .toList();
           
-          debugPrint('VendorPostsRepository: Total active posts: ${allPosts.length}');
           
           // Filter by location using optimized locationData fields for faster searches
           final filteredPosts = allPosts.where((post) {
@@ -184,7 +180,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
             return locationMatch || keywordMatch;
           }).toList();
           
-          debugPrint('VendorPostsRepository: Filtered to ${filteredPosts.length} posts');
           
           // Sort filtered posts by start time (latest first)
           filteredPosts.sort((a, b) => b.popUpStartDateTime.compareTo(a.popUpStartDateTime));
@@ -499,10 +494,8 @@ class VendorPostsRepository implements IVendorPostsRepository {
 
       if (updateCount > 0) {
         await batch.commit();
-        debugPrint('Migration completed: Updated $updateCount posts with location keywords');
       }
     } catch (e) {
-      debugPrint('Migration failed: ${e.toString()}');
       throw VendorPostException('Failed to migrate posts: ${e.toString()}');
     }
   }
@@ -628,7 +621,6 @@ class VendorPostsRepository implements IVendorPostsRepository {
         });
       }
     } catch (e) {
-      debugPrint('Error updating vendor post count: $e');
       // Don't throw - this shouldn't block the approval
     }
   }

@@ -374,15 +374,11 @@ class SubscriptionService {
     try {
       final subscription = await getUserSubscription(userId);
       if (subscription == null) {
-        debugPrint('🔍 DEBUG: No subscription found for user: $userId, creating free subscription');
         // Create free subscription if none exists
         final userProfile = await _firestore.collection('users').doc(userId).get();
-        debugPrint('🔍 DEBUG: User profile exists: ${userProfile.exists}');
         if (userProfile.exists) {
-          debugPrint('🔍 DEBUG: User profile data: ${userProfile.data()}');
         }
         final userType = userProfile.data()?['userType'] ?? 'shopper';
-        debugPrint('🔍 DEBUG: User type from profile: $userType (default: shopper)');
         
         // Critical fix: If we're checking vendor-specific limits but userType is wrong, override it
         String actualUserType = userType;
@@ -391,15 +387,11 @@ class SubscriptionService {
           actualUserType = 'vendor';
         }
         final newSubscription = await createFreeSubscription(userId, actualUserType);
-        debugPrint('🔍 DEBUG: Created subscription - tier: ${newSubscription.tier.name}, userType: ${newSubscription.userType}');
         final limit = newSubscription.getLimit(limitName);
-        debugPrint('🔍 DEBUG: Limit for $limitName: $limit');
         final withinLimit = newSubscription.isWithinLimit(limitName, currentUsage);
-        debugPrint('🔍 DEBUG: isWithinLimit($limitName, $currentUsage) = $withinLimit (limit: $limit)');
         return withinLimit;
       }
 
-      debugPrint('🔍 DEBUG: Found existing subscription - tier: ${subscription.tier.name}, userType: ${subscription.userType}');
       
       // Critical check: If subscription has wrong userType, fix it
       if (limitName == 'global_products' && subscription.userType != 'vendor') {
@@ -410,16 +402,12 @@ class SubscriptionService {
             .update(updatedSubscription.toFirestore());
         
         final limit = updatedSubscription.getLimit(limitName);
-        debugPrint('🔍 DEBUG: Limit for $limitName after fix: $limit');
         final withinLimit = updatedSubscription.isWithinLimit(limitName, currentUsage);
-        debugPrint('🔍 DEBUG: isWithinLimit($limitName, $currentUsage) = $withinLimit (limit: $limit) after fix');
         return withinLimit;
       }
       
       final limit = subscription.getLimit(limitName);
-      debugPrint('🔍 DEBUG: Limit for $limitName: $limit');
       final withinLimit = subscription.isWithinLimit(limitName, currentUsage);
-      debugPrint('🔍 DEBUG: isWithinLimit($limitName, $currentUsage) = $withinLimit (limit: $limit)');
       return withinLimit;
     } catch (e) {
       debugPrint('❌ Error checking usage limit: $e');

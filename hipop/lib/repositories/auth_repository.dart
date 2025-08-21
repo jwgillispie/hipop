@@ -129,8 +129,6 @@ class AuthRepository implements IAuthRepository {
     required String userType,
   }) async {
     try {
-      print('DEBUG: Attempting to create user profile for UID: $uid');
-      print('DEBUG: Name: $name, Email: $email, UserType: $userType');
       
       // Create user profile in the user_profiles collection
       await _firestore.collection('user_profiles').doc(uid).set({
@@ -145,13 +143,8 @@ class AuthRepository implements IAuthRepository {
         'ccEmails': userType == 'market_organizer' ? [] : null,
       }, SetOptions(merge: true));
       
-      print('DEBUG: User profile created/updated successfully in user_profiles collection');
     } catch (e) {
-      print('DEBUG: Error creating user profile: $e');
-      print('DEBUG: Error type: ${e.runtimeType}');
       if (e is FirebaseException) {
-        print('DEBUG: Firebase error code: ${e.code}');
-        print('DEBUG: Firebase error message: ${e.message}');
         throw AuthException('Firebase error: ${e.message ?? 'Unknown Firebase error'}');
       }
       throw AuthException('Failed to create user profile: $e');
@@ -165,7 +158,6 @@ class AuthRepository implements IAuthRepository {
       });
     } catch (e) {
       // Silently handle errors when updating last login
-      print('DEBUG: Error updating last login: $e');
     }
   }
 

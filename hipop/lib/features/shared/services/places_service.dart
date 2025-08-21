@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class PlacesService {
-  // Production server URL - using working staging proxy server
-  static const String _productionApiUrl = 'https://hipop-places-server-788332607491.us-central1.run.app/api/places';
+  // Production server URL - using the original working production proxy server from hipop-old
+  static const String _productionApiUrl = 'https://hipop-places-server-356168021674.us-central1.run.app/api/places';
 
   static String get _baseUrl {
     if (kIsWeb) {

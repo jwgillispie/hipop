@@ -39,7 +39,6 @@ class MarketService {
 
   static Future<List<Market>> getMarketsByCity(String city) async {
     try {
-      debugPrint('MarketService: Searching for markets with city = "$city"');
       
       final querySnapshot = await _marketsCollection
           .where('city', isEqualTo: city)
@@ -50,11 +49,9 @@ class MarketService {
           .map((doc) => Market.fromFirestore(doc))
           .toList();
           
-      debugPrint('MarketService: Query returned ${markets.length} markets');
       
       // If no exact match found, try more flexible searching
       if (markets.isEmpty) {
-        debugPrint('MarketService: No exact match found, trying flexible search...');
         return await _getMarketsByCityFlexible(city);
       }
       
@@ -121,11 +118,9 @@ class MarketService {
           .where((market) => !market.isRecruitmentOnly) // Filter out recruitment-only posts
           .toList();
           
-      debugPrint('MarketService: Total active markets: ${allMarkets.length}');
       
       // Normalize search city for comparison (handles aliases)
       final normalizedSearchCity = _normalizeSearchCity(searchCity);
-      debugPrint('MarketService: Normalized search city: "$searchCity" -> "$normalizedSearchCity"');
       
       // Filter markets with flexible matching using optimized locationData
       final matchingMarkets = allMarkets.where((market) {
@@ -214,14 +209,11 @@ class MarketService {
         return false;
       }).toList();
       
-      debugPrint('MarketService: Flexible search found ${matchingMarkets.length} markets');
       for (final market in matchingMarkets) {
-        debugPrint('  - ${market.name} in ${market.city}, ${market.state}');
       }
       
       return matchingMarkets;
     } catch (e) {
-      debugPrint('MarketService: Error in flexible search: $e');
       return [];
     }
   }
@@ -262,11 +254,9 @@ class MarketService {
               .where((market) => !market.isRecruitmentOnly) // Filter out recruitment-only posts
               .toList();
               
-          debugPrint('MarketService Stream: Total active markets: ${allMarkets.length}');
           
           // Normalize search city for comparison (handles aliases)
           final normalizedSearchCity = _normalizeSearchCity(city);
-          debugPrint('MarketService Stream: Normalized search city: "$city" -> "$normalizedSearchCity"');
           
           // Filter markets with optimized location data first, then legacy fallback
           final matchingMarkets = allMarkets.where((market) {
@@ -307,7 +297,6 @@ class MarketService {
                    normalizedSearchCity.contains(marketCity);
           }).toList();
           
-          debugPrint('MarketService Stream: Optimized search found ${matchingMarkets.length} markets');
           return matchingMarkets;
         });
   }

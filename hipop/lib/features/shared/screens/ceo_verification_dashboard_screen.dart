@@ -43,8 +43,6 @@ class _CeoVerificationDashboardScreenState extends State<CeoVerificationDashboar
   // Force all the queries that need indexes to run immediately
   // This will trigger Firebase to show index creation links in console
   void _triggerIndexCreation() {
-    print('🔥 TRIGGERING FIREBASE INDEX CREATION...');
-    print('Check browser console for Firebase index creation links!');
     
     // Query 1: profileSubmitted + verificationRequestedAt
     FirebaseFirestore.instance
@@ -54,8 +52,6 @@ class _CeoVerificationDashboardScreenState extends State<CeoVerificationDashboar
         .limit(1)
         .get()
         .catchError((error) {
-      print('🔗 INDEX NEEDED: profileSubmitted + verificationRequestedAt');
-      print('Error: $error');
       return <QueryDocumentSnapshot>[];
     });
 
@@ -67,8 +63,6 @@ class _CeoVerificationDashboardScreenState extends State<CeoVerificationDashboar
         .limit(1)
         .get()
         .catchError((error) {
-      print('🔗 INDEX NEEDED: verificationStatus + verificationRequestedAt');
-      print('Error: $error');
       return <QueryDocumentSnapshot>[];
     });
 
@@ -81,12 +75,9 @@ class _CeoVerificationDashboardScreenState extends State<CeoVerificationDashboar
         .limit(1)
         .get()
         .catchError((error) {
-      print('🔗 INDEX NEEDED: userType + verificationStatus + verificationRequestedAt');
-      print('Error: $error');
       return <QueryDocumentSnapshot>[];
     });
 
-    print('🔥 INDEX CREATION QUERIES SENT - CHECK CONSOLE FOR LINKS!');
   }
 
   @override

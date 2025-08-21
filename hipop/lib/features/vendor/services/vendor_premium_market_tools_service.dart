@@ -43,7 +43,6 @@ class VendorPremiumMarketToolsService {
         },
       ];
     } catch (e) {
-      debugPrint('Error getting bulk post templates: $e');
       return [];
     }
   }
@@ -84,7 +83,6 @@ class VendorPremiumMarketToolsService {
         'createdPosts': createdPosts,
       };
     } catch (e) {
-      debugPrint('Error creating bulk posts: $e');
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -124,7 +122,6 @@ class VendorPremiumMarketToolsService {
         },
       };
     } catch (e) {
-      debugPrint('Error getting scheduled posts analytics: $e');
       return {};
     }
   }
@@ -171,7 +168,6 @@ class VendorPremiumMarketToolsService {
         },
       };
     } catch (e) {
-      debugPrint('Error getting custom branding options: $e');
       return {};
     }
   }
@@ -186,10 +182,8 @@ class VendorPremiumMarketToolsService {
           .doc(vendorId)
           .set(brandingSettings, SetOptions(merge: true));
       
-      debugPrint('Branding settings updated for vendor: $vendorId');
       return true;
     } catch (e) {
-      debugPrint('Error updating branding settings: $e');
       return false;
     }
   }
@@ -236,7 +230,6 @@ class VendorPremiumMarketToolsService {
         ],
       };
     } catch (e) {
-      debugPrint('Error getting social media integration: $e');
       return {};
     }
   }
@@ -252,10 +245,8 @@ class VendorPremiumMarketToolsService {
       // In a real implementation, this would integrate with social media APIs
       await Future.delayed(const Duration(milliseconds: 500)); // Simulate API call
       
-      debugPrint('Social media post scheduled for platforms: ${platforms.join(', ')}');
       return true;
     } catch (e) {
-      debugPrint('Error scheduling social media post: $e');
       return false;
     }
   }
@@ -292,7 +283,6 @@ class VendorPremiumMarketToolsService {
         ],
       };
     } catch (e) {
-      debugPrint('Error getting market tools analytics: $e');
       return {};
     }
   }

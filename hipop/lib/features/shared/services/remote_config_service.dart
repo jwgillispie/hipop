@@ -60,18 +60,10 @@ class RemoteConfigService {
       
       _initialized = true;
       
-      // Log loaded values for debugging
-      debugPrint('✅ Remote Config initialized');
-      debugPrint('📋 Stripe Price IDs loaded from Remote Config:');
-      debugPrint('  Environment: ${_remoteConfig!.getString('ENVIRONMENT')}');
-      debugPrint('  Vendor: ${_remoteConfig!.getString('STRIPE_PRICE_VENDOR_PREMIUM')}');
-      debugPrint('  Market Organizer: ${_remoteConfig!.getString('STRIPE_PRICE_MARKET_ORGANIZER_PREMIUM')}');
-      debugPrint('  Enterprise: ${_remoteConfig!.getString('STRIPE_PRICE_ENTERPRISE')}');
+      // Configuration loaded successfully
       
       return _remoteConfig!;
     } catch (e) {
-      debugPrint('❌ Remote Config initialization failed: $e');
-      debugPrint('⚠️ Using fallback .env values');
       return null;
     }
   }

@@ -64,7 +64,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     Emitter<SubscriptionState> emit,
   ) async {
     try {
-      debugPrint('$_logPrefix Initializing subscription for user: ${event.userId}');
       _currentUserId = event.userId;
       
       emit(const SubscriptionLoading(message: 'Loading subscription data...'));
@@ -77,11 +76,9 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
           .streamUserSubscription(event.userId)
           .listen(
             (subscription) {
-              debugPrint('$_logPrefix Subscription stream update: ${subscription?.tier.name}');
               add(SubscriptionChanged(subscription));
             },
             onError: (error) {
-              debugPrint('$_logPrefix Subscription stream error: $error');
               add(SubscriptionErrorOccurred(error.toString()));
             },
           );
@@ -90,10 +87,8 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       _startExpirationMonitoring();
       _startBillingIssueMonitoring();
       
-      debugPrint('$_logPrefix Successfully initialized subscription monitoring');
       
     } catch (e) {
-      debugPrint('$_logPrefix Error initializing subscription: $e');
       emit(SubscriptionError(message: 'Failed to initialize subscription: $e'));
     }
   }
@@ -107,12 +102,10 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       final subscription = event.subscription;
       
       if (subscription == null) {
-        debugPrint('$_logPrefix No subscription found - user likely needs free subscription created');
         emit(const SubscriptionError(message: 'No subscription found'));
         return;
       }
 
-      debugPrint('$_logPrefix Processing subscription change: ${subscription.tier.name} (${subscription.status.name})');
       
       // Clear caches when subscription changes
       _clearCaches();
@@ -133,10 +126,8 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         currentUsage: currentUsage,
       ));
       
-      debugPrint('$_logPrefix Successfully loaded subscription state');
       
     } catch (e) {
-      debugPrint('$_logPrefix Error processing subscription change: $e');
       emit(SubscriptionError(
         message: 'Failed to process subscription change: $e',
         subscription: event.subscription,
@@ -155,7 +146,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         return;
       }
 
-      debugPrint('$_logPrefix Processing upgrade to ${event.tier.name}');
       
       // Get current subscription for previous tier tracking
       final currentState = state;
@@ -181,7 +171,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       // Clear security caches
       SecureSubscriptionService.invalidateCache(_currentUserId!);
       
-      debugPrint('$_logPrefix Successfully upgraded to ${event.tier.name}');
       
       // Emit upgrade success state
       emit(SubscriptionUpgradedState(
@@ -192,7 +181,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       // The subscription stream will update the main state
       
     } catch (e) {
-      debugPrint('$_logPrefix Error upgrading subscription: $e');
       emit(SubscriptionError(message: 'Failed to upgrade subscription: $e'));
     }
   }
@@ -208,7 +196,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         return;
       }
 
-      debugPrint('$_logPrefix Processing subscription cancellation');
       
       // Get current subscription
       final currentState = state;
@@ -225,7 +212,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       // Clear security caches
       SecureSubscriptionService.invalidateCache(_currentUserId!);
       
-      debugPrint('$_logPrefix Successfully cancelled subscription');
       
       emit(SubscriptionCancelledState(
         subscription: cancelledSubscription,
@@ -233,7 +219,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       ));
       
     } catch (e) {
-      debugPrint('$_logPrefix Error cancelling subscription: $e');
       emit(SubscriptionError(message: 'Failed to cancel subscription: $e'));
     }
   }
@@ -249,12 +234,10 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         return;
       }
 
-      debugPrint('$_logPrefix Checking access to feature: ${event.featureName}');
       
       // Check cache first
       if (_featureAccessCache.containsKey(event.featureName)) {
         final hasAccess = _featureAccessCache[event.featureName]!;
-        debugPrint('$_logPrefix Feature access cached: $hasAccess');
         
         final currentState = state;
         if (currentState is SubscriptionLoaded) {
@@ -276,7 +259,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       // Cache the result
       _featureAccessCache[event.featureName] = hasAccess;
       
-      debugPrint('$_logPrefix Feature access result: $hasAccess');
       
       final currentState = state;
       if (currentState is SubscriptionLoaded) {
@@ -288,7 +270,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       }
       
     } catch (e) {
-      debugPrint('$_logPrefix Error checking feature access: $e');
       emit(SubscriptionError(message: 'Failed to check feature access: $e'));
     }
   }
@@ -304,7 +285,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         return;
       }
 
-      debugPrint('$_logPrefix Checking usage limit: ${event.limitName} (current: ${event.currentUsage})');
       
       // Use secure validation service for critical limits
       final withinLimit = await SecureSubscriptionService.validateUsageLimit(
@@ -316,7 +296,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       // Get the actual limit value
       final limit = await SubscriptionService.getUserLimit(_currentUserId!, event.limitName);
       
-      debugPrint('$_logPrefix Usage limit result: $withinLimit (limit: $limit)');
       
       final currentState = state;
       if (currentState is SubscriptionLoaded) {
@@ -330,7 +309,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       }
       
     } catch (e) {
-      debugPrint('$_logPrefix Error checking usage limit: $e');
       emit(SubscriptionError(message: 'Failed to check usage limit: $e'));
     }
   }
@@ -346,7 +324,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         return;
       }
 
-      debugPrint('$_logPrefix Updating payment information');
       
       final updatedSubscription = await SubscriptionService.updatePaymentInfo(
         _currentUserId!,
@@ -356,12 +333,10 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         nextPaymentDate: event.nextPaymentDate,
       );
       
-      debugPrint('$_logPrefix Successfully updated payment information');
       
       emit(PaymentInfoUpdatedState(updatedSubscription));
       
     } catch (e) {
-      debugPrint('$_logPrefix Error updating payment info: $e');
       emit(SubscriptionError(message: 'Failed to update payment information: $e'));
     }
   }
@@ -374,7 +349,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       if (_currentUserId == null) return;
 
-      debugPrint('$_logPrefix Refreshing subscription (force: ${event.forceRefresh})');
       
       if (event.forceRefresh) {
         _clearCaches();
@@ -385,7 +359,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       add(SubscriptionInitialized(_currentUserId!));
       
     } catch (e) {
-      debugPrint('$_logPrefix Error refreshing subscription: $e');
       emit(SubscriptionError(message: 'Failed to refresh subscription: $e'));
     }
   }
@@ -395,7 +368,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     SubscriptionErrorOccurred event,
     Emitter<SubscriptionState> emit,
   ) async {
-    debugPrint('$_logPrefix Processing subscription error: ${event.error}');
     
     // Try to preserve current subscription data if available
     final currentState = state;
@@ -414,7 +386,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     SubscriptionErrorCleared event,
     Emitter<SubscriptionState> emit,
   ) async {
-    debugPrint('$_logPrefix Clearing subscription error');
     
     // Return to previous valid state or re-initialize
     if (_currentUserId != null) {
@@ -432,15 +403,12 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       if (_currentUserId == null) return;
 
-      debugPrint('$_logPrefix Preloading subscription data');
       
       // Preload via secure service
       await SecureSubscriptionService.preloadSubscription(_currentUserId!);
       
-      debugPrint('$_logPrefix Subscription data preloaded');
       
     } catch (e) {
-      debugPrint('$_logPrefix Error preloading subscription: $e');
       // Don't emit error for preloading failures
     }
   }
@@ -453,7 +421,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       if (_currentUserId == null) return;
 
-      debugPrint('$_logPrefix Loading upgrade recommendations');
       
       final recommendations = await SubscriptionService.getUpgradeRecommendations(_currentUserId!);
       
@@ -466,7 +433,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       }
       
     } catch (e) {
-      debugPrint('$_logPrefix Error loading upgrade recommendations: $e');
       // Don't emit error for recommendations failures
     }
   }
@@ -479,7 +445,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       if (_currentUserId == null) return;
 
-      debugPrint('$_logPrefix Tracking feature usage: ${event.featureName}');
       
       // Update usage analytics in Firestore
       await _firestore
@@ -492,7 +457,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
           });
       
     } catch (e) {
-      debugPrint('$_logPrefix Error tracking feature usage: $e');
       // Don't emit error for tracking failures
     }
   }
@@ -517,7 +481,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       
       return results;
     } catch (e) {
-      debugPrint('$_logPrefix Error loading feature access: $e');
       return {};
     }
   }
@@ -538,7 +501,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       
       return results;
     } catch (e) {
-      debugPrint('$_logPrefix Error loading usage limits: $e');
       return {};
     }
   }
@@ -548,7 +510,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       return await SubscriptionService.getCurrentUsage(subscription.userId);
     } catch (e) {
-      debugPrint('$_logPrefix Error loading current usage: $e');
       return {};
     }
   }
@@ -619,7 +580,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
       }
       
     } catch (e) {
-      debugPrint('$_logPrefix Error checking subscription issues: $e');
     }
   }
 
@@ -640,7 +600,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
           // Adjust check frequency based on subscription status
           final newInterval = _getExpirationCheckInterval();
           if (newInterval != checkInterval) {
-            debugPrint('$_logPrefix Adjusting expiration check interval to ${newInterval.inMinutes} minutes');
             _startExpirationMonitoring(); // Restart with new interval
           }
         }
@@ -719,7 +678,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
         }
       }
     } catch (e) {
-      debugPrint('$_logPrefix Error checking payment method expiration: $e');
     }
   }
 
@@ -728,7 +686,6 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     _featureAccessCache.clear();
     _usageLimitsCache.clear();
     _currentUsageCache.clear();
-    debugPrint('$_logPrefix Cleared all caches');
   }
 
   /// Get common features for user type
@@ -790,13 +747,11 @@ class SubscriptionBloc extends Bloc<SubscriptionEvent, SubscriptionState> {
     try {
       await _checkSubscriptionIssues(event.subscription, emit);
     } catch (e) {
-      debugPrint('$_logPrefix Error checking subscription issues: $e');
     }
   }
 
   @override
   Future<void> close() {
-    debugPrint('$_logPrefix Closing subscription bloc');
     
     _subscriptionStreamSubscription?.cancel();
     _expirationCheckTimer?.cancel();

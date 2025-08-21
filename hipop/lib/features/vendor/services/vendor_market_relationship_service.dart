@@ -78,9 +78,6 @@ class VendorMarketRelationshipService {
         },
       );
 
-      debugPrint('DEBUG: Submitting market permission request for vendor: ${vendorProfile.businessName ?? vendorProfile.displayName}');
-      debugPrint('DEBUG: Market ID: $marketId');
-      debugPrint('DEBUG: Application type: ${application.applicationType.name}');
 
       final applicationId = await VendorApplicationService.submitApplication(application);
       
@@ -102,7 +99,6 @@ class VendorMarketRelationshipService {
           );
         }
       } catch (e) {
-        debugPrint('⚠️ Failed to send application notification: $e');
         // Don't fail the operation if email fails
       }
       
@@ -178,11 +174,9 @@ class VendorMarketRelationshipService {
       );
 
       final docRef = await _relationshipsCollection.add(relationship.toFirestore());
-      debugPrint('✅ Vendor-Market relationship created with ID: ${docRef.id}');
       
       return relationship.copyWith(id: docRef.id);
     } catch (e) {
-      debugPrint('❌ Error creating vendor-market relationship: $e');
       throw Exception('Failed to create vendor-market relationship: $e');
     }
   }
@@ -440,7 +434,6 @@ class VendorMarketRelationshipService {
       );
 
       final docRef = await _relationshipsCollection.add(relationship.toFirestore());
-      debugPrint('✅ Vendor invitation created with ID: ${docRef.id}');
       
       // Send invitation email
       try {
@@ -453,13 +446,11 @@ class VendorMarketRelationshipService {
           );
         }
       } catch (e) {
-        debugPrint('⚠️ Failed to send invitation email: $e');
         // Don't fail the entire operation if email fails
       }
       
       return relationship.copyWith(id: docRef.id);
     } catch (e) {
-      debugPrint('❌ Error creating vendor invitation: $e');
       throw Exception('Failed to create vendor invitation: $e');
     }
   }

@@ -110,23 +110,23 @@ class _VendorMarketDiscoveryOptimizedState extends State<VendorMarketDiscoveryOp
       });
     } catch (e) {
       // Debug print for Firestore index errors
-      print('\n🔴 ERROR in _loadMarkets:');
-      print('Error Type: ${e.runtimeType}');
-      print('Error Message: $e');
+      // print('\n🔴 ERROR in _loadMarkets:');
+      // print('Error Type: ${e.runtimeType}');
+      // print('Error Message: $e');
       
       // Extract and print Firestore index creation link if present
       final errorString = e.toString();
       if (errorString.contains('index')) {
-        print('\n⚠️ FIRESTORE INDEX REQUIRED!');
-        print('Full error with index link:');
-        print(errorString);
+        // print('\n⚠️ FIRESTORE INDEX REQUIRED!');
+        // print('Full error with index link:');
+        // print(errorString);
         
         // Try to extract the URL
         final urlPattern = RegExp(r'https://console\.firebase\.google\.com/[^\s]+');
         final match = urlPattern.firstMatch(errorString);
         if (match != null) {
-          print('\n🔗 INDEX CREATION LINK:');
-          print(match.group(0));
+          // print('\n🔗 INDEX CREATION LINK:');
+          // print(match.group(0));
         }
       }
       
@@ -169,23 +169,23 @@ class _VendorMarketDiscoveryOptimizedState extends State<VendorMarketDiscoveryOp
       });
     } catch (e) {
       // Debug print for Firestore index errors
-      print('\n🔴 ERROR in _loadMoreMarkets:');
-      print('Error Type: ${e.runtimeType}');
-      print('Error Message: $e');
+      // print('\n🔴 ERROR in _loadMoreMarkets:');
+      // print('Error Type: ${e.runtimeType}');
+      // print('Error Message: $e');
       
       // Extract and print Firestore index creation link if present
       final errorString = e.toString();
       if (errorString.contains('index')) {
-        print('\n⚠️ FIRESTORE INDEX REQUIRED!');
-        print('Full error with index link:');
-        print(errorString);
+        // print('\n⚠️ FIRESTORE INDEX REQUIRED!');
+        // print('Full error with index link:');
+        // print(errorString);
         
         // Try to extract the URL
         final urlPattern = RegExp(r'https://console\.firebase\.google\.com/[^\s]+');
         final match = urlPattern.firstMatch(errorString);
         if (match != null) {
-          print('\n🔗 INDEX CREATION LINK:');
-          print(match.group(0));
+          // print('\n🔗 INDEX CREATION LINK:');
+          // print(match.group(0));
         }
       }
       

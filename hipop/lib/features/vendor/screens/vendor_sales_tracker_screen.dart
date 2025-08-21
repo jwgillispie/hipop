@@ -725,15 +725,15 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
   }
   
   Future<void> _saveSalesData() async {
-    print('\n🔵 SAVE REVENUE DATA PRESSED');
-    print('Form valid: ${_formKey.currentState?.validate()}');
-    print('Selected venue: ${_selectedVenueDetails?.displayText}');
-    print('Selected market ID: $_selectedMarketId');
+    // print('\n🔵 SAVE REVENUE DATA PRESSED');
+    // print('Form valid: ${_formKey.currentState?.validate()}');
+    // print('Selected venue: ${_selectedVenueDetails?.displayText}');
+    // print('Selected market ID: $_selectedMarketId');
     
     if (!_formKey.currentState!.validate() || _selectedVenueDetails == null) {
-      print('❌ Validation failed or no venue selected');
-      print('Form validation: ${_formKey.currentState?.validate()}');
-      print('Venue Details is null: ${_selectedVenueDetails == null}');
+      // print('❌ Validation failed or no venue selected');
+      // print('Form validation: ${_formKey.currentState?.validate()}');
+      // print('Venue Details is null: ${_selectedVenueDetails == null}');
       
       // Show error message to user
       if (mounted) {
@@ -749,7 +749,7 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
       return;
     }
     
-    print('✅ Validation passed, starting save process...');
+    // print('✅ Validation passed, starting save process...');
     setState(() => _isSaving = true);
     
     try {
@@ -759,17 +759,17 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
       final commissionRate = double.tryParse(_commissionRateController.text) ?? 5.0;
       final commissionPaid = revenue * (commissionRate / 100);
       
-      print('📊 Sales Data to Save:');
-      print('  Revenue: \$$revenue');
-      print('  Transactions: $transactions');
-      print('  Market Fee: \$$marketFee');
-      print('  Commission Rate: $commissionRate%');
-      print('  Commission Paid: \$$commissionPaid');
-      print('  Date: $_selectedDate');
-      print('  Venue Type: ${_selectedVenueDetails!.type.displayName}');
-      print('  Venue Details: ${_selectedVenueDetails!.displayText}');
-      print('  Market ID: $_selectedMarketId');
-      print('  Is Update: ${_existingSalesData != null}');
+      // print('📊 Sales Data to Save:');
+      // print('  Revenue: \$$revenue');
+      // print('  Transactions: $transactions');
+      // print('  Market Fee: \$$marketFee');
+      // print('  Commission Rate: $commissionRate%');
+      // print('  Commission Paid: \$$commissionPaid');
+      // print('  Date: $_selectedDate');
+      // print('  Venue Type: ${_selectedVenueDetails!.type.displayName}');
+      // print('  Venue Details: ${_selectedVenueDetails!.displayText}');
+      // print('  Market ID: $_selectedMarketId');
+      // print('  Is Update: ${_existingSalesData != null}');
       
       final salesData = VendorSalesData(
         id: _existingSalesData?.id ?? '',
@@ -790,17 +790,17 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
       );
       
       if (_existingSalesData != null) {
-        print('📝 Updating existing sales data with ID: ${_existingSalesData!.id}');
+        // print('📝 Updating existing sales data with ID: ${_existingSalesData!.id}');
         await _salesService.updateSalesData(salesData);
-        print('✅ Update successful');
+        // print('✅ Update successful');
       } else {
-        print('📝 Creating new sales data entry');
+        // print('📝 Creating new sales data entry');
         final newId = await _salesService.createSalesData(salesData);
-        print('✅ Created with ID: $newId');
+        // print('✅ Created with ID: $newId');
       }
       
       // Track sales entry completion
-      print('📈 Tracking analytics event...');
+      // print('📈 Tracking analytics event...');
       await RealTimeAnalyticsService.trackEvent(
         'sales_data_saved',
         {
@@ -816,12 +816,12 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
       );
       
       // Refresh historical data and analytics
-      print('🔄 Refreshing history and analytics...');
+      // print('🔄 Refreshing history and analytics...');
       _loadSalesHistory();
       _loadSalesAnalytics();
       
       if (mounted) {
-        print('✅ Showing success message');
+        // print('✅ Showing success message');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_existingSalesData != null ? 'Sales data updated!' : 'Sales data saved!'),
@@ -829,18 +829,18 @@ class _VendorSalesTrackerScreenState extends State<VendorSalesTrackerScreen>
           ),
         );
         
-        print('🔙 Navigating back with saved data');
+        // print('🔙 Navigating back with saved data');
         Navigator.of(context).pop(salesData);
       }
       
     } catch (e) {
-      print('❌ ERROR saving sales data: $e');
-      print('Error type: ${e.runtimeType}');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ ERROR saving sales data: $e');
+      // print('Error type: ${e.runtimeType}');
+      // print('Stack trace: ${StackTrace.current}');
       
       if (mounted) _showError('Error saving sales data: $e');
     } finally {
-      print('🏁 Save process complete, resetting saving state');
+      // print('🏁 Save process complete, resetting saving state');
       if (mounted) setState(() => _isSaving = false);
     }
   }

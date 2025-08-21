@@ -548,11 +548,6 @@ class AppRouter {
                 }
                 
                 // Debug logging
-                debugPrint('🔍 Premium dashboard route debug:');
-                debugPrint('🔍 subscription: $subscription');
-                debugPrint('🔍 userProfile: ${userProfile?.displayName}');
-                debugPrint('🔍 userProfile.isPremium: ${userProfile?.isPremium}');
-                debugPrint('🔍 userProfile.userType: ${userProfile?.userType}');
                 
                 // If no subscription found in user_subscriptions collection,
                 // check if user has premium in their profile (legacy data structure)
@@ -606,14 +601,6 @@ class AppRouter {
             final sessionId = state.uri.queryParameters['session_id'] ?? '';
             final userId = state.uri.queryParameters['user_id'] ?? '';
             
-            debugPrint('');
-            debugPrint('✅ ========= SUBSCRIPTION SUCCESS =========');
-            debugPrint('🌐 Full URL: ${state.uri}');
-            debugPrint('🎯 Session ID: $sessionId');
-            debugPrint('👤 User ID: $userId');
-            debugPrint('⏰ Timestamp: ${DateTime.now()}');
-            debugPrint('✅ ======================================');
-            debugPrint('');
             
             if (sessionId.isEmpty || userId.isEmpty) {
               return const Scaffold(
@@ -637,13 +624,6 @@ class AppRouter {
           builder: (context, state) {
             final reason = state.uri.queryParameters['reason'];
             
-            debugPrint('');
-            debugPrint('❌ ========= SUBSCRIPTION CANCELLED =========');
-            debugPrint('🌐 Full URL: ${state.uri}');
-            debugPrint('💬 Reason: $reason');
-            debugPrint('⏰ Timestamp: ${DateTime.now()}');
-            debugPrint('❌ =====================================');
-            debugPrint('');
             
             return SubscriptionCancelScreen(reason: reason);
           },
@@ -667,14 +647,6 @@ class AppRouter {
             final targetTier = state.uri.queryParameters['tier'];
             final userId = state.uri.queryParameters['userId'];
             
-            debugPrint('');
-            debugPrint('⭐ ========= PREMIUM UPGRADE ROUTE =========');
-            debugPrint('🌐 Full URL: ${state.uri}');
-            debugPrint('🎯 Target tier: $targetTier');
-            debugPrint('👤 User ID: $userId');
-            debugPrint('⏰ Timestamp: ${DateTime.now()}');
-            debugPrint('⭐ ======================================');
-            debugPrint('');
             
             // Get userId from query params or auth context
             String? effectiveUserId = userId;
@@ -704,7 +676,6 @@ class AppRouter {
               userType = 'shopper';
             }
             
-            debugPrint('🔄 Mapped tier "$targetTier" to userType "$userType"');
             
             return PremiumOnboardingScreen(
               userId: effectiveUserId,
@@ -715,10 +686,7 @@ class AppRouter {
       ],
       redirect: (BuildContext context, GoRouterState state) {
         final authState = authBloc.state;
-        debugPrint('🚦 ROUTER DEBUG: Current location: ${state.matchedLocation}');
-        debugPrint('🚦 ROUTER DEBUG: Auth state type: ${authState.runtimeType}');
         if (authState is Authenticated) {
-          debugPrint('🚦 ROUTER DEBUG: User type: ${authState.userType}');
         }
         
         // If authenticated, redirect based on user type and verification status
@@ -805,7 +773,6 @@ class AppRouter {
         
         // If unauthenticated and not on auth routes or public routes, go to auth landing
         if (authState is Unauthenticated) {
-          debugPrint('🚦 ROUTER DEBUG: User is unauthenticated, checking if redirect needed');
           final publicRoutes = [
             '/auth', 
             '/login', 
@@ -820,7 +787,6 @@ class AppRouter {
           final isVendorApplication = state.matchedLocation.startsWith('/apply/');
           
           if (!publicRoutes.contains(state.matchedLocation) && !isVendorApplication) {
-            debugPrint('🚦 ROUTER DEBUG: Redirecting unauthenticated user to /auth');
             return '/auth';
           }
         }
@@ -872,7 +838,6 @@ class AppRouter {
         'userProfile': userProfile,
       };
     } catch (e) {
-      debugPrint('❌ Error fetching user subscription data: $e');
       rethrow;
     }
   }
@@ -918,7 +883,6 @@ class AppRouter {
         'userProfile': userProfile,
       };
     } catch (e) {
-      debugPrint('❌ Error fetching user subscription data with validation: $e');
       rethrow;
     }
   }
@@ -945,13 +909,11 @@ class AppRouter {
     final authState = authBloc.state;
     
     if (authState is! Authenticated) {
-      debugPrint('🚨 Unauthenticated user attempted to access organizer premium dashboard');
       return false;
     }
     
     // Verify user type is market_organizer
     if (authState.userType != 'market_organizer') {
-      debugPrint('🚨 Non-organizer user (${authState.userType}) attempted to access organizer premium dashboard');
       return false;
     }
     
@@ -962,14 +924,11 @@ class AppRouter {
       );
       
       if (!hasAccess) {
-        debugPrint('🚨 Non-premium organizer attempted to access premium dashboard: ${authState.user.uid}');
       } else {
-        debugPrint('✅ Premium organizer access validated: ${authState.user.uid}');
       }
       
       return hasAccess;
     } catch (e) {
-      debugPrint('❌ Error validating organizer premium access: $e');
       return false; // Deny access on error
     }
   }

@@ -71,7 +71,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
       final List<String> validMarketIds = [];
       
       if (kDebugMode) {
-        print('DEBUG: Checking ${managedMarketIds.length} managed markets: $managedMarketIds');
+        // print('DEBUG: Checking ${managedMarketIds.length} managed markets: $managedMarketIds');
       }
       
       for (String marketId in managedMarketIds) {
@@ -82,16 +82,16 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
             marketNames[marketId] = market.name;
             validMarketIds.add(marketId);
             if (kDebugMode) {
-              print('DEBUG: Found valid market: ${market.name} ($marketId)');
+              // print('DEBUG: Found valid market: ${market.name} ($marketId)');
             }
           } else {
             if (kDebugMode) {
-              print('DEBUG: Market $marketId not found or inactive - excluding from list');
+              // print('DEBUG: Market $marketId not found or inactive - excluding from list');
             }
           }
         } catch (e) {
           if (kDebugMode) {
-            print('DEBUG: Error loading market $marketId: $e - excluding from list');
+            // print('DEBUG: Error loading market $marketId: $e - excluding from list');
           }
         }
       }
@@ -106,7 +106,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           if (_selectedMarketId != null && !validMarketIds.contains(_selectedMarketId)) {
             _selectedMarketId = validMarketIds.isNotEmpty ? validMarketIds.first : null;
             if (kDebugMode) {
-              print('DEBUG: Switched to valid market: $_selectedMarketId');
+              // print('DEBUG: Switched to valid market: $_selectedMarketId');
             }
           }
         });
@@ -117,13 +117,13 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         }
         
         if (kDebugMode) {
-          print('DEBUG: Valid markets: $_marketNames');
-          print('DEBUG: Selected market: $_selectedMarketId');
+          // print('DEBUG: Valid markets: $_marketNames');
+          // print('DEBUG: Selected market: $_selectedMarketId');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Error loading market names: $e');
+        // print('DEBUG: Error loading market names: $e');
       }
       if (mounted) {
         setState(() {
@@ -147,7 +147,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
       }
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Error auto-rejecting expired applications: $e');
+        // print('DEBUG: Error auto-rejecting expired applications: $e');
       }
     }
   }
@@ -397,8 +397,8 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     final marketId = _getCurrentMarketId();
     
     if (kDebugMode) {
-      print('DEBUG: Selected market ID: $marketId');
-      print('DEBUG: Filter status: $filterStatus');
+      // print('DEBUG: Selected market ID: $marketId');
+      // print('DEBUG: Filter status: $filterStatus');
     }
     
     if (marketId == null) {
@@ -412,14 +412,14 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
       stream: repository.getPendingMarketPosts(marketId),
       builder: (context, snapshot) {
         if (kDebugMode) {
-          print('DEBUG: Post Applications StreamBuilder - Connection state: ${snapshot.connectionState}');
-          print('DEBUG: Post Applications StreamBuilder - Has error: ${snapshot.hasError}');
+          // print('DEBUG: Post Applications StreamBuilder - Connection state: ${snapshot.connectionState}');
+          // print('DEBUG: Post Applications StreamBuilder - Has error: ${snapshot.hasError}');
           if (snapshot.hasError) {
-            print('DEBUG: Post Applications StreamBuilder - Error: ${snapshot.error}');
+            // print('DEBUG: Post Applications StreamBuilder - Error: ${snapshot.error}');
           }
-          print('DEBUG: Post Applications StreamBuilder - Has data: ${snapshot.hasData}');
+          // print('DEBUG: Post Applications StreamBuilder - Has data: ${snapshot.hasData}');
           if (snapshot.hasData) {
-            print('DEBUG: Post Applications StreamBuilder - Data count: ${snapshot.data!.length}');
+            // print('DEBUG: Post Applications StreamBuilder - Data count: ${snapshot.data!.length}');
           }
         }
         
@@ -457,7 +457,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
               }).toList();
         
         if (kDebugMode) {
-          print('DEBUG: Received ${posts.length} total posts, filtered to ${filteredPosts.length}');
+          // print('DEBUG: Received ${posts.length} total posts, filtered to ${filteredPosts.length}');
         }
 
         if (filteredPosts.isEmpty) {
@@ -734,9 +734,9 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     final marketId = _getCurrentMarketId();
     
     if (kDebugMode) {
-      print('DEBUG: Selected market ID: $marketId');
-      print('DEBUG: Valid markets: $_validMarketIds');
-      print('DEBUG: Filter status: $filterStatus');
+      // print('DEBUG: Selected market ID: $marketId');
+      // print('DEBUG: Valid markets: $_validMarketIds');
+      // print('DEBUG: Filter status: $filterStatus');
     }
     
     if (marketId == null) {
@@ -744,8 +744,8 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
     }
     
     if (kDebugMode) {
-      print('DEBUG: Building applications list for market: $marketId');
-      print('DEBUG: Filter status: $filterStatus');
+      // print('DEBUG: Building applications list for market: $marketId');
+      // print('DEBUG: Filter status: $filterStatus');
     }
     
     final stream = filterStatus == null
@@ -756,14 +756,14 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
       stream: stream,
       builder: (context, snapshot) {
         if (kDebugMode) {
-          print('DEBUG: StreamBuilder - Connection state: ${snapshot.connectionState}');
-          print('DEBUG: StreamBuilder - Has error: ${snapshot.hasError}');
+          // print('DEBUG: StreamBuilder - Connection state: ${snapshot.connectionState}');
+          // print('DEBUG: StreamBuilder - Has error: ${snapshot.hasError}');
           if (snapshot.hasError) {
-            print('DEBUG: StreamBuilder - Error: ${snapshot.error}');
+            // print('DEBUG: StreamBuilder - Error: ${snapshot.error}');
           }
-          print('DEBUG: StreamBuilder - Has data: ${snapshot.hasData}');
+          // print('DEBUG: StreamBuilder - Has data: ${snapshot.hasData}');
           if (snapshot.hasData) {
-            print('DEBUG: StreamBuilder - Data count: ${snapshot.data?.length}');
+            // print('DEBUG: StreamBuilder - Data count: ${snapshot.data?.length}');
           }
         }
         
@@ -792,9 +792,9 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         final applications = snapshot.data ?? [];
         
         if (kDebugMode) {
-          print('DEBUG: Received ${applications.length} applications');
+          // print('DEBUG: Received ${applications.length} applications');
           for (var app in applications) {
-            print('DEBUG: Application ID: ${app.id}, Vendor: ${app.vendorBusinessName}, Market: ${app.marketId}');
+            // print('DEBUG: Application ID: ${app.id}, Vendor: ${app.vendorBusinessName}, Market: ${app.marketId}');
           }
         }
 
@@ -1246,29 +1246,29 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
           .collection('vendor_applications')
           .get();
       
-      print('DEBUG: Found ${snapshot.docs.length} total applications in Firestore');
+      // print('DEBUG: Found ${snapshot.docs.length} total applications in Firestore');
       
       final currentMarketId = _getCurrentMarketId();
       int matchingMarketCount = 0;
       
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        print('DEBUG: App ${doc.id}: Market=${data['marketId']}, Vendor=${data['vendorId']}, Status=${data['status']}');
+        // print('DEBUG: App ${doc.id}: Market=${data['marketId']}, Vendor=${data['vendorId']}, Status=${data['status']}');
         
         if (data['marketId'] == currentMarketId) {
           matchingMarketCount++;
-          print('  ✅ MATCHES current market!');
+          // print('  ✅ MATCHES current market!');
         }
       }
       
       // Show market organizer info
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
-        print('DEBUG: Current user: ${authState.userProfile?.email}');
-        print('DEBUG: Current user type: ${authState.userType}');
-        print('DEBUG: Managed markets: ${authState.userProfile?.managedMarketIds}');
-        print('DEBUG: Currently viewing market: $currentMarketId');
-        print('DEBUG: Applications for this market: $matchingMarketCount');
+        // print('DEBUG: Current user: ${authState.userProfile?.email}');
+        // print('DEBUG: Current user type: ${authState.userType}');
+        // print('DEBUG: Managed markets: ${authState.userProfile?.managedMarketIds}');
+        // print('DEBUG: Currently viewing market: $currentMarketId');
+        // print('DEBUG: Applications for this market: $matchingMarketCount');
       }
       
       if (mounted) {
@@ -1280,7 +1280,7 @@ class _VendorApplicationsScreenState extends State<VendorApplicationsScreen>
         );
       }
     } catch (e) {
-      print('DEBUG: Error getting all applications: $e');
+      // print('DEBUG: Error getting all applications: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

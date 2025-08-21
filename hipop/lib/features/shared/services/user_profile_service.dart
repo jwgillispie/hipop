@@ -31,54 +31,35 @@ class UserProfileService implements IUserProfileService {
   @override
   Future<UserProfile?> getUserProfile(String userId) async {
     try {
-      debugPrint('DEBUG: Attempting to get user profile for userId: $userId');
-      debugPrint('DEBUG: Current auth user: ${_auth.currentUser?.uid}');
-      debugPrint('DEBUG: Is user authenticated: ${_auth.currentUser != null}');
-      debugPrint('DEBUG: Auth user email: ${_auth.currentUser?.email}');
-      debugPrint('DEBUG: Auth user emailVerified: ${_auth.currentUser?.emailVerified}');
       
       // Check if we can get an ID token
       try {
         final token = await _auth.currentUser?.getIdToken();
-        debugPrint('DEBUG: Got ID token: ${token != null ? "YES" : "NO"}');
         if (token != null) {
-          debugPrint('DEBUG: Token length: ${token.length}');
         }
       } catch (tokenError) {
-        debugPrint('DEBUG: Error getting ID token: $tokenError');
       }
       
       // Test with a simple read first
-      debugPrint('DEBUG: Testing basic Firestore access...');
       final testQuery = await _firestore.collection('test').limit(1).get();
-      debugPrint('DEBUG: Test query successful, got ${testQuery.docs.length} docs');
       
       final doc = await _firestore.collection(_collection).doc(userId).get();
       
-      debugPrint('DEBUG: Document exists: ${doc.exists}');
-      debugPrint('DEBUG: Document path: ${doc.reference.path}');
       
       if (doc.exists) {
-        debugPrint('DEBUG: Document data: ${doc.data()}');
         return UserProfile.fromFirestore(doc);
       }
       
       // Handle missing user profile gracefully
-      debugPrint('DEBUG: User profile not found for userId: $userId');
-      debugPrint('DEBUG: This might be a deleted user or new user that needs profile creation');
       
       // If this is the current authenticated user and they don't have a profile,
       // sign them out to force re-authentication/profile creation
       if (_auth.currentUser?.uid == userId) {
-        debugPrint('DEBUG: Missing profile belongs to current authenticated user');
-        debugPrint('DEBUG: Auto-signing out user to prevent app hanging');
         
         // Sign out the user with missing profile
         try {
           await _auth.signOut();
-          debugPrint('DEBUG: Successfully signed out user with missing profile');
         } catch (signOutError) {
-          debugPrint('DEBUG: Error signing out user: $signOutError');
         }
       }
       
@@ -89,7 +70,6 @@ class UserProfileService implements IUserProfileService {
       if (kIsWeb) {
         // Also log to browser console for web
         // ignore: avoid_print
-        print('🔴 UserProfileService Error: $e');
       }
       rethrow;
     }
@@ -121,7 +101,6 @@ class UserProfileService implements IUserProfileService {
       developer.log('Error creating user profile: $e', name: 'UserProfileService');
       if (kIsWeb) {
         // ignore: avoid_print
-        print('🔴 UserProfileService Create Error: $e');
       }
       throw UserProfileException('Failed to create user profile: $e');
     }
@@ -152,7 +131,6 @@ class UserProfileService implements IUserProfileService {
       developer.log('Error updating user profile: $e', name: 'UserProfileService');
       if (kIsWeb) {
         // ignore: avoid_print
-        print('🔴 UserProfileService Update Error: $e');
       }
       throw UserProfileException('Failed to update user profile: $e');
     }

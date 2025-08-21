@@ -250,9 +250,7 @@ class UserSubscription extends Equatable {
   int getLimit(String limitName) {
     if (isFree) {
       final freeLimits = _getFreeLimits(userType);
-      debugPrint('🔍 DEBUG: Getting free limits for userType: $userType, limits: $freeLimits');
       final limit = freeLimits[limitName] ?? 0;
-      debugPrint('🔍 DEBUG: Limit for $limitName: $limit');
       return limit;
     }
     return limits[limitName] ?? -1; // -1 means unlimited
@@ -261,9 +259,6 @@ class UserSubscription extends Equatable {
   bool isWithinLimit(String limitName, int currentUsage) {
     final limit = getLimit(limitName);
     final result = limit == -1 || currentUsage < limit; // -1 means unlimited
-    debugPrint('🔍 DEBUG: isWithinLimit($limitName, $currentUsage) - tier: ${tier.name}, userType: $userType, isFree: $isFree');
-    debugPrint('🔍 DEBUG: isWithinLimit - limit: $limit, currentUsage: $currentUsage, result: $result');
-    debugPrint('🔍 DEBUG: isWithinLimit - calculation: $limit == -1 (${limit == -1}) || $currentUsage < $limit (${currentUsage < limit}) = $result');
     return result;
   }
 
