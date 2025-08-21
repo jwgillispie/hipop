@@ -8,17 +8,17 @@ export default async function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <div className="relative isolate overflow-hidden bg-gradient-to-b from-orange-100/20">
+      <div className="relative isolate overflow-hidden bg-hipop-surface-gradient">
         <div className="mx-auto max-w-7xl pb-24 pt-10 sm:pb-32 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:px-8 lg:py-40">
           <div className="px-6 lg:px-0 lg:pt-4">
             <div className="mx-auto max-w-2xl">
               <div className="max-w-lg">
                 <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
                   Atlanta's Premier
-                  <span className="text-orange-600"> Local Market Network</span>
+                  <span className="text-hipop-primary"> Local Market Network</span>
                 </h1>
                 <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Connect Atlanta's creative community through farmers markets, artisan fairs, vintage markets, and pop-up events. 
+                  Connect Atlanta's creative community through farmers markets, artisan fairs, vintage clothing markets, craft shows, and all types of pop-up events. 
                   HiPop brings together market organizers, vendors, and shoppers in one seamless platform.
                 </p>
                 <div className="mt-10 flex items-center gap-x-6">
@@ -26,7 +26,7 @@ export default async function Home() {
                     href="https://hipop-markets.web.app"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md bg-orange-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+                    className="rounded-md bg-hipop-primary px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#3D6450] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#558B6E]"
                   >
                     Go to the App
                   </Link>
@@ -38,10 +38,10 @@ export default async function Home() {
             </div>
           </div>
           <div className="mt-20 sm:mt-24 md:mx-auto md:max-w-2xl lg:mx-0 lg:mt-0 lg:w-screen">
-            <div className="absolute inset-y-0 right-1/2 -z-10 -mr-10 w-[200%] skew-x-[-30deg] bg-white shadow-xl shadow-orange-600/10 ring-1 ring-orange-50 md:-mr-20 lg:-mr-36" />
+            <div className="absolute inset-y-0 right-1/2 -z-10 -mr-10 w-[200%] skew-x-[-30deg] bg-white shadow-xl shadow-[#558B6E]/10 ring-1 ring-[#F1C8DB] md:-mr-20 lg:-mr-36" />
             <div className="shadow-lg md:rounded-3xl">
-              <div className="bg-orange-500 [clip-path:inset(0)] md:[clip-path:inset(0_round_theme(borderRadius.3xl))]">
-                <div className="absolute -inset-y-px left-1/2 -z-10 ml-10 w-[200%] skew-x-[-30deg] bg-orange-100 opacity-20 ring-1 ring-inset ring-white md:ml-20 lg:ml-36" />
+              <div className="bg-hipop-gradient [clip-path:inset(0)] md:[clip-path:inset(0_round_theme(borderRadius.3xl))]">
+                <div className="absolute -inset-y-px left-1/2 -z-10 ml-10 w-[200%] skew-x-[-30deg] bg-[#F1C8DB] opacity-20 ring-1 ring-inset ring-white md:ml-20 lg:ml-36" />
                 <div className="relative px-6 pt-8 sm:pt-16 md:pl-16 md:pr-0">
                   <div className="mx-auto max-w-2xl md:mx-0 md:max-w-none">
                     <div className="w-screen overflow-hidden rounded-tl-xl bg-gray-900">
@@ -56,15 +56,15 @@ export default async function Home() {
                         {/* Mock app interface */}
                         <div className="text-white text-sm space-y-4">
                           <div className="flex items-center space-x-2">
-                            <MapPinIcon className="h-5 w-5 text-orange-400" />
+                            <MapPinIcon className="h-5 w-5 text-hipop-primary" />
                             <span>Find markets near you</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <ShoppingBagIcon className="h-5 w-5 text-green-400" />
+                            <ShoppingBagIcon className="h-5 w-5 text-hipop-secondary" />
                             <span>Discover fresh local produce</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <HeartIcon className="h-5 w-5 text-red-400" />
+                            <HeartIcon className="h-5 w-5 text-hipop-accent" />
                             <span>Save your favorite vendors</span>
                           </div>
                         </div>
@@ -82,7 +82,7 @@ export default async function Home() {
       <div className="py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-orange-600">Everything you need</h2>
+            <h2 className="text-base font-semibold leading-7 text-hipop-primary">Everything you need</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Connect with your local creative community
             </p>
@@ -94,18 +94,18 @@ export default async function Home() {
             <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16">
               <div className="relative pl-16">
                 <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-hipop-primary">
                     <MapPinIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
                   Smart Market Discovery
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Find Atlanta-area farmers markets, artisan fairs, vintage markets, and pop-up events with detailed vendor info, schedules, and real-time updates.
+                  Find Atlanta-area farmers markets, artisan fairs, vintage clothing markets, craft shows, and all types of pop-up events with detailed vendor info, schedules, and real-time updates.
                 </dd>
               </div>
               <div className="relative pl-16">
                 <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-hipop-secondary">
                     <ShoppingBagIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
                   Vendor-Market Connections
@@ -116,7 +116,7 @@ export default async function Home() {
               </div>
               <div className="relative pl-16">
                 <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-hipop-accent">
                     <HeartIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
                   Pop-up Event System
@@ -127,7 +127,7 @@ export default async function Home() {
               </div>
               <div className="relative pl-16">
                 <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600">
+                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-hipop-primary">
                     <ArrowRightIcon className="h-6 w-6 text-white" aria-hidden="true" />
                   </div>
                   Unified Management
@@ -143,12 +143,12 @@ export default async function Home() {
 
       {/* Featured Markets */}
       {featuredMarkets.length > 0 && (
-        <div className="bg-gray-50 py-24 sm:py-32">
+        <div className="bg-hipop-surface py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-2xl lg:mx-0">
               <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Featured Markets</h2>
               <p className="mt-2 text-lg leading-8 text-gray-600">
-                Discover some of the amazing farmers markets in our network.
+                Discover some of the amazing markets in our network.
               </p>
             </div>
             <div className="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 border-t border-gray-200 pt-10 sm:mt-16 sm:pt-16 lg:mx-0 lg:max-w-none lg:grid-cols-3">
@@ -182,13 +182,13 @@ export default async function Home() {
       )}
 
       {/* CTA Section */}
-      <div className="bg-orange-600">
+      <div className="bg-hipop-gradient">
         <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Ready to discover local markets?
             </h2>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-white/90">
               Go to the HiPop Markets app and start exploring fresh, local food in your community today.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
@@ -196,7 +196,7 @@ export default async function Home() {
                 href="https://hipop-markets.web.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-orange-600 shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-hipop-primary shadow-sm hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Go to the App
               </Link>

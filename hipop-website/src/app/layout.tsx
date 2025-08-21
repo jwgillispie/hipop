@@ -10,17 +10,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "HiPop Markets - Discover Local Farmers Markets & Fresh Food",
-  description: "Find the best farmers markets near you. Discover fresh, local produce, artisanal foods, and connect with local vendors through the HiPop Markets app.",
-  keywords: "farmers markets, local food, fresh produce, farmers market app, local vendors, organic food, artisan markets, handmade goods",
+  title: "HiPop Markets - Discover Local Markets & Fresh Food",
+  description: "Find the best markets near you. Discover fresh, local produce, artisanal foods, handmade goods, and connect with local vendors through the HiPop Markets app.",
+  keywords: "markets, local food, fresh produce, market app, local vendors, organic food, artisan markets, handmade goods, farmers markets, vintage markets, pop-up events",
   authors: [{ name: "HiPop Markets" }],
   robots: "index, follow",
   verification: {
     google: "your-google-verification-code",
   },
   openGraph: {
-    title: "HiPop Markets - Discover Local Farmers Markets",
-    description: "Find the best farmers markets near you with the HiPop Markets app.",
+    title: "HiPop Markets - Discover Local Markets",
+    description: "Find the best markets near you with the HiPop Markets app.",
     type: "website",
     siteName: "HiPop Markets",
     url: "https://hipop-markets-website.web.app",
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "HiPop Markets - Discover Local Farmers Markets",
-    description: "Find the best farmers markets near you with the HiPop Markets app.",
+    title: "HiPop Markets - Discover Local Markets",
+    description: "Find the best markets near you with the HiPop Markets app.",
     site: "@hipopmarkets",
   },
   alternates: {
@@ -46,7 +46,7 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebApplication",
     "name": "HiPop Markets",
-    "description": "Find the best farmers markets near you. Discover fresh, local produce, artisanal foods, and connect with local vendors.",
+    "description": "Find the best markets near you. Discover fresh, local produce, artisanal foods, handmade goods, and connect with local vendors.",
     "url": "https://hipop-markets-website.web.app",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",

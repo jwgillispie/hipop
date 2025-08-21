@@ -3,9 +3,9 @@ import { MapPinIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/outline
 import { getPublicMarkets, getCitiesWithMarkets } from '@/lib/data';
 
 export const metadata = {
-  title: 'Farmers Markets Directory - Find Markets Near You | HiPop Markets',
-  description: 'Browse our comprehensive directory of farmers markets. Find fresh local produce, artisanal foods, and connect with vendors in your community.',
-  keywords: 'farmers markets directory, local markets, fresh produce, farmers market locations, organic food markets',
+  title: 'Markets Directory - Find Markets Near You | HiPop Markets',
+  description: 'Browse our comprehensive directory of markets. Find fresh local produce, artisanal foods, handmade goods, and connect with vendors in your community.',
+  keywords: 'markets directory, local markets, fresh produce, market locations, organic food markets, artisan markets, vintage markets, pop-up events',
 };
 
 export default async function Markets() {
@@ -22,10 +22,10 @@ export default async function Markets() {
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
               Atlanta-Area
-              <span className="text-orange-600"> Farmers Markets</span>
+              <span className="text-orange-600"> Local Markets</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600">
-              Discover unique vendors and artisan goods at Atlanta-area farmers markets, vintage fairs, artisan markets, and pop-up events. 
+              Discover unique vendors and artisan goods at Atlanta-area markets, vintage fairs, artisan markets, and pop-up events. 
               HiPop connects you with market organizers, approved vendors, and special events.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
@@ -55,7 +55,7 @@ export default async function Markets() {
             <div className="mx-auto max-w-2xl lg:mx-0">
               <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Browse by City</h2>
               <p className="mt-2 text-lg leading-8 text-gray-600">
-                Find farmers markets in cities across our network.
+                Find markets in cities across our network.
               </p>
             </div>
             <div className="mx-auto mt-10 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-3 lg:mx-0 lg:max-w-none lg:grid-cols-5">
@@ -169,7 +169,7 @@ export default async function Markets() {
           <div className="mx-auto max-w-2xl lg:mx-0">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Featured Markets</h2>
             <p className="mt-2 text-lg leading-8 text-gray-600">
-              Explore some of the amazing farmers markets in our network.
+              Explore some of the amazing markets in our network.
             </p>
           </div>
           
@@ -307,7 +307,7 @@ export default async function Markets() {
                   Environmental Benefits
                 </dt>
                 <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Reduced transportation miles and packaging waste make farmers markets an eco-friendly choice.
+                  Reduced transportation miles and packaging waste make local markets an eco-friendly choice.
                 </dd>
               </div>
               <div className="relative pl-16">

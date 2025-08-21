@@ -7,7 +7,7 @@ const navigation = {
     { name: 'For Vendors', href: '/vendors' },
     { name: 'For Organizers', href: '/organizers' },
     { name: 'For Shoppers', href: '/shoppers' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'Contact', href: 'mailto:hipopmarkets@gmail.com' },
   ],
   legal: [
     { name: 'Privacy Policy', href: '/privacy' },
@@ -16,7 +16,7 @@ const navigation = {
   social: [
     {
       name: 'Instagram',
-      href: 'https://instagram.com/pop_up_atl',
+      href: 'https://instagram.com/hipopmarkets',
       icon: (props: any) => (
         <svg fill="currentColor" viewBox="0 0 24 24" {...props}>
           <path
@@ -32,11 +32,11 @@ const navigation = {
 
 export function Footer() {
   return (
-    <footer className="bg-gray-50">
+    <footer className="bg-hipop-surface">
       <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8">
         <div className="flex justify-center">
           <Link href="/" className="flex items-center">
-            <span className="text-3xl font-bold text-orange-600">HiPop</span>
+            <span className="text-3xl font-bold text-hipop-primary">HiPop</span>
             <span className="ml-2 text-2xl text-gray-900">Markets</span>
           </Link>
         </div>
@@ -44,7 +44,7 @@ export function Footer() {
         <nav className="-mb-6 columns-2 sm:flex sm:justify-center sm:space-x-12 mt-10" aria-label="Footer">
           {navigation.main.map((item) => (
             <div key={item.name} className="pb-6">
-              <Link href={item.href} className="text-sm leading-6 text-gray-600 hover:text-gray-900">
+              <Link href={item.href} className="text-sm leading-6 text-gray-600 hover:text-hipop-primary">
                 {item.name}
               </Link>
             </div>
@@ -58,7 +58,7 @@ export function Footer() {
               href={item.href} 
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 hover:text-gray-500"
+              className="text-gray-400 hover:text-hipop-primary"
             >
               <span className="sr-only">{item.name}</span>
               <item.icon className="h-6 w-6" aria-hidden="true" />

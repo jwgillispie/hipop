@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <div className="bg-white rounded-lg shadow-lg p-8 lg:p-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
         <p className="text-gray-600 mb-8">
-          <strong>Last Updated: January 6, 2025</strong>
+          <strong>Last Updated: August 12, 2025</strong>
         </p>
 
         <div className="prose prose-lg max-w-none">

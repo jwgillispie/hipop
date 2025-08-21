@@ -1,8 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* HiPop Color Palette - Nature-inspired marketplace colors */
+  /* Based on: https://coolors.co/558b6e-6f9686-88a09e-7c767e-704c5e-946c7e-b88c9e-f1c8db-f3d2e1 */
+  
+  /* Primary Brand Colors */
+  --primary-deep-sage: #558B6E;
+  --primary-deep-sage-light: #6FA589;
+  --primary-deep-sage-dark: #3D6450;
+  --primary-deep-sage-soft: #669C7F;
+  
+  /* Secondary Colors */
+  --secondary-soft-sage: #6F9686;
+  --secondary-soft-sage-light: #8BAFA1;
+  --secondary-soft-sage-dark: #567365;
+  
+  /* Background Colors */
+  --background-muted-gray: #88A09E;
+  --background-warm-gray: #7C767E;
+  
+  /* Accent Colors */
+  --accent-dusty-plum: #704C5E;
+  --accent-dusty-plum-light: #8B6375;
+  --accent-dusty-plum-dark: #553745;
+  --accent-mauve: #946C7E;
+  --accent-mauve-light: #AB8495;
+  --accent-mauve-dark: #735563;
+  --accent-dusty-rose: #B88C9E;
+  --accent-dusty-rose-light: #CCA5B5;
+  --accent-dusty-rose-dark: #9B7082;
+  
+  /* Surface Colors */
+  --surface-soft-pink: #F1C8DB;
+  --surface-pale-pink: #F3D2E1;
+  
+  /* Semantic Colors */
+  --success-green: #558B6E;
+  --warning-amber: #E8A87C;
+  --error-plum: #704C5E;
+  --info-blue-gray: #88A09E;
+  
+  /* Premium Colors */
+  --premium-gold: #D4A574;
+  --premium-gold-light: #E2BA8F;
+  --premium-gold-dark: #B8925F;
+  
+  /* Light theme defaults */
+  --background: #FAFBFC;
+  --foreground: #2A2527;
+  --surface: #F3D2E1;
+  --surface-variant: #F1C8DB;
+  --border: #E8D4E0;
+  --muted: #5C5458;
 }
 
 @theme inline {
@@ -10,17 +59,71 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom colors for HiPop theme */
+  --color-primary: var(--primary-deep-sage);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--secondary-soft-sage);
+  --color-secondary-foreground: #ffffff;
+  --color-accent: var(--accent-mauve);
+  --color-accent-foreground: #ffffff;
+  --color-destructive: var(--accent-dusty-plum);
+  --color-destructive-foreground: #ffffff;
+  --color-muted: var(--surface-soft-pink);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--border);
+  --color-success: var(--success-green);
+  --color-warning: var(--warning-amber);
+  --color-premium: var(--premium-gold);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #1A1418;
+    --foreground: #F8F4F6;
+    --surface: #2A2025;
+    --surface-variant: #352B30;
+    --border: #4A3F44;
+    --muted: #D6CED3;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+}
+
+/* Custom utility classes for HiPop brand colors */
+.bg-hipop-primary { background-color: var(--primary-deep-sage); }
+.text-hipop-primary { color: var(--primary-deep-sage); }
+.border-hipop-primary { border-color: var(--primary-deep-sage); }
+.ring-hipop-primary { --tw-ring-color: var(--primary-deep-sage); }
+
+.bg-hipop-secondary { background-color: var(--secondary-soft-sage); }
+.text-hipop-secondary { color: var(--secondary-soft-sage); }
+.border-hipop-secondary { border-color: var(--secondary-soft-sage); }
+
+.bg-hipop-accent { background-color: var(--accent-mauve); }
+.text-hipop-accent { color: var(--accent-mauve); }
+.border-hipop-accent { border-color: var(--accent-mauve); }
+
+.bg-hipop-surface { background-color: var(--surface-soft-pink); }
+.bg-hipop-surface-variant { background-color: var(--surface-pale-pink); }
+
+.bg-hipop-premium { background-color: var(--premium-gold); }
+.text-hipop-premium { color: var(--premium-gold); }
+
+/* Gradient utilities */
+.bg-hipop-gradient {
+  background: linear-gradient(135deg, var(--primary-deep-sage) 0%, var(--secondary-soft-sage) 100%);
+}
+
+.bg-hipop-premium-gradient {
+  background: linear-gradient(135deg, var(--premium-gold) 0%, var(--premium-gold-light) 100%);
+}
+
+.bg-hipop-surface-gradient {
+  background: linear-gradient(180deg, var(--surface-pale-pink) 0%, var(--surface-soft-pink) 100%);
 }

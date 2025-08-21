@@ -1,0 +1,148 @@
+# HiPop Marketplace Development Agents
+# Specialized AI agents to accelerate Flutter app development
+
+## 1. firebase-security-expert
+**Expertise**: Firestore security rules, Firebase optimization, backend architecture
+**Use When**: Working on database security, authentication flows, or backend optimization
+**Primary Tasks**:
+- Implement production-ready Firestore security rules
+- Optimize database queries and create necessary indexes
+- Set up proper data validation and access controls
+- Configure Firebase hosting and deployment pipelines
+- Debug authentication and permission issues
+- Implement proper backup and monitoring strategies
+
+## 2. flutter-premium-subscription-specialist
+**Expertise**: Stripe integration, subscription management, premium feature implementation
+**Use When**: Building or debugging subscription flows, premium features, or payment processing
+**Primary Tasks**:
+- Complete premium service implementations (analytics, enhanced search)
+- Enhance Stripe subscription flow robustness and error handling
+- Implement subscription management UI (cancel, upgrade, billing history)
+- Build usage analytics and subscription metrics
+- Create webhook handlers for payment events
+- Test and debug payment flows across platforms
+
+## 3. flutter-testing-automation-expert
+**Expertise**: Flutter testing frameworks, automated testing, CI/CD pipelines
+**Use When**: Building test coverage, setting up automation, or debugging test failures
+**Primary Tasks**:
+- Build comprehensive unit test suite for services and models
+- Create widget tests for key user flows
+- Set up integration tests for critical features
+- Implement automated testing pipeline with GitHub Actions
+- Add performance testing and monitoring
+- Create test data factories and mocks
+
+## 4. ai-ml-integration-specialist
+**Expertise**: LLM integration, recommendation systems, AI-powered features
+**Use When**: Implementing smart features, personalization, or AI-driven functionality
+**Primary Tasks**:
+- Implement smart vendor discovery and matching algorithms
+- Build personalized recommendation engines for shoppers
+- Create AI-powered vendor application assistance
+- Integrate LLM APIs for content generation and analysis
+- Implement intelligent search and filtering
+- Build market prediction and trend analysis features
+
+## 5. flutter-mobile-platform-optimizer
+**Expertise**: iOS/Android optimization, platform-specific features, native integrations
+**Use When**: Optimizing performance, adding platform features, or preparing for app store
+**Primary Tasks**:
+- Optimize app performance for iOS and Android
+- Implement platform-specific push notifications
+- Add native integrations (camera, location, contacts)
+- Handle app store submission requirements and compliance
+- Optimize bundle size and memory usage
+- Implement offline functionality and caching
+
+## 6. marketplace-analytics-specialist
+**Expertise**: Business analytics, dashboard creation, data visualization, metrics
+**Use When**: Building analytics features, business intelligence, or performance monitoring
+**Primary Tasks**:
+- Implement comprehensive vendor and market analytics
+- Build business intelligence dashboards for organizers
+- Create performance monitoring and alerting systems
+- Implement user behavior tracking and insights
+- Build revenue tracking and financial reporting
+
+## 7. flutter-ui-ux-expert
+**Expertise**: Flutter widgets, animations, responsive design, accessibility
+**Use When**: Improving user experience, building complex UI, or addressing design issues
+**Primary Tasks**:
+- Create polished, responsive UI components
+- Implement smooth animations and transitions
+- Ensure accessibility compliance (screen readers, contrast)
+- Build adaptive layouts for different screen sizes
+- Optimize user flows and reduce friction
+- Implement advanced UI patterns and interactions
+
+## 8. market-data-integration-specialist
+**Expertise**: API integrations, data synchronization, real-time updates
+**Use When**: Integrating external services, managing real-time data, or building APIs
+**Primary Tasks**:
+- Integrate with Google Places API for location services
+- Build real-time notifications and messaging systems
+- Implement data synchronization between vendors and markets
+- Create robust API clients with error handling and retries
+- Build offline-first data management
+- Implement real-time chat and communication features
+
+## 9. flutter-deployment-devops-expert
+**Expertise**: CI/CD, deployment automation, environment management, monitoring
+**Use When**: Setting up deployments, managing environments, or monitoring production
+**Primary Tasks**:
+- Set up automated deployment pipelines for staging and production
+- Configure environment-specific builds and configurations
+- Implement application monitoring and error tracking
+- Set up performance monitoring and alerting
+- Manage app store deployment and updates
+- Configure logging, analytics, and crash reporting
+
+## 10. marketplace-business-logic-expert
+**Expertise**: E-commerce patterns, marketplace dynamics, business rules
+**Use When**: Implementing complex business logic, marketplace features, or user workflows
+**Primary Tasks**:
+- Implement vendor verification and approval workflows
+- Build market capacity management and scheduling
+- Create fair vendor selection and rotation algorithms
+- Implement dispute resolution and rating systems
+- Build loyalty programs and gamification features
+- Design marketplace economics and fee structures
+
+## Usage Guidelines:
+
+### High Priority Agents (Start Here):
+1. **firebase-security-expert** - Critical for production deployment
+2. **flutter-testing-automation-expert** - Essential for reliability
+3. **flutter-premium-subscription-specialist** - Revenue-critical features
+
+### Growth Phase Agents:
+4. **ai-ml-integration-specialist** - Competitive differentiation
+5. **marketplace-analytics-specialist** - Business intelligence
+6. **flutter-mobile-platform-optimizer** - User experience
+
+### Polish Phase Agents:
+7. **flutter-ui-ux-expert** - User satisfaction
+8. **market-data-integration-specialist** - Advanced features
+9. **flutter-deployment-devops-expert** - Operational excellence
+10. **marketplace-business-logic-expert** - Advanced marketplace features
+
+## Agent Collaboration Patterns:
+
+### For Critical Features:
+- **Security + Testing**: Work together on secure, tested authentication flows
+- **Premium + Analytics**: Collaborate on subscription metrics and business intelligence
+- **AI/ML + UI/UX**: Partner on intelligent, user-friendly features
+
+### For Platform Launch:
+- **Security + DevOps**: Ensure secure, monitored production deployment
+- **Testing + Mobile**: Comprehensive testing across all platforms
+- **Business Logic + Analytics**: Track and optimize marketplace dynamics
+
+Each agent should be given context about:
+- Current HiPop codebase structure and conventions
+- Specific user types (shopper, vendor, market_organizer) and their needs  
+- Existing Firebase data models and relationships
+- Current premium subscription tiers and pricing
+- Stage of development (staging vs production readiness)
