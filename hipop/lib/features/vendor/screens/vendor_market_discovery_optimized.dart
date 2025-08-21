@@ -504,7 +504,6 @@ class _VendorMarketDiscoveryOptimizedState extends State<VendorMarketDiscoveryOp
   }
 
   Widget _buildEmptyState() {
-    final user = FirebaseAuth.instance.currentUser;
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -559,93 +558,6 @@ class _VendorMarketDiscoveryOptimizedState extends State<VendorMarketDiscoveryOp
             ),
             
             const SizedBox(height: 48),
-            
-            // Premium upgrade suggestion even for premium users (for advanced features)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    HiPopColors.accentMauve.withValues(alpha: 0.1),
-                    HiPopColors.primaryDeepSage.withValues(alpha: 0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: HiPopColors.accentMauve.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.auto_awesome,
-                        color: HiPopColors.accentMauve,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Get Notified When Markets Are Recruiting',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: HiPopColors.darkTextPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Set up instant notifications and priority access to new market opportunities. Be the first to know when markets in your area start looking for vendors.',
-                    style: TextStyle(
-                      color: HiPopColors.darkTextSecondary,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            // Navigate to notification settings
-                            context.go('/settings/notifications');
-                          },
-                          icon: const Icon(Icons.notifications_outlined, size: 18),
-                          label: const Text('Setup Notifications'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: HiPopColors.accentMauve,
-                            side: BorderSide(color: HiPopColors.accentMauve),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            if (user != null) {
-                              context.go('/premium/upgrade?tier=vendor&userId=${user.uid}&feature=advanced_notifications');
-                            }
-                          },
-                          icon: const Icon(Icons.diamond, size: 18),
-                          label: const Text('Upgrade'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: HiPopColors.accentMauve,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
