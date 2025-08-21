@@ -2,6 +2,9 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../features/vendor/models/vendor_post.dart';
+import '../features/vendor/models/post_type.dart';
+import '../features/vendor/services/vendor_post_service.dart';
+import '../features/market/services/market_service.dart';
 
 // Helper class for proximity search
 class _PostWithDistance {
@@ -331,15 +334,56 @@ class VendorPostsRepository implements IVendorPostsRepository {
   @override
   Future<String> createPost(VendorPost post) async {
     try {
-      final postWithKeywords = post.copyWith(
-        locationKeywords: VendorPost.generateLocationKeywords(post.location),
-      );
-      final docRef = await _firestore.collection(_collection).add(postWithKeywords.toFirestore());
-      
-      // Track monthly post count for ALL post types (free vendors limited to 3 total per month)
-      await _updateVendorPostCount(post.vendorId);
-      
-      return docRef.id;
+      // For market-associated posts, use VendorPostService to ensure managed_vendors are created
+      if (post.associatedMarketId != null && post.postType == PostType.market) {
+        debugPrint('🔄 Repository: Creating market-associated post via VendorPostService');
+        debugPrint('📋 Market ID: ${post.associatedMarketId}, Post Type: ${post.postType}');
+        
+        // Get the market for VendorPostService
+        final market = await MarketService.getMarket(post.associatedMarketId!);
+        if (market == null) {
+          throw VendorPostException('Market not found: ${post.associatedMarketId}');
+        }
+        
+        debugPrint('✅ Found market: ${market.name}');
+        
+        // Create VendorPostData from the VendorPost
+        final postData = VendorPostData(
+          description: post.description,
+          location: post.location,
+          latitude: post.latitude,
+          longitude: post.longitude,
+          placeId: post.placeId,
+          locationName: post.locationName,
+          productListIds: post.productListIds,
+          popUpStartDateTime: post.popUpStartDateTime,
+          popUpEndDateTime: post.popUpEndDateTime,
+          photoUrls: post.photoUrls,
+          vendorNotes: post.vendorNotes,
+        );
+        
+        // Use VendorPostService to create the post with managed_vendors integration
+        debugPrint('🚀 Calling VendorPostService.createVendorPost for managed_vendors creation');
+        final createdPost = await VendorPostService.createVendorPost(
+          postData: postData,
+          postType: PostType.market,
+          selectedMarket: market,
+        );
+        
+        debugPrint('✅ Market post created successfully with ID: ${createdPost.id}');
+        return createdPost.id;
+      } else {
+        // For independent posts, use regular Firestore creation
+        final postWithKeywords = post.copyWith(
+          locationKeywords: VendorPost.generateLocationKeywords(post.location),
+        );
+        final docRef = await _firestore.collection(_collection).add(postWithKeywords.toFirestore());
+        
+        // Track monthly post count for ALL post types (free vendors limited to 3 total per month)
+        await _updateVendorPostCount(post.vendorId);
+        
+        return docRef.id;
+      }
     } catch (e) {
       throw VendorPostException('Failed to create post: ${e.toString()}');
     }

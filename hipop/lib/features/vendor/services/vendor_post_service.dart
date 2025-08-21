@@ -155,12 +155,25 @@ class VendorPostService {
         return;
       }
       
+      // Get organizer ID from Firestore document since Market model doesn't include it
+      String organizerId = 'system_auto_creation'; // fallback value
+      try {
+        final marketDoc = await _firestore.collection('markets').doc(marketId).get();
+        if (marketDoc.exists) {
+          final marketData = marketDoc.data() as Map<String, dynamic>;
+          organizerId = marketData['organizerId'] ?? 'system_auto_creation';
+          debugPrint('📋 Found organizer ID: $organizerId for market: ${market.name}');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Could not get organizer ID from market document: $e');
+      }
+      
       // Create a new ManagedVendor record
       final now = DateTime.now();
       final managedVendor = ManagedVendor(
         id: '', // Will be set by Firestore
         marketId: marketId,
-        organizerId: 'system_auto_creation', // Mark as system-created
+        organizerId: organizerId, // Use actual organizer ID from market document
         userProfileId: vendorId, // Link to the vendor's UserProfile
         businessName: vendorProfile.businessName ?? vendorProfile.displayName ?? 'Vendor',
         vendorName: vendorProfile.displayName,
@@ -173,7 +186,7 @@ class VendorPostService {
         instagramHandle: vendorProfile.instagramHandle,
         products: vendorProfile.categories, // Use categories as initial products
         specificProducts: vendorProfile.specificProducts,
-        isActive: true,
+        isActive: true, // Honor system - automatic approval
         createdAt: now,
         updatedAt: now,
         metadata: {
@@ -181,6 +194,7 @@ class VendorPostService {
           'createdVia': 'vendor_post',
           'sourcePostType': 'market',
           'linkedUserProfileId': vendorId,
+          'honorSystem': true, // Mark as honor system auto-approval
         },
       );
       
