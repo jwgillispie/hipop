@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter/foundation.dart';
+import 'core/config/firebase_options.dart';
+import 'core/theme/hipop_theme.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/vendor_posts_repository.dart';
 import 'repositories/favorites_repository.dart';
@@ -9,19 +13,93 @@ import 'blocs/auth/auth_bloc.dart';
 import 'blocs/auth/auth_event.dart';
 import 'blocs/auth/auth_state.dart';
 import 'blocs/favorites/favorites_bloc.dart';
-import 'router/app_router.dart';
-import 'services/remote_config_service.dart';
+import 'blocs/subscription/subscription_bloc.dart';
+import 'core/routing/app_router.dart';
+import 'features/shared/services/remote_config_service.dart';
+import 'features/shared/services/real_time_analytics_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    await _initializeFirebase();
-    // Initialize Remote Config in background - don't block app startup
-    RemoteConfigService.instance.catchError((e) => null);
+    await _initializeApp();
     runApp(const HiPopApp());
   } catch (e) {
     runApp(ErrorApp(error: e.toString()));
+  }
+}
+
+Future<void> _initializeApp() async {
+  try {
+    // Load environment variables
+    await dotenv.load(fileName: ".env");
+    
+    // Initialize Firebase
+    await _initializeFirebase();
+    
+    // Initialize Remote Config BEFORE Stripe
+    // This ensures config values are available for Stripe initialization
+    try {
+      await RemoteConfigService.instance;
+      debugPrint('✅ Remote Config initialized successfully during app startup');
+      
+      // In debug mode, run configuration test
+      if (kDebugMode) {
+        await RemoteConfigService.debugConfiguration();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Remote Config initialization failed during startup: $e');
+      // Continue with app startup, fallback to .env values will be used
+    }
+    
+    // Initialize Stripe AFTER Remote Config
+    await _initializeStripe();
+    
+    // Initialize Analytics with consent
+    await _initializeAnalytics();
+  } catch (e) {
+    debugPrint('WARNING: Initialization warning: $e');
+    // Continue with app startup even if some services fail
+  }
+}
+
+Future<void> _initializeStripe() async {
+  try {
+    // Try to get key from Remote Config first (following the pattern of other working functions)
+    String publishableKey = await RemoteConfigService.getStripePublishableKey();
+    
+    // If Remote Config fails or returns empty, use platform-specific fallbacks
+    if (publishableKey.isEmpty) {
+      if (kIsWeb) {
+        // Fallback for web - only if Remote Config fails
+        // This is your live publishable key - safe to expose
+        publishableKey = 'pk_live_51RsQNrC8FCSHt0iKEEfaV2Kd98wwFHAw0d6rcvLR7kxGzvfWuOxhaOvYOD2GRvODOR5eAQnFC7p622ech7BDGddy00IP3xtXun';
+        debugPrint('⚠️ Using hardcoded fallback key for web (Remote Config failed)');
+      } else {
+        // For mobile, try to load from .env
+        publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+        debugPrint('⚠️ Using .env fallback key for mobile (Remote Config failed)');
+      }
+    } else {
+      debugPrint('✅ Using Stripe key from Remote Config');
+    }
+    
+    if (publishableKey.isNotEmpty) {
+      Stripe.publishableKey = publishableKey;
+      
+      // Set merchant identifier for Apple Pay (iOS only) - skip on web
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        Stripe.merchantIdentifier = dotenv.env['STRIPE_MERCHANT_IDENTIFIER'] ?? 'merchant.com.hipop';
+        // Return URL will be set in Payment Sheet parameters
+      }
+      
+      debugPrint('SUCCESS: Stripe initialized successfully for ${kIsWeb ? 'web' : 'mobile'}');
+    } else {
+      debugPrint('WARNING: Stripe publishable key not found');
+    }
+  } catch (e) {
+    debugPrint('ERROR: Failed to initialize Stripe: $e');
+    // Continue without Stripe rather than crash the app
   }
 }
 
@@ -36,6 +114,18 @@ Future<void> _initializeFirebase() async {
       return;
     }
     rethrow;
+  }
+}
+
+Future<void> _initializeAnalytics() async {
+  try {
+    // Initialize analytics service and request consent
+    await RealTimeAnalyticsService.initialize();
+    await RealTimeAnalyticsService.requestTrackingConsent();
+    debugPrint('SUCCESS: Analytics initialized with consent');
+  } catch (e) {
+    debugPrint('WARNING: Analytics initialization failed: $e');
+    // Continue without analytics rather than crash the app
   }
 }
 
@@ -68,6 +158,9 @@ class HiPopApp extends StatelessWidget {
               favoritesRepository: context.read<FavoritesRepository>(),
             ),
           ),
+          BlocProvider<SubscriptionBloc>(
+            create: (context) => SubscriptionBloc(),
+          ),
         ],
         child: Builder(
           builder: (context) {
@@ -84,10 +177,22 @@ class HiPopApp extends StatelessWidget {
               child: MaterialApp.router(
                 title: 'HiPop',
                 debugShowCheckedModeBanner: false,
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
-                  useMaterial3: true,
-                ),
+                theme: HiPopTheme.lightTheme,
+                darkTheme: HiPopTheme.darkTheme,
+                themeMode: ThemeMode.system,
+                // builder: (context, child) {
+                //   return Banner(
+                //     message: 'STAGING',
+                //     location: BannerLocation.topStart,
+                //     color: Colors.pink,
+                //     textStyle: const TextStyle(
+                //       color: Colors.white,
+                //       fontSize: 12,
+                //       fontWeight: FontWeight.bold,
+                //     ),
+                //     child: child!,
+                //   );
+                // },
                 routerConfig: AppRouter.createRouter(authBloc),
               ),
             );

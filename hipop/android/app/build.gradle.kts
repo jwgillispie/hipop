@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.jozo.hipop"
+    namespace = "com.hipopmarkets.hipop"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         // Application ID must match Firebase configuration
-        applicationId = "com.jozo.hipop"
+        applicationId = "com.hipopmarkets.hipop"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

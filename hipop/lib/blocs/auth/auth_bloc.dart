@@ -3,12 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../repositories/auth_repository.dart';
-import '../../services/user_profile_service.dart';
-import '../../services/favorites_migration_service.dart';
-import '../../models/user_profile.dart';
+import '../../features/shared/services/user_profile_service.dart';
+import '../../features/shared/services/favorites_migration_service.dart';
+import '../../features/auth/services/onboarding_service.dart';
+import '../../features/shared/models/user_profile.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
-import '../../utils/validation_utils.dart';
+import '../../core/constants/validation_utils.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final IAuthRepository _authRepository;
@@ -46,6 +47,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onAuthUserChanged(AuthUserChanged event, Emitter<AuthState> emit) async {
     final user = event.user as User?;
+    print('🔐 DEBUG: AuthUserChanged - user is ${user != null ? "not null" : "null"}');
     
     if (user != null) {
       try {
@@ -115,6 +117,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(Authenticated(user: user, userType: 'shopper', userProfile: null));
       }
     } else {
+      print('🔐 DEBUG: Emitting Unauthenticated state');
       emit(Unauthenticated());
     }
   }
@@ -204,6 +207,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           // Failed to load user profile after creation, continue without it
         }
         
+        // Mark first-time signup for shoppers to trigger onboarding
+        if (event.userType == 'shopper') {
+          await OnboardingService.markShopperFirstTimeSignup();
+        }
+        
         // Emit authenticated state directly to avoid race condition
         emit(Authenticated(user: userCredential.user!, userType: event.userType, userProfile: userProfile));
       }
@@ -213,12 +221,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutEvent(LogoutEvent event, Emitter<AuthState> emit) async {
+    print('🔐 DEBUG: LogoutEvent triggered');
     emit(const AuthLoading(message: 'Signing out...'));
     
     try {
+      print('🔐 DEBUG: Calling _authRepository.signOut()');
       await _authRepository.signOut();
+      print('🔐 DEBUG: Sign out completed, waiting for AuthUserChanged event');
       // State will be updated via AuthUserChanged event
     } catch (e) {
+      print('🔐 DEBUG: Error during logout: $e');
       emit(AuthError(message: e.toString()));
     }
   }
